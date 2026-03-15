@@ -1,0 +1,219 @@
+import {
+  state, selectClass, playerMove, playerWait, useItem,
+  chooseLevelUp, restartGame, shootBow, toggleBestiary, toggleMinimap,
+  enterThrowMode, cancelThrowMode, throwInDirection, castSpell,
+  healPlayer, closeHealer, closeShop,
+} from './engine.js';
+import { render } from './renderer.js';
+import { PLAYER_CLASS } from './constants.js';
+
+// ── Class Selection ──────────────────────────
+
+const classSelectEl = document.getElementById('class-select');
+
+document.getElementById('pick-warrior').addEventListener('click', () => {
+  selectClass(PLAYER_CLASS.WARRIOR);
+  classSelectEl.classList.add('hidden');
+  render();
+});
+
+document.getElementById('pick-mage').addEventListener('click', () => {
+  selectClass(PLAYER_CLASS.MAGE);
+  classSelectEl.classList.add('hidden');
+  // Add mana level-up option for mage
+  addManaLevelUpBtn();
+  render();
+});
+
+document.getElementById('pick-archer').addEventListener('click', () => {
+  selectClass(PLAYER_CLASS.ARCHER);
+  classSelectEl.classList.add('hidden');
+  render();
+});
+
+function addManaLevelUpBtn() {
+  const choices = document.getElementById('level-up-choices');
+  if (!document.getElementById('choose-mana')) {
+    const btn = document.createElement('button');
+    btn.id = 'choose-mana';
+    btn.className = 'choice-btn';
+    btn.textContent = '+8 Max Mana';
+    btn.addEventListener('click', () => {
+      levelUpEl.classList.add('hidden');
+      chooseLevelUp('mana');
+      render();
+    });
+    choices.appendChild(btn);
+  }
+}
+
+// ── Input Handling ───────────────────────────
+
+document.addEventListener('keydown', (e) => {
+  // Allow bestiary toggle even during class select
+  if (e.key === 'b' || e.key === 'B') {
+    if (state.phase !== 'class_select') {
+      e.preventDefault();
+      toggleBestiary();
+      render();
+      return;
+    }
+  }
+
+  // Minimap toggle
+  if (e.key === 'm' || e.key === 'M') {
+    if (state.phase !== 'class_select') {
+      e.preventDefault();
+      toggleMinimap();
+      render();
+      return;
+    }
+  }
+
+  // Escape closes overlays
+  if (e.key === 'Escape') {
+    if (state.showHealer) { closeHealer(); render(); return; }
+    if (state.showShop) { closeShop(); render(); return; }
+  }
+
+  if (state.phase === 'class_select') return;
+  if (state.gameOver) return;
+  if (state.pendingLevelUp) return;
+  if (state.showBestiary) return;
+  if (state.showMinimap) return;
+  if (state.showHealer) return;
+  if (state.showShop) return;
+
+  // Throw mode: intercept direction keys
+  if (state.throwMode) {
+    e.preventDefault();
+    switch (e.key) {
+      case 'ArrowUp': case 'w': case 'W':    throwInDirection(0, -1); break;
+      case 'ArrowDown': case 's': case 'S':   throwInDirection(0, 1);  break;
+      case 'ArrowLeft': case 'a': case 'A':   throwInDirection(-1, 0); break;
+      case 'ArrowRight': case 'd': case 'D':  throwInDirection(1, 0);  break;
+      case 'Escape': case 't': case 'T':      cancelThrowMode(); break;
+    }
+    render();
+    checkOverlays();
+    return;
+  }
+
+  switch (e.key) {
+    case 'ArrowUp':    case 'w': case 'W': e.preventDefault(); playerMove(0, -1); break;
+    case 'ArrowDown':  case 's': case 'S': e.preventDefault(); playerMove(0, 1);  break;
+    case 'ArrowLeft':  case 'a': case 'A': e.preventDefault(); playerMove(-1, 0); break;
+    case 'ArrowRight': case 'd': case 'D': e.preventDefault(); playerMove(1, 0);  break;
+    case ' ':          e.preventDefault(); playerWait();       break;
+    case 't': case 'T':
+      e.preventDefault();
+      enterThrowMode();
+      break;
+    case 'f': case 'F':
+      e.preventDefault();
+      castSpell('fire_spell');
+      break;
+    case 'g': case 'G':
+      e.preventDefault();
+      castSpell('ice_shard');
+      break;
+    case 'h': case 'H':
+      e.preventDefault();
+      castSpell('chain_lightning');
+      break;
+    case 'j': case 'J':
+      e.preventDefault();
+      castSpell('heal');
+      break;
+    case 'r': case 'R':
+      e.preventDefault();
+      shootBow();
+      break;
+    case '1': case '2': case '3': case '4':
+    case '5': case '6': case '7': case '8':
+    case '9': case '0':
+      e.preventDefault();
+      useItem(e.key === '0' ? 9 : parseInt(e.key) - 1);
+      break;
+  }
+
+  render();
+  checkOverlays();
+});
+
+// Listen for inventory click events from renderer
+window.addEventListener('useItem', (e) => {
+  if (state.phase === 'class_select') return;
+  useItem(e.detail);
+  render();
+});
+
+// ── Overlays ─────────────────────────────────
+
+const gameOverEl = document.getElementById('game-over');
+const levelUpEl = document.getElementById('level-up');
+const restartBtn = document.getElementById('restart-btn');
+const chooseHpBtn = document.getElementById('choose-hp');
+const choosePowerBtn = document.getElementById('choose-power');
+const deathStatsEl = document.getElementById('death-stats');
+const closeBestiaryBtn = document.getElementById('close-bestiary');
+
+function checkOverlays() {
+  if (state.gameOver) {
+    const classNames = { warrior: 'Warrior', mage: 'Mage', archer: 'Archer' };
+    deathStatsEl.textContent = `${classNames[state.playerClass]} | Floor ${state.floor} | Level ${state.player.level} | ${state.turnCount} turns`;
+    gameOverEl.classList.remove('hidden');
+  }
+
+  if (state.pendingLevelUp) {
+    levelUpEl.classList.remove('hidden');
+  }
+}
+
+restartBtn.addEventListener('click', () => {
+  gameOverEl.classList.add('hidden');
+  restartGame();
+  classSelectEl.classList.remove('hidden');
+  // Remove mana button if it exists (will be re-added if mage is picked)
+  const manaBtn = document.getElementById('choose-mana');
+  if (manaBtn) manaBtn.remove();
+});
+
+chooseHpBtn.addEventListener('click', () => {
+  levelUpEl.classList.add('hidden');
+  chooseLevelUp('hp');
+  render();
+});
+
+choosePowerBtn.addEventListener('click', () => {
+  levelUpEl.classList.add('hidden');
+  chooseLevelUp('power');
+  render();
+});
+
+closeBestiaryBtn.addEventListener('click', () => {
+  toggleBestiary();
+  render();
+});
+
+const closeMinimapBtn = document.getElementById('close-minimap');
+closeMinimapBtn.addEventListener('click', () => {
+  toggleMinimap();
+  render();
+});
+
+// Healer
+document.getElementById('heal-btn').addEventListener('click', () => {
+  healPlayer();
+  render();
+});
+document.getElementById('close-healer').addEventListener('click', () => {
+  closeHealer();
+  render();
+});
+
+// Shop
+document.getElementById('close-shop').addEventListener('click', () => {
+  closeShop();
+  render();
+});

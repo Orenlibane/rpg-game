@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cave Diver</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="game-wrapper">
+    <!-- Left: Game Canvas -->
+    <div id="canvas-container">
+      <div id="canvas-wrapper">
+        <canvas id="game-canvas"></canvas>
+        <div id="hud-bars">
+          <div class="hud-bar-group">
+            <span class="hud-label">HP</span>
+            <div class="hud-bar-track hp-track">
+              <div id="hud-hp-fill" class="hud-bar-fill hp-fill"></div>
+            </div>
+            <span id="hud-hp-text" class="hud-value">30/30</span>
+          </div>
+          <div class="hud-bar-group hud-mana-group" id="hud-mana-row" style="display: none;">
+            <span class="hud-label">MP</span>
+            <div class="hud-bar-track mana-track">
+              <div id="hud-mana-fill" class="hud-bar-fill mana-fill"></div>
+            </div>
+            <span id="hud-mana-text" class="hud-value">20/20</span>
+          </div>
+          <div class="hud-bar-group">
+            <span class="hud-label">XP</span>
+            <div class="hud-bar-track xp-track">
+              <div id="hud-xp-fill" class="hud-bar-fill xp-fill"></div>
+            </div>
+            <span id="hud-xp-text" class="hud-value">0/20</span>
+          </div>
+        </div>
+      </div>
+      <div id="message-log"></div>
+    </div>
+
+    <!-- Right: UI Panel -->
+    <div id="ui-panel">
+      <!-- Player Stats -->
+      <div id="stats-panel" class="panel">
+        <h2>Cave Diver</h2>
+        <div id="class-display" class="class-badge">Warrior</div>
+        <div id="floor-display" class="stat-row">Village</div>
+        <div id="combat-stats">
+          <span>Lv <strong id="level-text">1</strong></span>
+          <span>Pow <strong id="power-text">2</strong></span>
+          <span>Arm <strong id="armor-text">0</strong></span>
+          <span class="gold-display">G <strong id="gold-text">0</strong></span>
+        </div>
+      </div>
+
+      <!-- Active Effects -->
+      <div id="effects-display" style="display: none;"></div>
+
+      <!-- Equipment -->
+      <div id="equip-panel" class="panel">
+        <h3>Equipment</h3>
+        <div id="equip-grid"></div>
+      </div>
+
+      <!-- Stats Allocation -->
+      <div id="stats-alloc-panel" class="panel" style="display: none;">
+        <h3>Stat Points: <span id="stat-points-count">0</span></h3>
+        <div id="stats-alloc-grid"></div>
+      </div>
+
+      <!-- Spells (Mage only) -->
+      <div id="spells-panel" class="panel" style="display: none;">
+        <h3>Spells</h3>
+        <div id="spells-grid"></div>
+      </div>
+
+      <!-- Inventory -->
+      <div id="inventory-panel" class="panel">
+        <h3>Backpack</h3>
+        <div id="inventory-grid"></div>
+      </div>
+
+      <!-- Controls Help -->
+      <div id="controls-panel" class="panel">
+        <h3>Controls</h3>
+        <div class="control-row"><kbd>Arrows</kbd> / <kbd>WASD</kbd> Move</div>
+        <div class="control-row"><kbd>1-0</kbd> Use item</div>
+        <div class="control-row"><kbd>Space</kbd> Wait a turn</div>
+        <div class="control-row"><kbd>T</kbd> Throw item</div>
+        <div class="control-row"><kbd>F</kbd> Fire spell (Mage)</div>
+        <div class="control-row"><kbd>G</kbd> Ice Shard (Mage)</div>
+        <div class="control-row"><kbd>H</kbd> Chain Lightning (Mage)</div>
+        <div class="control-row"><kbd>J</kbd> Heal (Mage)</div>
+        <div class="control-row"><kbd>R</kbd> Shoot bow (Archer)</div>
+        <div class="control-row"><kbd>B</kbd> Bestiary</div>
+        <div class="control-row"><kbd>M</kbd> Map</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Class Selection Overlay -->
+  <div id="class-select" class="overlay">
+    <div class="overlay-content class-select-content">
+      <h1 class="title-select">Choose Your Class</h1>
+      <div class="class-cards">
+        <div class="class-card" id="pick-warrior">
+          <div class="class-icon warrior-icon"></div>
+          <h2>Warrior</h2>
+          <p class="class-stats-preview">HP: 35 | Pow: 3 | Arm: 1</p>
+          <p>Strong melee fighter with high HP and armor. Excels in close combat with sword and shield.</p>
+        </div>
+        <div class="class-card" id="pick-mage">
+          <div class="class-icon mage-icon"></div>
+          <h2>Mage</h2>
+          <p class="class-stats-preview">HP: 22 | Pow: 1 | Mana: 20</p>
+          <p>Wields fire magic to blast enemies from range. Press <kbd>F</kbd> to cast. Mana regenerates each turn.</p>
+        </div>
+        <div class="class-card" id="pick-archer">
+          <div class="class-icon archer-icon"></div>
+          <h2>Archer</h2>
+          <p class="class-stats-preview">HP: 26 | Pow: 2 | Range: 6</p>
+          <p>Shoots arrows at enemies from a distance. Press <kbd>R</kbd> to fire. Fast and precise.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Over Overlay -->
+  <div id="game-over" class="overlay hidden">
+    <div class="overlay-content">
+      <h1>You Died</h1>
+      <p id="death-message">The dungeon claims another soul...</p>
+      <p id="death-stats"></p>
+      <button id="restart-btn">Return to Village</button>
+    </div>
+  </div>
+
+  <!-- Level Up Overlay -->
+  <div id="level-up" class="overlay hidden">
+    <div class="overlay-content">
+      <h1>Level Up!</h1>
+      <p>Choose a bonus:</p>
+      <div class="choice-buttons" id="level-up-choices">
+        <button id="choose-hp" class="choice-btn">+5 Max HP</button>
+        <button id="choose-power" class="choice-btn">+1 Power</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bestiary Overlay -->
+  <div id="bestiary-overlay" class="overlay hidden">
+    <div class="overlay-content bestiary-panel">
+      <h1 class="title-bestiary">Bestiary</h1>
+      <div id="bestiary-content"></div>
+      <button id="close-bestiary">Close (B)</button>
+    </div>
+  </div>
+
+  <!-- Minimap Overlay -->
+  <div id="minimap-overlay" class="overlay hidden">
+    <div class="overlay-content minimap-panel">
+      <h1 class="title-minimap">Map</h1>
+      <canvas id="minimap-canvas"></canvas>
+      <div id="minimap-legend"></div>
+      <div id="minimap-monsters"></div>
+      <button id="close-minimap">Close (M)</button>
+    </div>
+  </div>
+
+  <!-- Healer Overlay -->
+  <div id="healer-overlay" class="overlay hidden">
+    <div class="overlay-content healer-panel">
+      <h1 class="title-healer">Healer</h1>
+      <p>The village healer can restore you to full health.</p>
+      <p id="healer-status"></p>
+      <p id="healer-gold"></p>
+      <div class="choice-buttons">
+        <button id="heal-btn">Heal (10 gold)</button>
+        <button id="close-healer">Leave</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shop Overlay -->
+  <div id="shop-overlay" class="overlay hidden">
+    <div class="overlay-content shop-panel">
+      <h1 class="title-shop">Merchant</h1>
+      <p id="shop-gold"></p>
+      <div class="shop-tabs">
+        <button class="shop-tab active" id="shop-tab-buy">Buy</button>
+        <button class="shop-tab" id="shop-tab-sell">Sell</button>
+      </div>
+      <div id="shop-buy-list" class="shop-list"></div>
+      <div id="shop-sell-list" class="shop-list" style="display: none;"></div>
+      <button id="close-shop">Leave</button>
+    </div>
+  </div>
+
+  <!-- Item Tooltip Popover -->
+  <div id="item-tooltip" class="item-tooltip hidden"></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

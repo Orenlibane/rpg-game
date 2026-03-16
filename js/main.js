@@ -5,9 +5,9 @@ import {
   healPlayer, closeHealer, closeShop, closeChest, takeAllFromChest, closeQuestBoard,
   toggleSettings, closeSettings, applyCheatCode,
   toggleCharSheet, closeCharSheet,
-} from './engine.js?v=8';
-import { render } from './renderer.js?v=8';
-import { PLAYER_CLASS } from './constants.js?v=8';
+} from './engine.js?v=9';
+import { render } from './renderer.js?v=9';
+import { PLAYER_CLASS } from './constants.js?v=9';
 
 // ── Class Selection ──────────────────────────
 

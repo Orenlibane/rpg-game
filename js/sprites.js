@@ -1,4 +1,4 @@
-import { TILE, TILE_SIZE, ENTITY } from './constants.js?v=8';
+import { TILE, TILE_SIZE, ENTITY } from './constants.js?v=9';
 
 const cache = {};
 const tileSeedCache = {};
@@ -14,6 +14,117 @@ knightImg.onload = () => {
   knightReady = true;
   delete cache['player_warrior'];
 };
+
+// ── Sprite Sheets ───────────────────────────────
+
+const jrpgSheet = new Image();
+jrpgSheet.src = 'assets/sprites/jrpg_monsters.png';
+let jrpgReady = false;
+jrpgSheet.onload = () => {
+  jrpgReady = true;
+  // Invalidate all enemy caches so they redraw with sheet sprites
+  for (const key of Object.keys(cache)) {
+    if (key !== 'player_warrior' && key !== 'player_mage' && key !== 'player_archer' &&
+        !key.startsWith('item_') && !key.startsWith('fireball') && !key.startsWith('arrow') &&
+        !key.startsWith('iceShard') && !key.startsWith('lightning') &&
+        !key.startsWith('chest')) {
+      delete cache[key];
+    }
+  }
+};
+
+const basicSheet = new Image();
+basicSheet.src = 'assets/sprites/basic_monsters.png';
+let basicReady = false;
+basicSheet.onload = () => { basicReady = true; };
+
+const housesSheet = new Image();
+housesSheet.src = 'assets/sprites/houses.png';
+let housesReady = false;
+housesSheet.onload = () => {
+  housesReady = true;
+  // Invalidate village tile caches
+  for (const key of Object.keys(tileSeedCache)) {
+    if (key.startsWith(TILE.HUT + '_') || key.startsWith(TILE.HEALER + '_') ||
+        key.startsWith(TILE.MERCHANT + '_')) {
+      delete tileSeedCache[key];
+    }
+  }
+};
+
+// JRPG monster sheet: 8 cols x 7 rows, 98x98px cells
+const JRPG_CELL = 98;
+// Entity → { col, row } in the JRPG sheet
+const JRPG_MAP = {
+  [ENTITY.GOBLIN]:           { col: 3, row: 0 },
+  [ENTITY.ORC]:              { col: 7, row: 0 },
+  [ENTITY.SKELETON]:         { col: 5, row: 1 },
+  [ENTITY.SPIDER]:           { col: 3, row: 6 },
+  [ENTITY.TROLL]:            { col: 4, row: 0 },
+  [ENTITY.DARK_MAGE]:        { col: 1, row: 0 },
+  [ENTITY.BAT]:              { col: 7, row: 3 },
+  [ENTITY.SLIME]:            { col: 4, row: 3 },
+  [ENTITY.WRAITH]:           { col: 3, row: 2 },
+  [ENTITY.GOBLIN_SHAMAN]:    { col: 4, row: 1 },
+  [ENTITY.MUSHROOM]:         { col: 2, row: 1 },
+  [ENTITY.GOBLIN_BERSERKER]: { col: 2, row: 0 },
+  [ENTITY.GOBLIN_WARLORD]:   { col: 0, row: 0 },
+  [ENTITY.SPIDER_QUEEN]:     { col: 7, row: 2 },
+  [ENTITY.LICH]:             { col: 6, row: 2 },
+  [ENTITY.MYCELIUM_LORD]:    { col: 1, row: 4 },
+  [ENTITY.FIRE_ELEMENTAL]:   { col: 1, row: 2 },
+  [ENTITY.FROST_GIANT]:      { col: 2, row: 4 },
+  // New monsters
+  'goblin_scout':    { col: 6, row: 0 },
+  'goblin_chief':    { col: 5, row: 0 },
+  'cave_crawler':    { col: 2, row: 3 },
+  'venom_spitter':   { col: 2, row: 6 },
+  'cocoon_horror':   { col: 7, row: 2 },
+  'zombie':          { col: 3, row: 1 },
+  'bone_archer':     { col: 0, row: 1 },
+  'phantom':         { col: 4, row: 2 },
+  'death_knight':    { col: 6, row: 1 },
+  'necromancer':     { col: 1, row: 3 },
+  'spore_walker':    { col: 0, row: 6 },
+  'toxic_toad':      { col: 1, row: 6 },
+  'vine_lurker':     { col: 7, row: 1 },
+  'moss_golem':      { col: 1, row: 4 },
+  'fire_imp':        { col: 2, row: 2 },
+  'lava_hound':      { col: 0, row: 2 },
+  'ash_wraith':      { col: 5, row: 3 },
+  'magma_golem':     { col: 1, row: 5 },
+  'infernal_mage':   { col: 5, row: 0 },
+  'ember_bat':       { col: 7, row: 4 },
+  'ice_spider':      { col: 6, row: 4 },
+  'frost_wraith':    { col: 5, row: 2 },
+  'frozen_sentinel': { col: 4, row: 4 },
+  'snow_wolf':       { col: 5, row: 4 },
+  'ice_mage':        { col: 4, row: 4 },
+  'shadow_stalker':  { col: 3, row: 1 },
+  'crystal_golem':   { col: 6, row: 1 },
+  'demon_lord':      { col: 0, row: 5 },
+  'dragon_whelp':    { col: 0, row: 3 },
+  'ancient_wyrm':    { col: 2, row: 5 },
+};
+
+// Houses sheet: 12 cols at x=48+col*150, variable row heights
+// Each entry: { x, y, w, h } = crop rectangle for first frame of the building type
+const HOUSE_CROPS = {
+  hut:      { x: 48, y: 37, w: 58, h: 73 },    // Brown peaked cottage
+  healer:   { x: 48, y: 637, w: 58, h: 80 },   // Blue stone building
+  merchant: { x: 48, y: 1097, w: 58, h: 55 },  // Green shop front
+};
+
+// Draw a sprite from a sheet onto a fresh 48x48 canvas
+function drawFromSheet(sheet, sx, sy, sw, sh) {
+  const c = document.createElement('canvas');
+  c.width = S; c.height = S;
+  const g = c.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  // Scale source region to fill the 48x48 canvas
+  g.drawImage(sheet, sx, sy, sw, sh, 0, 0, S, S);
+  return c;
+}
 
 // ── Torch animation ─────────────────────────────
 
@@ -118,16 +229,26 @@ function buildTileSprite(tileType, variant) {
 
     case TILE.HUT:
       fillRect(g, 0, 0, 32, 32, '#2d5a1e');
-      // Wooden hut
-      fillRect(g, 4, 8, 24, 20, '#5a3a1a');
-      fillRect(g, 6, 10, 20, 16, '#7a5a30');
-      // Roof
-      fillRect(g, 2, 4, 28, 6, '#8a4a1a');
-      fillRect(g, 6, 2, 20, 4, '#9a5a2a');
-      // Door
-      fillRect(g, 12, 18, 8, 10, '#3a2010');
-      // Window
-      fillRect(g, 20, 14, 4, 4, '#a0c8e0');
+      if (housesReady) {
+        const crop = HOUSE_CROPS.hut;
+        g.save();
+        g.setTransform(1, 0, 0, 1, 0, 0);
+        g.imageSmoothingEnabled = false;
+        // Center the house sprite on the grass tile
+        const scale = Math.min(S / crop.w, S / crop.h);
+        const dw = crop.w * scale, dh = crop.h * scale;
+        const dx = (S - dw) / 2, dy = S - dh;
+        g.drawImage(housesSheet, crop.x, crop.y, crop.w, crop.h, dx, dy, dw, dh);
+        g.restore();
+      } else {
+        // Fallback hand-drawn hut
+        fillRect(g, 4, 8, 24, 20, '#5a3a1a');
+        fillRect(g, 6, 10, 20, 16, '#7a5a30');
+        fillRect(g, 2, 4, 28, 6, '#8a4a1a');
+        fillRect(g, 6, 2, 20, 4, '#9a5a2a');
+        fillRect(g, 12, 18, 8, 10, '#3a2010');
+        fillRect(g, 20, 14, 4, 4, '#a0c8e0');
+      }
       break;
 
     case TILE.CAVE_ENTRANCE:
@@ -351,54 +472,93 @@ function buildTileSprite(tileType, variant) {
 
     case TILE.HEALER:
       fillRect(g, 0, 0, 32, 32, '#2d5a1e');
-      // Green-robed healer figure
-      drawPixels(g, [
-        '................',
-        '......0000......',
-        '.....0cccc0.....',
-        '.....0ceec0.....',
-        '.....0cccc0.....',
-        '......0000......',
-        '.....0GGGG0.....',
-        '....0GGGGGG0....',
-        '....0GG00GG0....',
-        '....0GGGGGG0....',
-        '.....0GGGG0.....',
-        '.....0G00G0.....',
-        '......0..0......',
-        '......0..0......',
-        '.....00..00.....',
-        '................',
-      ], { '0': '#1a1a1a', 'c': '#e8c8a0', 'e': '#2a2a2a', 'G': '#2a8a3a' });
-      // Red cross
-      fillRect(g, 14, 16, 4, 2, '#e04040');
-      fillRect(g, 15, 15, 2, 4, '#e04040');
+      if (housesReady) {
+        const crop = HOUSE_CROPS.healer;
+        g.save();
+        g.setTransform(1, 0, 0, 1, 0, 0);
+        g.imageSmoothingEnabled = false;
+        const scale = Math.min(S / crop.w, S / crop.h);
+        const dw = crop.w * scale, dh = crop.h * scale;
+        const dx = (S - dw) / 2, dy = S - dh;
+        g.drawImage(housesSheet, crop.x, crop.y, crop.w, crop.h, dx, dy, dw, dh);
+        g.restore();
+        // Red cross overlay to indicate healer
+        g.save();
+        g.setTransform(1, 0, 0, 1, 0, 0);
+        g.fillStyle = '#e04040';
+        g.fillRect(S - 14, 2, 10, 3);
+        g.fillRect(S - 10, 0, 3, 8);
+        g.restore();
+      } else {
+        drawPixels(g, [
+          '................',
+          '......0000......',
+          '.....0cccc0.....',
+          '.....0ceec0.....',
+          '.....0cccc0.....',
+          '......0000......',
+          '.....0GGGG0.....',
+          '....0GGGGGG0....',
+          '....0GG00GG0....',
+          '....0GGGGGG0....',
+          '.....0GGGG0.....',
+          '.....0G00G0.....',
+          '......0..0......',
+          '......0..0......',
+          '.....00..00.....',
+          '................',
+        ], { '0': '#1a1a1a', 'c': '#e8c8a0', 'e': '#2a2a2a', 'G': '#2a8a3a' });
+        fillRect(g, 14, 16, 4, 2, '#e04040');
+        fillRect(g, 15, 15, 2, 4, '#e04040');
+      }
       break;
 
     case TILE.MERCHANT:
       fillRect(g, 0, 0, 32, 32, '#2d5a1e');
-      // Brown-robed merchant
-      drawPixels(g, [
-        '................',
-        '......0000......',
-        '.....0cccc0.....',
-        '.....0ceec0.....',
-        '.....0cccc0.....',
-        '......0000......',
-        '.....0BBBB0.....',
-        '....0BBBBBB0....',
-        '....0BB00BB0....',
-        '....0BBBBBB0....',
-        '.....0BBBB0.....',
-        '.....0B00B0.....',
-        '......0..0......',
-        '......0..0......',
-        '.....00..00.....',
-        '................',
-      ], { '0': '#1a1a1a', 'c': '#e8c8a0', 'e': '#2a2a2a', 'B': '#8a6a2a' });
-      // Gold coin
-      fillRect(g, 22, 18, 4, 4, '#e0c040');
-      fillRect(g, 23, 19, 2, 2, '#f0d860');
+      if (housesReady) {
+        const crop = HOUSE_CROPS.merchant;
+        g.save();
+        g.setTransform(1, 0, 0, 1, 0, 0);
+        g.imageSmoothingEnabled = false;
+        const scale = Math.min(S / crop.w, S / crop.h);
+        const dw = crop.w * scale, dh = crop.h * scale;
+        const dx = (S - dw) / 2, dy = S - dh;
+        g.drawImage(housesSheet, crop.x, crop.y, crop.w, crop.h, dx, dy, dw, dh);
+        g.restore();
+        // Gold coin icon to indicate merchant
+        g.save();
+        g.setTransform(1, 0, 0, 1, 0, 0);
+        g.fillStyle = '#e0c040';
+        g.beginPath();
+        g.arc(S - 8, 8, 5, 0, Math.PI * 2);
+        g.fill();
+        g.fillStyle = '#f0d860';
+        g.beginPath();
+        g.arc(S - 8, 8, 3, 0, Math.PI * 2);
+        g.fill();
+        g.restore();
+      } else {
+        drawPixels(g, [
+          '................',
+          '......0000......',
+          '.....0cccc0.....',
+          '.....0ceec0.....',
+          '.....0cccc0.....',
+          '......0000......',
+          '.....0BBBB0.....',
+          '....0BBBBBB0....',
+          '....0BB00BB0....',
+          '....0BBBBBB0....',
+          '.....0BBBB0.....',
+          '.....0B00B0.....',
+          '......0..0......',
+          '......0..0......',
+          '.....00..00.....',
+          '................',
+        ], { '0': '#1a1a1a', 'c': '#e8c8a0', 'e': '#2a2a2a', 'B': '#8a6a2a' });
+        fillRect(g, 22, 18, 4, 4, '#e0c040');
+        fillRect(g, 23, 19, 2, 2, '#f0d860');
+      }
       break;
 
     case TILE.QUEST_BOARD:
@@ -533,6 +693,13 @@ function buildPlayerSprite(playerClass) {
 // ── Enemy Sprite Builders ────────────────────────
 
 function buildEnemySprite(entityType) {
+  // Try sprite sheet first
+  if (jrpgReady && JRPG_MAP[entityType]) {
+    const { col, row } = JRPG_MAP[entityType];
+    return drawFromSheet(jrpgSheet, col * JRPG_CELL, row * JRPG_CELL, JRPG_CELL, JRPG_CELL);
+  }
+
+  // Fallback to hand-drawn pixel art
   const c = makeCanvas();
   const g = c.getContext('2d');
 

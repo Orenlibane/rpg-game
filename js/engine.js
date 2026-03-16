@@ -8,9 +8,9 @@ import {
   GOBLIN_SIGHT_RANGE, ORC_SIGHT_RANGE,
   GOLD_REWARDS, HEALER_COST, SHOP_INVENTORY,
   ATTR_BONUSES, FEATURE_INFO, QUEST_POOL,
-} from './constants.js?v=8';
-import { generateVillage, generateDungeon } from './mapgen.js?v=8';
-import { computeFOV } from './fov.js?v=8';
+} from './constants.js?v=9';
+import { generateVillage, generateDungeon } from './mapgen.js?v=9';
+import { computeFOV } from './fov.js?v=9';
 
 function randInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));

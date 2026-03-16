@@ -4,6 +4,29 @@ const cache = {};
 const tileSeedCache = {};
 const S = TILE_SIZE; // 32
 
+// ── Knight sprite (for warrior) ─────────────────
+
+const knightImg = new Image();
+knightImg.src = 'assets/knight/rotations/south.png';
+let knightReady = false;
+knightImg.onload = () => {
+  knightReady = true;
+  delete cache['player_warrior'];
+};
+
+// ── Torch animation ─────────────────────────────
+
+let torchFrame = 0;
+setInterval(() => {
+  torchFrame = (torchFrame + 1) % 4;
+  // Invalidate torch tile caches so they redraw
+  for (const key of Object.keys(tileSeedCache)) {
+    if (key.startsWith('torch_')) delete tileSeedCache[key];
+  }
+}, 150);
+
+export function getTorchFrame() { return torchFrame; }
+
 // ── Utility ─────────────────────────────────────
 
 function makeCanvas() {
@@ -328,27 +351,32 @@ function buildPlayerSprite(playerClass) {
 
   switch (playerClass) {
     case 'warrior':
-      drawPixels(g, [
-        '......0000......',
-        '.....088880.....',
-        '....08888880....',
-        '....08cccc80....',
-        '....0ceec0c0....',
-        '....0cccc0c0....',
-        '.....0cc0.......',
-        '..s..0BB0.......',
-        '..s.0BBBB0......',
-        '..s.0B00B0......',
-        '..s.0BBBB0......',
-        '.....0BB0.......',
-        '.....0BB0.......',
-        '......00........',
-        '.....0..0.......',
-        '....00..00......',
-      ], { '0': '#1a1a1a', '8': '#8a8a9a', 'c': '#e8c8a0', 'e': '#2a4a8a', 'B': '#3060c0', 's': '#a0a0b0' });
-      // Sword
-      fillRect(g, 4, 14, 2, 10, '#c0c0d0');
-      fillRect(g, 2, 18, 6, 2, '#8a6a2a');
+      if (knightReady) {
+        g.imageSmoothingEnabled = false;
+        g.drawImage(knightImg, 0, 0, 48, 48, 0, 0, S, S);
+      } else {
+        // Fallback until image loads
+        drawPixels(g, [
+          '......0000......',
+          '.....088880.....',
+          '....08888880....',
+          '....08cccc80....',
+          '....0ceec0c0....',
+          '....0cccc0c0....',
+          '.....0cc0.......',
+          '..s..0BB0.......',
+          '..s.0BBBB0......',
+          '..s.0B00B0......',
+          '..s.0BBBB0......',
+          '.....0BB0.......',
+          '.....0BB0.......',
+          '......00........',
+          '.....0..0.......',
+          '....00..00......',
+        ], { '0': '#1a1a1a', '8': '#8a8a9a', 'c': '#e8c8a0', 'e': '#2a4a8a', 'B': '#3060c0', 's': '#a0a0b0' });
+        fillRect(g, 4, 14, 2, 10, '#c0c0d0');
+        fillRect(g, 2, 18, 6, 2, '#8a6a2a');
+      }
       break;
 
     case 'mage':
@@ -1075,6 +1103,50 @@ function buildLightning() {
   return c;
 }
 
+// ── Torch Sprite ─────────────────────────────────
+
+function buildTorchSprite(frame) {
+  const c = makeCanvas();
+  const g = c.getContext('2d');
+
+  // Wooden handle
+  fillRect(g, 13, 14, 6, 16, '#6a4a1a');
+  fillRect(g, 14, 14, 4, 16, '#8a5a2a');
+
+  // Flame - varies by frame
+  const flameColors = ['#ff6600', '#ff8800', '#ffaa00', '#ff7700'];
+  const innerColors = ['#ffcc00', '#ffdd30', '#ffee60', '#ffcc20'];
+  const tipColors   = ['#ffffaa', '#ffffff', '#ffffcc', '#ffffaa'];
+
+  const baseColor = flameColors[frame];
+  const innerColor = innerColors[frame];
+  const tipColor = tipColors[frame];
+
+  // Flame height/width wobble
+  const hOff = (frame === 1 || frame === 3) ? -2 : 0;
+  const wOff = (frame === 0 || frame === 2) ? 1 : -1;
+
+  // Outer flame
+  fillRect(g, 11 - wOff, 6 + hOff, 10 + wOff * 2, 10, baseColor);
+  fillRect(g, 13, 4 + hOff, 6, 4, baseColor);
+  fillRect(g, 14, 2 + hOff, 4, 4, baseColor);
+
+  // Inner flame
+  fillRect(g, 13, 8 + hOff, 6, 6, innerColor);
+  fillRect(g, 14, 6 + hOff, 4, 4, innerColor);
+
+  // Tip
+  fillRect(g, 15, 4 + hOff, 2, 3, tipColor);
+
+  // Glow effect
+  g.fillStyle = 'rgba(255, 150, 0, 0.15)';
+  g.beginPath();
+  g.arc(16, 12, 14, 0, Math.PI * 2);
+  g.fill();
+
+  return c;
+}
+
 // ── Exported API ─────────────────────────────────
 
 export function getTileSprite(tileType) {
@@ -1123,4 +1195,12 @@ export function getItemSprite(iconCode) {
   const key = 'item_' + iconCode;
   if (!cache[key]) cache[key] = buildItemSprite(iconCode);
   return cache[key];
+}
+
+export function getTorchSprite() {
+  const key = 'torch_' + torchFrame;
+  if (!tileSeedCache[key]) {
+    tileSeedCache[key] = buildTorchSprite(torchFrame);
+  }
+  return tileSeedCache[key];
 }

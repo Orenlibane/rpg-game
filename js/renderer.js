@@ -3,7 +3,7 @@ import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_S
 // Lookups for bestiary
 const BASE_STATS_LOOKUP = BASE_STATS;
 const GOLD_LOOKUP = GOLD_REWARDS;
-import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite } from './sprites.js';
+import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame } from './sprites.js';
 import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, healPlayer, closeHealer, closeShop } from './engine.js';
 
 const canvas = document.getElementById('game-canvas');
@@ -59,6 +59,45 @@ export function render() {
       if (!visible) {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
         ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+      }
+    }
+  }
+
+  // Draw torches on dungeon walls (walls adjacent to floor on their south side)
+  if (state.mode === 'dungeon') {
+    const torchSprite = getTorchSprite();
+    for (let vy = 0; vy < VIEW_H; vy++) {
+      for (let vx = 0; vx < VIEW_W; vx++) {
+        const mx = camX + vx;
+        const my = camY + vy;
+        if (mx < 0 || mx >= state.mapW || my < 0 || my >= state.mapH) continue;
+        if (!state.revealed[my][mx]) continue;
+
+        const tile = state.map[my][mx];
+        const props = TILE_PROPS[tile];
+        if (!props || props.walkable) continue; // only walls
+
+        // Place torch if the tile below is a walkable floor
+        const belowY = my + 1;
+        if (belowY >= state.mapH) continue;
+        const belowTile = state.map[belowY][mx];
+        const belowProps = TILE_PROPS[belowTile];
+        if (!belowProps || !belowProps.walkable) continue;
+
+        // Only place torches at regular intervals (every 3-4 tiles) for a natural look
+        if ((mx + my * 7) % 4 !== 0) continue;
+
+        const sx = vx * TILE_SIZE;
+        const sy = vy * TILE_SIZE;
+
+        if (state.visibility[my][mx]) {
+          ctx.drawImage(torchSprite, sx, sy);
+        } else {
+          // Dimmed torch in fog
+          ctx.globalAlpha = 0.4;
+          ctx.drawImage(torchSprite, sx, sy);
+          ctx.globalAlpha = 1;
+        }
       }
     }
   }
@@ -820,4 +859,123 @@ function updateMinimap() {
     </div>`;
   }
   monstersEl.innerHTML = html;
+}
+
+// ── Torch Animation Loop ───────────────────
+let lastTorchFrame = -1;
+function torchAnimLoop() {
+  requestAnimationFrame(torchAnimLoop);
+  const frame = getTorchFrame();
+  if (frame !== lastTorchFrame && state.phase !== 'class_select' && state.mode === 'dungeon') {
+    lastTorchFrame = frame;
+    renderCanvas();
+  }
+}
+torchAnimLoop();
+
+// Separate canvas-only render for animation (avoids full UI rebuild)
+function renderCanvas() {
+  if (state.phase === 'class_select') return;
+
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const { camX, camY } = getCamera();
+
+  // Draw tiles
+  for (let vy = 0; vy < VIEW_H; vy++) {
+    for (let vx = 0; vx < VIEW_W; vx++) {
+      const mx = camX + vx;
+      const my = camY + vy;
+      if (mx < 0 || mx >= state.mapW || my < 0 || my >= state.mapH) continue;
+      const visible = state.visibility[my][mx];
+      const revealed = state.revealed[my][mx];
+      if (!revealed) continue;
+      const tile = state.map[my][mx];
+      const sprite = getTileSprite(tile);
+      const sx = vx * TILE_SIZE;
+      const sy = vy * TILE_SIZE;
+      ctx.drawImage(sprite, sx, sy);
+      if (!visible) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+      }
+    }
+  }
+
+  // Draw torches
+  if (state.mode === 'dungeon') {
+    const torchSprite = getTorchSprite();
+    for (let vy = 0; vy < VIEW_H; vy++) {
+      for (let vx = 0; vx < VIEW_W; vx++) {
+        const mx = camX + vx;
+        const my = camY + vy;
+        if (mx < 0 || mx >= state.mapW || my < 0 || my >= state.mapH) continue;
+        if (!state.revealed[my][mx]) continue;
+        const tile = state.map[my][mx];
+        const props = TILE_PROPS[tile];
+        if (!props || props.walkable) continue;
+        const belowY = my + 1;
+        if (belowY >= state.mapH) continue;
+        const belowTile = state.map[belowY][mx];
+        const belowProps = TILE_PROPS[belowTile];
+        if (!belowProps || !belowProps.walkable) continue;
+        if ((mx + my * 7) % 4 !== 0) continue;
+        const sx = vx * TILE_SIZE;
+        const sy = vy * TILE_SIZE;
+        if (state.visibility[my][mx]) {
+          ctx.drawImage(torchSprite, sx, sy);
+        } else {
+          ctx.globalAlpha = 0.4;
+          ctx.drawImage(torchSprite, sx, sy);
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
+  }
+
+  // Draw ground items
+  for (const gi of state.items) {
+    if (!state.visibility[gi.y] || !state.visibility[gi.y][gi.x]) continue;
+    const sx = (gi.x - camX) * TILE_SIZE;
+    const sy = (gi.y - camY) * TILE_SIZE;
+    if (sx < 0 || sy < 0 || sx >= canvas.width || sy >= canvas.height) continue;
+    ctx.drawImage(getItemSprite(gi.item.icon), sx, sy);
+  }
+
+  // Draw enemies
+  for (const enemy of state.enemies) {
+    if (enemy.hp <= 0) continue;
+    if (!state.visibility[enemy.y] || !state.visibility[enemy.y][enemy.x]) continue;
+    const sx = (enemy.x - camX) * TILE_SIZE;
+    const sy = (enemy.y - camY) * TILE_SIZE;
+    if (sx < 0 || sy < 0 || sx >= canvas.width || sy >= canvas.height) continue;
+    ctx.drawImage(getEnemySprite(enemy.type), sx, sy);
+    if (enemy.isBoss) {
+      ctx.strokeStyle = '#e0c040';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(sx + 1, sy + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+    }
+    const hpPct = enemy.hp / enemy.maxHp;
+    ctx.fillStyle = '#300';
+    ctx.fillRect(sx + 4, sy - 4, TILE_SIZE - 8, 3);
+    ctx.fillStyle = hpPct > 0.5 ? '#0c0' : hpPct > 0.25 ? '#cc0' : '#c00';
+    ctx.fillRect(sx + 4, sy - 4, (TILE_SIZE - 8) * hpPct, 3);
+  }
+
+  // Draw projectiles
+  for (const proj of state.projectiles) {
+    const sx = (proj.x - camX) * TILE_SIZE;
+    const sy = (proj.y - camY) * TILE_SIZE;
+    if (sx < 0 || sy < 0 || sx >= canvas.width || sy >= canvas.height) continue;
+    if (proj.type === 'fire') ctx.drawImage(getFireballSprite(), sx, sy);
+    else if (proj.type === 'arrow') ctx.drawImage(getArrowSprite(), sx, sy);
+    else if (proj.type === 'ice') ctx.drawImage(getIceShardSprite(), sx, sy);
+    else if (proj.type === 'lightning') ctx.drawImage(getLightningSprite(), sx, sy);
+  }
+
+  // Draw player
+  const psx = (state.player.x - camX) * TILE_SIZE;
+  const psy = (state.player.y - camY) * TILE_SIZE;
+  ctx.drawImage(getPlayerSprite(state.playerClass), psx, psy);
 }

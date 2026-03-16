@@ -3,464 +3,1082 @@ import { TILE, TILE_SIZE, ENTITY } from './constants.js';
 const cache = {};
 const tileSeedCache = {};
 const S = TILE_SIZE; // 32
-const SRC = 8;       // Kenney tiles are 8x8
-const COLS = 16;     // spritesheet is 16 columns
 
-// ── Load Kenney Micro-Roguelike spritesheet ──────
-const sheet = new Image();
-sheet.src = 'assets/downloaded/kenney_micro-roguelike/Tilemap/colored_tilemap_packed.png';
-let sheetReady = false;
-sheet.onload = () => {
-  sheetReady = true;
-  // Invalidate all caches so sprites re-draw from sheet
-  Object.keys(cache).forEach(k => delete cache[k]);
-  Object.keys(tileSeedCache).forEach(k => delete tileSeedCache[k]);
-};
+// ── Utility ─────────────────────────────────────
 
-// ── Tile index mapping ───────────────────────────
-// Kenney Micro Roguelike colored_tilemap_packed.png
-// 16 cols x 10 rows = 160 tiles, each 8x8 px
-//
-// These indices come from visual inspection of the
-// upscaled labeled tilemap.
-
-const TILE_MAP = {
-  // ─ Environment ─
-  void:        0,    // solid dark wall
-  grass:       96,   // earthy ground (we tint green)
-  dirt:        80,   // cobblestone/path
-  hut:         36,   // wooden structure
-  cave_ent:    33,   // archway opening
-  cave_wall:   0,    // solid stone wall
-  cave_floor:  64,   // grey stone floor
-  stairs:      91,   // ladder / stairs down
-  moss_wall:   1,    // wall variant (tinted green)
-  moss_floor:  65,   // floor variant (tinted green)
-  bone_wall:   2,    // wall variant (tinted bone)
-  bone_floor:  66,   // floor variant (tinted bone)
-  web_floor:   67,   // floor variant (with web overlay)
-  lava_wall:   3,    // wall variant (tinted red)
-  lava_floor:  109,  // fire/lava tile
-  ice_wall:    32,   // wall variant (tinted blue)
-  ice_floor:   95,   // blue tile (ice)
-  portal:      125,  // blue eye/circle
-  healer:      8,    // NPC figure
-  merchant:    13,   // NPC figure
-
-  // ─ Trees & nature ─
-  tree_pine:   85,
-  tree_round:  86,
-  tree_branch: 87,
-
-  // ─ Player classes ─
-  warrior:     4,    // orange knight
-  mage:        6,    // robed/armored figure
-  archer:      14,   // character with ranged look
-
-  // ─ Regular enemies ─
-  goblin:      7,    // small creature
-  orc:         11,   // large green-headed brute
-  skeleton:    22,   // white/grey bones
-  spider:      56,   // small red/brown creature
-  troll:       12,   // large red creature
-  dark_mage:   26,   // dark hooded figure
-  bat:         10,   // small flying creature
-  slime:       20,   // green blob
-  wraith:      43,   // ghostly white figure
-  goblin_sham: 23,   // green spellcaster
-  mushroom:    54,   // mushroom on dark
-  goblin_berk: 15,   // aggressive warrior
-
-  // ─ Bosses ─
-  goblin_warl: 60,   // large armored creature
-  spider_queen:57,   // large spider variant
-  lich:        61,   // dark undead sorcerer
-  mycelium:    129,  // large green blob
-  fire_elem:   138,  // fire creature
-  frost_giant:  128, // large ice creature (tint blue)
-
-  // ─ Items ─
-  sword:       70,   // sword/blade
-  axe:         71,   // diagonal axe
-  staff:       134,  // orange staff/wand
-  dagger:      74,   // small blade
-  bow:         73,   // crossed weapons / bow shape
-  shield:      29,   // grey shield/armor
-  helmet:      40,   // helmet shape
-  armor:       30,   // chest armor
-  boots:       78,   // footwear
-  gloves:      39,   // gauntlet
-  cape:        31,   // cloth item
-  potion_hp:   135,  // red potion bottle
-  potion_mana: 69,   // green/blue potion
-  potion_gen:  69,   // generic potion
-  gold_coin:   89,   // gold circle
-  key:         90,   // key shape
-  chest:       93,   // treasure chest
-
-  // ─ Projectiles ─
-  fireball:    136,  // fire spark
-  arrow:       74,   // small projectile
-  ice_shard:   152,  // small blue item
-  lightning:   88,   // bright yellow flash
-};
-
-// ── Core extraction ──────────────────────────────
-
-function extractTile(tileIndex) {
+function makeCanvas() {
   const c = document.createElement('canvas');
   c.width = S; c.height = S;
-  const g = c.getContext('2d');
-  g.imageSmoothingEnabled = false;
-  if (sheetReady) {
-    const col = tileIndex % COLS;
-    const row = Math.floor(tileIndex / COLS);
-    g.drawImage(sheet,
-      col * SRC, row * SRC, SRC, SRC,
-      0, 0, S, S
-    );
-  }
   return c;
 }
 
-function extractTileTinted(tileIndex, tintColor, tintAlpha = 0.35) {
-  const c = extractTile(tileIndex);
-  const g = c.getContext('2d');
-  g.globalCompositeOperation = 'source-atop';
-  g.fillStyle = tintColor;
-  g.globalAlpha = tintAlpha;
-  g.fillRect(0, 0, S, S);
-  g.globalAlpha = 1;
-  g.globalCompositeOperation = 'source-over';
-  return c;
+function fillRect(g, x, y, w, h, color) {
+  g.fillStyle = color;
+  g.fillRect(x, y, w, h);
 }
 
-// Draw a tile with a colored background behind it (for floors/grass)
-function extractTileOnBg(tileIndex, bgColor, tintColor = null, tintAlpha = 0.3) {
-  const c = document.createElement('canvas');
-  c.width = S; c.height = S;
-  const g = c.getContext('2d');
-  g.imageSmoothingEnabled = false;
-  // Fill background
-  g.fillStyle = bgColor;
-  g.fillRect(0, 0, S, S);
-  // Draw tile on top
-  if (sheetReady) {
-    const col = tileIndex % COLS;
-    const row = Math.floor(tileIndex / COLS);
-    g.drawImage(sheet,
-      col * SRC, row * SRC, SRC, SRC,
-      0, 0, S, S
-    );
-  }
-  if (tintColor) {
-    g.globalCompositeOperation = 'source-atop';
-    g.fillStyle = tintColor;
-    g.globalAlpha = tintAlpha;
-    g.fillRect(0, 0, S, S);
-    g.globalAlpha = 1;
-    g.globalCompositeOperation = 'source-over';
-  }
-  return c;
+function px(g, x, y, color) {
+  g.fillStyle = color;
+  g.fillRect(x * 2, y * 2, 2, 2);
 }
 
-// Compose multiple tiles on a background
-function composeTiles(bgColor, ...layers) {
-  const c = document.createElement('canvas');
-  c.width = S; c.height = S;
-  const g = c.getContext('2d');
-  g.imageSmoothingEnabled = false;
-  g.fillStyle = bgColor;
-  g.fillRect(0, 0, S, S);
-  if (sheetReady) {
-    for (const layer of layers) {
-      const idx = typeof layer === 'number' ? layer : layer.idx;
-      const col = idx % COLS;
-      const row = Math.floor(idx / COLS);
-      if (layer.tint) {
-        // Draw to temp canvas, tint, then composite
-        const tmp = document.createElement('canvas');
-        tmp.width = S; tmp.height = S;
-        const tg = tmp.getContext('2d');
-        tg.imageSmoothingEnabled = false;
-        tg.drawImage(sheet, col * SRC, row * SRC, SRC, SRC, 0, 0, S, S);
-        tg.globalCompositeOperation = 'source-atop';
-        tg.fillStyle = layer.tint;
-        tg.globalAlpha = layer.alpha || 0.35;
-        tg.fillRect(0, 0, S, S);
-        g.drawImage(tmp, 0, 0);
-      } else {
-        g.drawImage(sheet, col * SRC, row * SRC, SRC, SRC, 0, 0, S, S);
-      }
+// Draw a simple 16x16 pixel-art sprite (each "pixel" = 2x2 on the 32x32 canvas)
+function drawPixels(g, pixels, palette) {
+  for (let y = 0; y < pixels.length; y++) {
+    const row = pixels[y];
+    for (let x = 0; x < row.length; x++) {
+      const ch = row[x];
+      if (ch === '.' || ch === ' ') continue;
+      const color = palette[ch];
+      if (color) px(g, x, y, color);
     }
   }
-  return c;
-}
-
-// ── Fallback (before sheet loads) ────────────────
-
-function fallbackSquare(color) {
-  const c = document.createElement('canvas');
-  c.width = S; c.height = S;
-  const g = c.getContext('2d');
-  g.fillStyle = color;
-  g.fillRect(0, 0, S, S);
-  return c;
 }
 
 // ── Tile Sprite Builders ─────────────────────────
 
 function buildTileSprite(tileType) {
-  if (!sheetReady) {
-    // Return colored fallback until spritesheet loads
-    const fallbacks = {
-      [TILE.VOID]:      '#1a1a2a',
-      [TILE.GRASS]:     '#2d5a1e',
-      [TILE.DIRT]:      '#6b5230',
-      [TILE.HUT]:       '#7a5a30',
-      [TILE.CAVE_ENTRANCE]: '#505058',
-      [TILE.CAVE_WALL]:  '#3a3a4a',
-      [TILE.CAVE_FLOOR]: '#5a5a6a',
-      [TILE.CAVE_STAIRS]:'#6a6a7a',
-      [TILE.MOSS_WALL]:  '#2a4a2a',
-      [TILE.MOSS_FLOOR]: '#3a5a3a',
-      [TILE.BONE_WALL]:  '#4a4038',
-      [TILE.BONE_FLOOR]: '#5a5048',
-      [TILE.WEB_FLOOR]:  '#4a4a5a',
-      [TILE.LAVA_WALL]:  '#5a2a1a',
-      [TILE.LAVA_FLOOR]: '#8a3a1a',
-      [TILE.ICE_WALL]:   '#3a4a6a',
-      [TILE.ICE_FLOOR]:  '#5a7aaa',
-      [TILE.PORTAL]:     '#4a2a8a',
-      [TILE.HEALER]:     '#2a5a2a',
-      [TILE.MERCHANT]:   '#6a5a2a',
-    };
-    return fallbackSquare(fallbacks[tileType] || '#1a1a2a');
-  }
+  const c = makeCanvas();
+  const g = c.getContext('2d');
 
   switch (tileType) {
     case TILE.VOID:
-      return extractTile(TILE_MAP.void);
+      fillRect(g, 0, 0, S, S, '#1a1a2a');
+      break;
 
-    case TILE.GRASS: {
-      // Green ground with a randomly placed tree for variety
-      const c = document.createElement('canvas');
-      c.width = S; c.height = S;
-      const g = c.getContext('2d');
-      g.imageSmoothingEnabled = false;
-      g.fillStyle = '#2d5a1e';
-      g.fillRect(0, 0, S, S);
-      // Add subtle texture dots
+    case TILE.GRASS:
+      fillRect(g, 0, 0, S, S, '#2d5a1e');
       g.fillStyle = '#3a7028';
-      for (let i = 0; i < 6; i++) {
-        const x = Math.floor(Math.random() * 28) + 2;
-        const y = Math.floor(Math.random() * 28) + 2;
-        g.fillRect(x, y, 2, 2);
+      for (let i = 0; i < 8; i++) {
+        g.fillRect(Math.floor(Math.random() * 28) + 2, Math.floor(Math.random() * 28) + 2, 2, 2);
       }
-      return c;
-    }
+      g.fillStyle = '#245216';
+      for (let i = 0; i < 4; i++) {
+        g.fillRect(Math.floor(Math.random() * 28) + 2, Math.floor(Math.random() * 28) + 2, 2, 2);
+      }
+      break;
 
     case TILE.DIRT:
-      return extractTileOnBg(TILE_MAP.dirt, '#4a3a28');
+      fillRect(g, 0, 0, S, S, '#6b5230');
+      g.fillStyle = '#7a6038';
+      for (let i = 0; i < 6; i++) {
+        g.fillRect(Math.floor(Math.random() * 26) + 3, Math.floor(Math.random() * 26) + 3, 3, 3);
+      }
+      g.fillStyle = '#5a4228';
+      for (let i = 0; i < 4; i++) {
+        g.fillRect(Math.floor(Math.random() * 28) + 2, Math.floor(Math.random() * 28) + 2, 2, 2);
+      }
+      break;
 
     case TILE.HUT:
-      return extractTileOnBg(TILE_MAP.hut, '#2d5a1e');
+      fillRect(g, 0, 0, S, S, '#2d5a1e');
+      // Wooden hut
+      fillRect(g, 4, 8, 24, 20, '#5a3a1a');
+      fillRect(g, 6, 10, 20, 16, '#7a5a30');
+      // Roof
+      fillRect(g, 2, 4, 28, 6, '#8a4a1a');
+      fillRect(g, 6, 2, 20, 4, '#9a5a2a');
+      // Door
+      fillRect(g, 12, 18, 8, 10, '#3a2010');
+      // Window
+      fillRect(g, 20, 14, 4, 4, '#a0c8e0');
+      break;
 
     case TILE.CAVE_ENTRANCE:
-      return extractTileOnBg(TILE_MAP.cave_ent, '#2d5a1e');
+      fillRect(g, 0, 0, S, S, '#2d5a1e');
+      // Dark cave opening
+      fillRect(g, 4, 4, 24, 24, '#3a3a4a');
+      fillRect(g, 6, 6, 20, 20, '#1a1a2a');
+      fillRect(g, 8, 4, 16, 2, '#4a4a5a');
+      // Archway
+      fillRect(g, 4, 4, 4, 24, '#5a5a6a');
+      fillRect(g, 24, 4, 4, 24, '#5a5a6a');
+      fillRect(g, 4, 4, 24, 4, '#6a6a7a');
+      break;
 
     case TILE.CAVE_WALL:
-      return extractTile(TILE_MAP.cave_wall);
+      fillRect(g, 0, 0, S, S, '#3a3a4a');
+      g.fillStyle = '#44445a';
+      for (let i = 0; i < 5; i++) {
+        g.fillRect(Math.floor(Math.random() * 24) + 4, Math.floor(Math.random() * 24) + 4, 4, 4);
+      }
+      g.fillStyle = '#2e2e3e';
+      for (let i = 0; i < 3; i++) {
+        g.fillRect(Math.floor(Math.random() * 28) + 2, Math.floor(Math.random() * 28) + 2, 3, 3);
+      }
+      break;
 
     case TILE.CAVE_FLOOR:
-      return extractTileOnBg(TILE_MAP.cave_floor, '#1a1a2a');
+      fillRect(g, 0, 0, S, S, '#2a2a3a');
+      g.fillStyle = '#323246';
+      for (let i = 0; i < 5; i++) {
+        g.fillRect(Math.floor(Math.random() * 26) + 3, Math.floor(Math.random() * 26) + 3, 3, 2);
+      }
+      g.fillStyle = '#222234';
+      for (let i = 0; i < 3; i++) {
+        g.fillRect(Math.floor(Math.random() * 28) + 2, Math.floor(Math.random() * 28) + 2, 2, 2);
+      }
+      break;
 
     case TILE.CAVE_STAIRS:
-      return extractTileOnBg(TILE_MAP.stairs, '#1a1a2a');
+      fillRect(g, 0, 0, S, S, '#2a2a3a');
+      // Stairs going down
+      fillRect(g, 6, 6, 20, 4, '#6a6a7a');
+      fillRect(g, 8, 12, 18, 4, '#5a5a6a');
+      fillRect(g, 10, 18, 16, 4, '#4a4a5a');
+      fillRect(g, 12, 24, 14, 4, '#3a3a4a');
+      // Highlight
+      fillRect(g, 6, 6, 20, 2, '#8a8a9a');
+      fillRect(g, 8, 12, 18, 2, '#7a7a8a');
+      break;
 
     case TILE.MOSS_WALL:
-      return extractTileTinted(TILE_MAP.moss_wall, '#2a6a1a', 0.4);
+      fillRect(g, 0, 0, S, S, '#2a4a2a');
+      g.fillStyle = '#3a5a3a';
+      for (let i = 0; i < 5; i++) {
+        g.fillRect(Math.floor(Math.random() * 24) + 4, Math.floor(Math.random() * 24) + 4, 4, 4);
+      }
+      g.fillStyle = '#1e3a1e';
+      for (let i = 0; i < 3; i++) {
+        g.fillRect(Math.floor(Math.random() * 28) + 2, Math.floor(Math.random() * 28) + 2, 3, 3);
+      }
+      break;
 
     case TILE.MOSS_FLOOR:
-      return extractTileOnBg(TILE_MAP.moss_floor, '#1a2a1a', '#2a6a1a', 0.3);
+      fillRect(g, 0, 0, S, S, '#1e3a1e');
+      g.fillStyle = '#2a4a2a';
+      for (let i = 0; i < 6; i++) {
+        g.fillRect(Math.floor(Math.random() * 26) + 3, Math.floor(Math.random() * 26) + 3, 3, 2);
+      }
+      break;
 
     case TILE.BONE_WALL:
-      return extractTileTinted(TILE_MAP.bone_wall, '#6a5a3a', 0.3);
+      fillRect(g, 0, 0, S, S, '#4a4038');
+      g.fillStyle = '#5a5048';
+      for (let i = 0; i < 4; i++) {
+        g.fillRect(Math.floor(Math.random() * 24) + 4, Math.floor(Math.random() * 24) + 4, 4, 4);
+      }
+      // Bone accents
+      g.fillStyle = '#8a7a6a';
+      g.fillRect(8, 14, 6, 2);
+      g.fillRect(20, 8, 4, 2);
+      break;
 
     case TILE.BONE_FLOOR:
-      return extractTileOnBg(TILE_MAP.bone_floor, '#1a1a1a', '#6a5a3a', 0.25);
+      fillRect(g, 0, 0, S, S, '#2a2420');
+      g.fillStyle = '#3a3430';
+      for (let i = 0; i < 5; i++) {
+        g.fillRect(Math.floor(Math.random() * 26) + 3, Math.floor(Math.random() * 26) + 3, 3, 2);
+      }
+      // Small bone fragments
+      g.fillStyle = '#6a5a4a';
+      g.fillRect(10, 20, 4, 2);
+      g.fillRect(22, 10, 3, 2);
+      break;
 
-    case TILE.WEB_FLOOR: {
-      const c = extractTileOnBg(TILE_MAP.web_floor, '#1a1a2a');
-      const g = c.getContext('2d');
-      // Draw web strands
-      g.strokeStyle = 'rgba(200,200,200,0.3)';
+    case TILE.WEB_FLOOR:
+      fillRect(g, 0, 0, S, S, '#2a2a3a');
+      g.fillStyle = '#323246';
+      for (let i = 0; i < 4; i++) {
+        g.fillRect(Math.floor(Math.random() * 26) + 3, Math.floor(Math.random() * 26) + 3, 3, 2);
+      }
+      // Web strands
+      g.strokeStyle = 'rgba(200,200,200,0.25)';
       g.lineWidth = 1;
       g.beginPath();
       g.moveTo(0, 0); g.lineTo(S, S);
       g.moveTo(S, 0); g.lineTo(0, S);
-      g.moveTo(S/2, 0); g.lineTo(S/2, S);
-      g.moveTo(0, S/2); g.lineTo(S, S/2);
+      g.moveTo(S / 2, 0); g.lineTo(S / 2, S);
+      g.moveTo(0, S / 2); g.lineTo(S, S / 2);
       g.stroke();
-      return c;
-    }
+      break;
 
     case TILE.LAVA_WALL:
-      return extractTileTinted(TILE_MAP.lava_wall, '#8a2a0a', 0.45);
+      fillRect(g, 0, 0, S, S, '#5a2a1a');
+      g.fillStyle = '#6a3a2a';
+      for (let i = 0; i < 4; i++) {
+        g.fillRect(Math.floor(Math.random() * 24) + 4, Math.floor(Math.random() * 24) + 4, 4, 4);
+      }
+      g.fillStyle = '#8a3a0a';
+      g.fillRect(10, 16, 4, 3);
+      g.fillRect(22, 6, 3, 3);
+      break;
 
     case TILE.LAVA_FLOOR:
-      return extractTileOnBg(TILE_MAP.lava_floor, '#1a0a0a');
+      fillRect(g, 0, 0, S, S, '#3a1a0a');
+      g.fillStyle = '#5a2a1a';
+      for (let i = 0; i < 4; i++) {
+        g.fillRect(Math.floor(Math.random() * 26) + 3, Math.floor(Math.random() * 26) + 3, 3, 2);
+      }
+      // Lava glow spots
+      g.fillStyle = '#aa4a1a';
+      g.fillRect(8, 12, 3, 2);
+      g.fillRect(20, 22, 4, 2);
+      break;
 
     case TILE.ICE_WALL:
-      return extractTileTinted(TILE_MAP.ice_wall, '#4a8aca', 0.45);
+      fillRect(g, 0, 0, S, S, '#3a4a6a');
+      g.fillStyle = '#4a5a7a';
+      for (let i = 0; i < 4; i++) {
+        g.fillRect(Math.floor(Math.random() * 24) + 4, Math.floor(Math.random() * 24) + 4, 4, 4);
+      }
+      g.fillStyle = '#6a8aaa';
+      g.fillRect(6, 10, 3, 2);
+      g.fillRect(22, 20, 4, 2);
+      break;
 
     case TILE.ICE_FLOOR:
-      return extractTileOnBg(TILE_MAP.ice_floor, '#1a1a3a', '#4a8aca', 0.2);
+      fillRect(g, 0, 0, S, S, '#2a3a5a');
+      g.fillStyle = '#3a4a6a';
+      for (let i = 0; i < 4; i++) {
+        g.fillRect(Math.floor(Math.random() * 26) + 3, Math.floor(Math.random() * 26) + 3, 3, 2);
+      }
+      // Ice shine
+      g.fillStyle = '#5a7aaa';
+      g.fillRect(14, 8, 2, 2);
+      g.fillRect(6, 22, 2, 2);
+      break;
 
     case TILE.PORTAL:
-      return extractTileOnBg(TILE_MAP.portal, '#1a1a2a');
+      fillRect(g, 0, 0, S, S, '#2a2a3a');
+      // Swirling portal
+      g.fillStyle = '#6a3aaa';
+      g.beginPath();
+      g.arc(16, 16, 10, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = '#8a4aea';
+      g.beginPath();
+      g.arc(16, 16, 7, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = '#ba7aff';
+      g.beginPath();
+      g.arc(16, 16, 4, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = '#eeccff';
+      g.beginPath();
+      g.arc(16, 16, 2, 0, Math.PI * 2);
+      g.fill();
+      break;
 
     case TILE.HEALER:
-      return extractTileOnBg(TILE_MAP.healer, '#2d5a1e');
+      fillRect(g, 0, 0, S, S, '#2d5a1e');
+      // Green-robed healer figure
+      drawPixels(g, [
+        '................',
+        '......0000......',
+        '.....0cccc0.....',
+        '.....0ceec0.....',
+        '.....0cccc0.....',
+        '......0000......',
+        '.....0GGGG0.....',
+        '....0GGGGGG0....',
+        '....0GG00GG0....',
+        '....0GGGGGG0....',
+        '.....0GGGG0.....',
+        '.....0G00G0.....',
+        '......0..0......',
+        '......0..0......',
+        '.....00..00.....',
+        '................',
+      ], { '0': '#1a1a1a', 'c': '#e8c8a0', 'e': '#2a2a2a', 'G': '#2a8a3a' });
+      // Red cross
+      fillRect(g, 14, 16, 4, 2, '#e04040');
+      fillRect(g, 15, 15, 2, 4, '#e04040');
+      break;
 
     case TILE.MERCHANT:
-      return extractTileOnBg(TILE_MAP.merchant, '#2d5a1e');
+      fillRect(g, 0, 0, S, S, '#2d5a1e');
+      // Brown-robed merchant
+      drawPixels(g, [
+        '................',
+        '......0000......',
+        '.....0cccc0.....',
+        '.....0ceec0.....',
+        '.....0cccc0.....',
+        '......0000......',
+        '.....0BBBB0.....',
+        '....0BBBBBB0....',
+        '....0BB00BB0....',
+        '....0BBBBBB0....',
+        '.....0BBBB0.....',
+        '.....0B00B0.....',
+        '......0..0......',
+        '......0..0......',
+        '.....00..00.....',
+        '................',
+      ], { '0': '#1a1a1a', 'c': '#e8c8a0', 'e': '#2a2a2a', 'B': '#8a6a2a' });
+      // Gold coin
+      fillRect(g, 22, 18, 4, 4, '#e0c040');
+      fillRect(g, 23, 19, 2, 2, '#f0d860');
+      break;
 
     default:
-      return extractTile(TILE_MAP.void);
+      fillRect(g, 0, 0, S, S, '#1a1a2a');
+      break;
   }
+
+  return c;
 }
 
 // ── Player Sprite Builders ───────────────────────
 
 function buildPlayerSprite(playerClass) {
-  if (!sheetReady) {
-    const colors = { warrior: '#c08030', mage: '#4060c0', archer: '#30a040' };
-    return fallbackSquare(colors[playerClass] || '#c08030');
-  }
+  const c = makeCanvas();
+  const g = c.getContext('2d');
+
   switch (playerClass) {
-    case 'mage':   return extractTile(TILE_MAP.mage);
-    case 'archer': return extractTile(TILE_MAP.archer);
-    default:       return extractTile(TILE_MAP.warrior);
+    case 'warrior':
+      drawPixels(g, [
+        '......0000......',
+        '.....088880.....',
+        '....08888880....',
+        '....08cccc80....',
+        '....0ceec0c0....',
+        '....0cccc0c0....',
+        '.....0cc0.......',
+        '..s..0BB0.......',
+        '..s.0BBBB0......',
+        '..s.0B00B0......',
+        '..s.0BBBB0......',
+        '.....0BB0.......',
+        '.....0BB0.......',
+        '......00........',
+        '.....0..0.......',
+        '....00..00......',
+      ], { '0': '#1a1a1a', '8': '#8a8a9a', 'c': '#e8c8a0', 'e': '#2a4a8a', 'B': '#3060c0', 's': '#a0a0b0' });
+      // Sword
+      fillRect(g, 4, 14, 2, 10, '#c0c0d0');
+      fillRect(g, 2, 18, 6, 2, '#8a6a2a');
+      break;
+
+    case 'mage':
+      drawPixels(g, [
+        '.....00000......',
+        '....0PPPPP0.....',
+        '....0P000P0.....',
+        '....0cccc0......',
+        '....0ceec0......',
+        '....0cccc0......',
+        '.....0PP0.......',
+        '....0PPPP0......',
+        '...0PPPPPP0.....',
+        '...0PP00PP0.....',
+        '...0PPPPPP0.....',
+        '....0PPPP0......',
+        '.....0PP0.......',
+        '......00........',
+        '.....0..0.......',
+        '....00..00......',
+      ], { '0': '#1a1a1a', 'P': '#6030a0', 'c': '#e8c8a0', 'e': '#2a2a2a' });
+      // Staff
+      fillRect(g, 24, 6, 2, 18, '#8a6a2a');
+      fillRect(g, 22, 4, 6, 4, '#a040e0');
+      fillRect(g, 24, 5, 2, 2, '#e0a0ff');
+      break;
+
+    case 'archer':
+      drawPixels(g, [
+        '................',
+        '......0000......',
+        '.....0cccc0.....',
+        '.....0ceec0.....',
+        '.....0cccc0.....',
+        '......0000......',
+        '.....0GG0.......',
+        '....0GGGG0......',
+        '....0G00G0......',
+        '....0GGGG0......',
+        '.....0GG0.......',
+        '.....0GG0.......',
+        '......00........',
+        '.....0..0.......',
+        '....00..00......',
+        '................',
+      ], { '0': '#1a1a1a', 'G': '#2a7030', 'c': '#e8c8a0', 'e': '#2a6a2a' });
+      // Bow
+      g.strokeStyle = '#8a6a2a';
+      g.lineWidth = 2;
+      g.beginPath();
+      g.arc(26, 16, 8, -1.2, 1.2);
+      g.stroke();
+      // Bowstring
+      g.strokeStyle = '#c0c0c0';
+      g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(26, 8);
+      g.lineTo(26, 24);
+      g.stroke();
+      break;
+
+    default:
+      fillRect(g, 0, 0, S, S, '#c08030');
+      break;
   }
+
+  return c;
 }
 
 // ── Enemy Sprite Builders ────────────────────────
 
 function buildEnemySprite(entityType) {
-  if (!sheetReady) return fallbackSquare('#a03030');
+  const c = makeCanvas();
+  const g = c.getContext('2d');
 
-  const mapping = {
-    [ENTITY.GOBLIN]:           TILE_MAP.goblin,
-    [ENTITY.ORC]:              TILE_MAP.orc,
-    [ENTITY.SKELETON]:         TILE_MAP.skeleton,
-    [ENTITY.SPIDER]:           TILE_MAP.spider,
-    [ENTITY.TROLL]:            TILE_MAP.troll,
-    [ENTITY.DARK_MAGE]:        TILE_MAP.dark_mage,
-    [ENTITY.BAT]:              TILE_MAP.bat,
-    [ENTITY.SLIME]:            TILE_MAP.slime,
-    [ENTITY.WRAITH]:           TILE_MAP.wraith,
-    [ENTITY.GOBLIN_SHAMAN]:    TILE_MAP.goblin_sham,
-    [ENTITY.MUSHROOM]:         TILE_MAP.mushroom,
-    [ENTITY.GOBLIN_BERSERKER]: TILE_MAP.goblin_berk,
-    [ENTITY.GOBLIN_WARLORD]:   TILE_MAP.goblin_warl,
-    [ENTITY.SPIDER_QUEEN]:     TILE_MAP.spider_queen,
-    [ENTITY.LICH]:             TILE_MAP.lich,
-    [ENTITY.MYCELIUM_LORD]:    TILE_MAP.mycelium,
-    [ENTITY.FIRE_ELEMENTAL]:   TILE_MAP.fire_elem,
-    [ENTITY.FROST_GIANT]:      TILE_MAP.frost_giant,
-  };
+  switch (entityType) {
+    case ENTITY.GOBLIN:
+      drawPixels(g, [
+        '................',
+        '................',
+        '..0..0000..0....',
+        '..0.0GGGG0.0....',
+        '..000GGGG000....',
+        '....0GrrG0......',
+        '....0GGGG0......',
+        '.....0GG0.......',
+        '....0GGGG0......',
+        '....0G00G0......',
+        '....0GGGG0......',
+        '.....0GG0.......',
+        '......00........',
+        '.....0..0.......',
+        '....00..00......',
+        '................',
+      ], { '0': '#1a1a1a', 'G': '#4a8a2a', 'r': '#cc2020' });
+      break;
 
-  const idx = mapping[entityType];
-  if (idx === undefined) return extractTile(TILE_MAP.goblin);
+    case ENTITY.ORC:
+      drawPixels(g, [
+        '................',
+        '.....0000.......',
+        '....0GGGG0......',
+        '...0GGGGGG0.....',
+        '...0GrrrrG0.....',
+        '...0GGTTGG0.....',
+        '....0GGGG0......',
+        '...0GGGGGG0.....',
+        '..0GGGGGGGG0....',
+        '..0GGG00GGG0....',
+        '..0GGGGGGGG0....',
+        '...0GGGGGG0.....',
+        '....0GGGG0......',
+        '.....0..0.......',
+        '....00..00......',
+        '................',
+      ], { '0': '#1a1a1a', 'G': '#3a6a1a', 'r': '#cc2020', 'T': '#e8e8c0' });
+      break;
 
-  // Tint frost giant blue
-  if (entityType === ENTITY.FROST_GIANT) {
-    return extractTileTinted(idx, '#6aaaee', 0.35);
+    case ENTITY.SKELETON:
+      drawPixels(g, [
+        '................',
+        '......000.......',
+        '.....0WWW0......',
+        '....0WWWWW0.....',
+        '....0W0.0W0.....',
+        '....0WWWWW0.....',
+        '.....0WWW0......',
+        '....0.W0W.0.....',
+        '....0WWWWW0.....',
+        '....0W0.0W0.....',
+        '....0WWWWW0.....',
+        '.....0WWW0......',
+        '......0W0.......',
+        '.....0..0.......',
+        '....00..00......',
+        '................',
+      ], { '0': '#1a1a1a', 'W': '#d0d0c0' });
+      break;
+
+    case ENTITY.SPIDER:
+      drawPixels(g, [
+        '................',
+        '................',
+        '................',
+        '.0..........0...',
+        '..0..0000..0....',
+        '...00BBBB00.....',
+        '.0.0BBBBBB0.0...',
+        '..00BrrrrrB00...',
+        '...0BBBBBB0.....',
+        '.0.0BBBBBB0.0...',
+        '..0..0000..0....',
+        '.0..........0...',
+        '................',
+        '................',
+        '................',
+        '................',
+      ], { '0': '#1a1a1a', 'B': '#6a3a2a', 'r': '#cc2020' });
+      break;
+
+    case ENTITY.TROLL:
+      drawPixels(g, [
+        '....00000.......',
+        '...0TTTTT0......',
+        '..0TTTTTTT0.....',
+        '..0TrrTrrT0.....',
+        '..0TTTTTTT0.....',
+        '..0TTTTTTT0.....',
+        '...0TTTTT0......',
+        '..0TTTTTTT0.....',
+        '.0TTTTTTTTT0....',
+        '.0TTT000TTT0....',
+        '.0TTTTTTTTT0....',
+        '..0TTTTTTT0.....',
+        '...0TTTTT0......',
+        '....0T.T0.......',
+        '...00..00.......',
+        '...00..00.......',
+      ], { '0': '#1a1a1a', 'T': '#5a7a3a', 'r': '#aa2020' });
+      break;
+
+    case ENTITY.DARK_MAGE:
+      drawPixels(g, [
+        '.....00000......',
+        '....0DDDDD0.....',
+        '....0D000D0.....',
+        '....0cccc0......',
+        '....0c00c0......',
+        '....0cccc0......',
+        '.....0DD0.......',
+        '....0DDDD0......',
+        '...0DDDDDD0.....',
+        '...0DD00DD0.....',
+        '...0DDDDDD0.....',
+        '....0DDDD0......',
+        '.....0DD0.......',
+        '......00........',
+        '.....0..0.......',
+        '....00..00......',
+      ], { '0': '#1a1a1a', 'D': '#3a1a4a', 'c': '#8a8a9a' });
+      // Dark orb
+      fillRect(g, 24, 8, 4, 4, '#8a2aaa');
+      fillRect(g, 25, 9, 2, 2, '#c060e0');
+      break;
+
+    case ENTITY.BAT:
+      drawPixels(g, [
+        '................',
+        '................',
+        '................',
+        '................',
+        '0..........0....',
+        '.0........0.....',
+        '..00.0000.00....',
+        '..0.0BBBB0.0....',
+        '....0BrrB0......',
+        '....0BBBB0......',
+        '.....0..0.......',
+        '................',
+        '................',
+        '................',
+        '................',
+        '................',
+      ], { '0': '#1a1a1a', 'B': '#4a3a4a', 'r': '#cc2020' });
+      break;
+
+    case ENTITY.SLIME:
+      drawPixels(g, [
+        '................',
+        '................',
+        '................',
+        '................',
+        '.....0000.......',
+        '....0SSSS0......',
+        '...0SSSSSS0.....',
+        '...0S0SS0S0.....',
+        '...0SSSSSS0.....',
+        '..0SSSSSSSS0....',
+        '..0SSSSSSSS0....',
+        '..0SSSSSSSS0....',
+        '...00000000.....',
+        '................',
+        '................',
+        '................',
+      ], { '0': '#1a1a1a', 'S': '#40aa40' });
+      // Shine
+      fillRect(g, 14, 10, 2, 2, '#80ee80');
+      break;
+
+    case ENTITY.WRAITH:
+      drawPixels(g, [
+        '................',
+        '.....0000.......',
+        '....0WWWW0......',
+        '...0WWWWWW0.....',
+        '...0W0WW0W0.....',
+        '...0WWWWWW0.....',
+        '....0WWWW0......',
+        '...0WWWWWW0.....',
+        '..0WWWWWWWW0....',
+        '..0WW0000WW0....',
+        '..0WWWWWWWW0....',
+        '...0WWWWWW0.....',
+        '....0W00W0......',
+        '.....0..0.......',
+        '......00........',
+        '................',
+      ], { '0': '#1a1a1a', 'W': '#8a8aaa' });
+      // Ghost glow
+      g.fillStyle = 'rgba(160,160,200,0.3)';
+      g.beginPath();
+      g.arc(16, 14, 10, 0, Math.PI * 2);
+      g.fill();
+      break;
+
+    case ENTITY.GOBLIN_SHAMAN:
+      drawPixels(g, [
+        '.....00000......',
+        '....0PPPPP0.....',
+        '....0P000P0.....',
+        '....0GGGG0......',
+        '....0GrrG0......',
+        '....0GGGG0......',
+        '.....0GG0.......',
+        '....0GGGG0......',
+        '....0G00G0......',
+        '....0GGGG0......',
+        '.....0GG0.......',
+        '......00........',
+        '.....0..0.......',
+        '....00..00......',
+        '................',
+        '................',
+      ], { '0': '#1a1a1a', 'G': '#4a8a2a', 'r': '#cc2020', 'P': '#8a4a8a' });
+      // Staff
+      fillRect(g, 24, 6, 2, 16, '#6a4a2a');
+      fillRect(g, 23, 4, 4, 4, '#aa40aa');
+      break;
+
+    case ENTITY.MUSHROOM:
+      drawPixels(g, [
+        '................',
+        '................',
+        '.....00000......',
+        '....0MMMMM0.....',
+        '...0MMwwwMM0....',
+        '...0MwMMMwM0....',
+        '...0MMMMMMM0....',
+        '....0000000.....',
+        '......0SS0......',
+        '......0SS0......',
+        '......0SS0......',
+        '.....0SSSS0.....',
+        '.....0SSSS0.....',
+        '......0000......',
+        '................',
+        '................',
+      ], { '0': '#1a1a1a', 'M': '#aa3030', 'w': '#e0e0c0', 'S': '#c0b090' });
+      break;
+
+    case ENTITY.GOBLIN_BERSERKER:
+      drawPixels(g, [
+        '................',
+        '......0000......',
+        '.....0GGGG0.....',
+        '.....0GrrG0.....',
+        '.....0GGGG0.....',
+        '......0GG0......',
+        '.A...0GGGG0.....',
+        '.A..0GGGGGG0....',
+        '.A..0GG00GG0....',
+        '.A..0GGGGGG0....',
+        '.....0GGGG0.....',
+        '......0GG0......',
+        '......0..0......',
+        '.....00..00.....',
+        '................',
+        '................',
+      ], { '0': '#1a1a1a', 'G': '#5a9a2a', 'r': '#ff3030', 'A': '#8a8a9a' });
+      // Axe blade
+      fillRect(g, 0, 10, 4, 6, '#a0a0b0');
+      break;
+
+    // Bosses
+    case ENTITY.GOBLIN_WARLORD:
+      drawPixels(g, [
+        '....000000......',
+        '...08888880.....',
+        '...0888888000...',
+        '..0GGGGGGGG0....',
+        '..0GGrrrrGG0....',
+        '..0GGTTTTGG0....',
+        '...0GGGGGG0.....',
+        '..0GGGGGGGG0....',
+        '.0GGGGGGGGGG0...',
+        '.0GGG0000GGG0...',
+        '.0GGGGGGGGGG0...',
+        '..0GGGGGGGG0....',
+        '...0GG00GG0.....',
+        '....0G..G0......',
+        '...00....00.....',
+        '................',
+      ], { '0': '#1a1a1a', 'G': '#4a8a2a', 'r': '#ff2020', 'T': '#e8e8c0', '8': '#8a8a9a' });
+      break;
+
+    case ENTITY.SPIDER_QUEEN:
+      drawPixels(g, [
+        '0..............0',
+        '.0............0.',
+        '..0..00000..0...',
+        '...00BBBBB00....',
+        '.0.0BBBBBBB0.0..',
+        '..00BrrrrrB00...',
+        '...0BBBBBBB0....',
+        '.0.0BBBBBBB0.0..',
+        '..0.0BBBBB0.0...',
+        '.0...00000...0..',
+        '................',
+        '................',
+        '................',
+        '................',
+        '................',
+        '................',
+      ], { '0': '#1a1a1a', 'B': '#8a3a5a', 'r': '#ee2020' });
+      // Crown
+      fillRect(g, 10, 2, 2, 4, '#e0c040');
+      fillRect(g, 14, 0, 2, 4, '#e0c040');
+      fillRect(g, 18, 2, 2, 4, '#e0c040');
+      break;
+
+    case ENTITY.LICH:
+      drawPixels(g, [
+        '.....00000......',
+        '....0DDDDD0.....',
+        '....0D000D0.....',
+        '...0WWWWWW0.....',
+        '...0W0WW0W0.....',
+        '...0WWWWWW0.....',
+        '....0WWWW0......',
+        '...0DDDDDD0.....',
+        '..0DDDDDDDD0....',
+        '..0DDD00DDD0....',
+        '..0DDDDDDDD0....',
+        '...0DDDDDD0.....',
+        '....0DD00D0.....',
+        '.....0..0.......',
+        '....00..00......',
+        '................',
+      ], { '0': '#1a1a1a', 'D': '#2a1a3a', 'W': '#c0c0a0' });
+      // Green eyes
+      fillRect(g, 10, 8, 2, 2, '#40ff40');
+      fillRect(g, 16, 8, 2, 2, '#40ff40');
+      // Staff
+      fillRect(g, 26, 4, 2, 20, '#4a3a2a');
+      fillRect(g, 24, 2, 6, 4, '#40aa40');
+      break;
+
+    case ENTITY.MYCELIUM_LORD:
+      drawPixels(g, [
+        '....000000......',
+        '...0MMMMMM0.....',
+        '..0MMwwwwMM0....',
+        '..0MwMMMMwM0....',
+        '..0MMMMMMMM0....',
+        '..0MMMMMMMM0....',
+        '...00000000.....',
+        '.....0SS0.......',
+        '....0SSSS0......',
+        '...0SSSSSS0.....',
+        '...0SSSSSS0.....',
+        '...0SSSSSS0.....',
+        '....0SSSS0......',
+        '....0SSSS0......',
+        '.....0000.......',
+        '................',
+      ], { '0': '#1a1a1a', 'M': '#8a2a2a', 'w': '#e0e0c0', 'S': '#8a7a50' });
+      break;
+
+    case ENTITY.FIRE_ELEMENTAL:
+      drawPixels(g, [
+        '......00........',
+        '.....0FF0.......',
+        '....0FFFF0......',
+        '...0FFFFFF0.....',
+        '...0FYrrYF0.....',
+        '...0FFFFFF0.....',
+        '....0FFFF0......',
+        '...0FFFFFF0.....',
+        '..0FFFFFFFF0....',
+        '..0FFF00FFF0....',
+        '..0FFFFFFFF0....',
+        '...0FFFFFF0.....',
+        '....0FFFF0......',
+        '.....0FF0.......',
+        '......00........',
+        '................',
+      ], { '0': '#1a1a1a', 'F': '#e06020', 'Y': '#ffcc00', 'r': '#ff2020' });
+      // Flame glow
+      g.fillStyle = 'rgba(255,100,0,0.2)';
+      g.beginPath();
+      g.arc(16, 16, 12, 0, Math.PI * 2);
+      g.fill();
+      break;
+
+    case ENTITY.FROST_GIANT:
+      drawPixels(g, [
+        '...0000000......',
+        '..0IIIIIII0.....',
+        '..0IIIIIII0.....',
+        '.0IIIIIIIII0....',
+        '.0IIrrIrrII0....',
+        '.0IIIIIIIII0....',
+        '.0IIIIIIIII0....',
+        '..0IIIIIII0.....',
+        '.0IIIIIIIII0....',
+        '0IIIIIIIIIII0...',
+        '0IIII000IIII0...',
+        '0IIIIIIIIIII0...',
+        '.0IIIIIIIII0....',
+        '..0II0.0II0.....',
+        '..00.....00.....',
+        '..00.....00.....',
+      ], { '0': '#1a1a1a', 'I': '#6a9acc', 'r': '#2040aa' });
+      break;
+
+    default:
+      // Generic enemy
+      fillRect(g, 0, 0, S, S, '#a03030');
+      fillRect(g, 8, 8, 16, 16, '#c04040');
+      break;
   }
 
-  return extractTile(idx);
-}
-
-// ── Projectile Sprites ───────────────────────────
-
-function buildFireball() {
-  if (!sheetReady) return fallbackSquare('#ff6600');
-  return extractTile(TILE_MAP.fireball);
-}
-
-function buildArrow() {
-  if (!sheetReady) return fallbackSquare('#c0a060');
-  return extractTile(TILE_MAP.arrow);
-}
-
-function buildIceShard() {
-  if (!sheetReady) return fallbackSquare('#60c0ff');
-  return extractTileTinted(TILE_MAP.ice_shard, '#60c0ff', 0.4);
-}
-
-function buildLightning() {
-  if (!sheetReady) return fallbackSquare('#ffff00');
-  return extractTile(TILE_MAP.lightning);
+  return c;
 }
 
 // ── Item Sprites ─────────────────────────────────
 
 function buildItemSprite(iconCode) {
-  if (!sheetReady) return fallbackSquare('#aa8833');
-
-  // Map icon codes to Kenney tile indices
+  const c = makeCanvas();
+  const g = c.getContext('2d');
   const code = iconCode.toUpperCase();
 
   // Weapons
-  if (code === 'W1') return extractTile(TILE_MAP.sword);         // Rusty Sword
-  if (code === 'W2') return extractTile(TILE_MAP.sword);         // Iron Sword
-  if (code === 'W3') return extractTile(TILE_MAP.dagger);        // Steel Blade
-  if (code === 'WS') return extractTile(TILE_MAP.staff);         // Fire Staff
-  if (code === 'WA') return extractTile(TILE_MAP.axe);           // War Axe
-  if (code === 'WD') return extractTile(TILE_MAP.dagger);        // Shadow Dagger
-  if (code === 'WB') return extractTile(TILE_MAP.bow);           // Long Bow
-  if (code === 'WC') return extractTile(TILE_MAP.axe);           // Bone Club
-  if (code === 'WF') return extractTileTinted(TILE_MAP.staff, '#60c0ff', 0.3); // Frost Wand
+  if (code === 'W1' || code === 'W2' || code === 'W3') {
+    // Sword
+    const colors = { W1: '#9a9a9a', W2: '#b0b0c0', W3: '#d0d0e0' };
+    const bladeColor = colors[code] || '#a0a0a0';
+    fillRect(g, 14, 2, 4, 20, bladeColor);
+    fillRect(g, 15, 2, 2, 2, '#e0e0ff');
+    fillRect(g, 8, 22, 16, 3, '#8a6a2a');
+    fillRect(g, 14, 24, 4, 6, '#6a4a1a');
+    return c;
+  }
+
+  if (code === 'WS' || code === 'WF') {
+    // Staff
+    const orbColor = code === 'WS' ? '#e04020' : '#60c0ff';
+    fillRect(g, 15, 4, 2, 22, '#8a6a2a');
+    g.fillStyle = orbColor;
+    g.beginPath();
+    g.arc(16, 6, 4, 0, Math.PI * 2);
+    g.fill();
+    fillRect(g, 15, 5, 2, 2, '#ffffff80');
+    return c;
+  }
+
+  if (code === 'WA' || code === 'WC') {
+    // Axe / Club
+    fillRect(g, 14, 6, 3, 20, '#8a6a2a');
+    if (code === 'WA') {
+      fillRect(g, 8, 4, 10, 8, '#a0a0b0');
+      fillRect(g, 9, 5, 8, 6, '#b0b0c0');
+    } else {
+      fillRect(g, 10, 4, 8, 8, '#6a5a4a');
+    }
+    return c;
+  }
+
+  if (code === 'WD') {
+    // Dagger
+    fillRect(g, 14, 6, 3, 14, '#a0a0b0');
+    fillRect(g, 15, 6, 1, 2, '#d0d0e0');
+    fillRect(g, 10, 20, 12, 3, '#8a6a2a');
+    fillRect(g, 14, 22, 3, 6, '#6a4a1a');
+    return c;
+  }
+
+  if (code === 'WB') {
+    // Bow
+    g.strokeStyle = '#8a6a2a';
+    g.lineWidth = 3;
+    g.beginPath();
+    g.arc(16, 16, 10, -1.4, 1.4);
+    g.stroke();
+    g.strokeStyle = '#c0c0c0';
+    g.lineWidth = 1;
+    g.beginPath();
+    g.moveTo(20, 6);
+    g.lineTo(20, 26);
+    g.stroke();
+    return c;
+  }
 
   // Helmets
-  if (code === 'H1' || code === 'H2' || code === 'H3')
-    return extractTile(TILE_MAP.helmet);
+  if (code === 'H1' || code === 'H2' || code === 'H3') {
+    const colors = { H1: '#8a6a3a', H2: '#8a8a9a', H3: '#c0c0b0' };
+    const col = colors[code];
+    fillRect(g, 6, 8, 20, 16, col);
+    fillRect(g, 8, 6, 16, 4, col);
+    fillRect(g, 10, 16, 12, 6, '#1a1a2a');
+    if (code === 'H3') {
+      fillRect(g, 8, 6, 16, 2, '#e0c040');
+    }
+    return c;
+  }
 
   // Chest armor
-  if (code === 'C1' || code === 'C2' || code === 'C3')
-    return extractTile(TILE_MAP.armor);
-  if (code === 'CR') return extractTileTinted(TILE_MAP.armor, '#4060c0', 0.3); // Mage Robe
+  if (code === 'C1' || code === 'C2' || code === 'C3' || code === 'CR') {
+    const colors = { C1: '#8a6a3a', C2: '#7a7a8a', C3: '#9a9aaa', CR: '#4060a0' };
+    const col = colors[code];
+    fillRect(g, 6, 4, 20, 22, col);
+    fillRect(g, 10, 4, 12, 4, col);
+    fillRect(g, 14, 8, 4, 14, '#00000030');
+    fillRect(g, 4, 8, 4, 12, col);
+    fillRect(g, 24, 8, 4, 12, col);
+    return c;
+  }
 
   // Gloves
-  if (code === 'G1' || code === 'G2' || code === 'G3')
-    return extractTile(TILE_MAP.gloves);
+  if (code === 'G1' || code === 'G2' || code === 'G3') {
+    const colors = { G1: '#8a6a3a', G2: '#7a7a8a', G3: '#8a8a9a' };
+    const col = colors[code];
+    fillRect(g, 8, 6, 16, 20, col);
+    fillRect(g, 6, 10, 4, 8, col);
+    fillRect(g, 22, 10, 4, 8, col);
+    fillRect(g, 10, 4, 4, 4, col);
+    fillRect(g, 14, 4, 4, 4, col);
+    fillRect(g, 18, 4, 4, 4, col);
+    return c;
+  }
 
   // Boots
-  if (code === 'B1' || code === 'B2' || code === 'B3')
-    return extractTile(TILE_MAP.boots);
+  if (code === 'B1' || code === 'B2' || code === 'B3') {
+    const colors = { B1: '#a08060', B2: '#8a6a3a', B3: '#7a7a8a' };
+    const col = colors[code];
+    fillRect(g, 6, 6, 8, 18, col);
+    fillRect(g, 18, 6, 8, 18, col);
+    fillRect(g, 4, 22, 12, 4, col);
+    fillRect(g, 16, 22, 12, 4, col);
+    return c;
+  }
 
   // Capes
-  if (code === 'K1' || code === 'K2') return extractTile(TILE_MAP.cape);
-  if (code === 'KF') return extractTileTinted(TILE_MAP.cape, '#ff6600', 0.3); // Fire Cloak
+  if (code === 'K1' || code === 'K2' || code === 'KF') {
+    const colors = { K1: '#6a5a4a', K2: '#3a3a5a', KF: '#8a3a1a' };
+    const col = colors[code];
+    fillRect(g, 6, 2, 20, 4, col);
+    fillRect(g, 4, 6, 24, 20, col);
+    // Clasp
+    fillRect(g, 14, 2, 4, 4, '#e0c040');
+    return c;
+  }
 
   // Potions
-  if (code === 'PH' || code === 'PH+') return extractTile(TILE_MAP.potion_hp);    // Health potion
-  if (code === 'PM') return extractTile(TILE_MAP.potion_mana);                      // Mana potion
-  if (code === 'PA') return extractTileTinted(TILE_MAP.potion_mana, '#40aa40', 0.3);// Antidote
-  if (code === 'PS') return extractTileTinted(TILE_MAP.potion_hp, '#ff4400', 0.2);  // Strength
-  if (code === 'PD') return extractTileTinted(TILE_MAP.potion_hp, '#4488ff', 0.3);  // Shield
-  if (code === 'PF') return extractTileTinted(TILE_MAP.potion_mana, '#ffaa00', 0.3);// Haste
-  if (code === 'PR') return extractTileTinted(TILE_MAP.potion_mana, '#00cc66', 0.3);// Regen
+  if (code.startsWith('P')) {
+    const potionColors = {
+      PH: '#cc3030', 'PH+': '#ee2020',
+      PM: '#3040cc', PA: '#30aa30',
+      PS: '#cc6030', PD: '#3060cc',
+      PF: '#ccaa20', PR: '#20aa60',
+    };
+    const pCol = potionColors[code] || '#aa8833';
+    // Bottle
+    fillRect(g, 12, 4, 8, 4, '#c0c0c0');
+    fillRect(g, 13, 2, 6, 4, '#c0c0c0');
+    fillRect(g, 8, 8, 16, 18, pCol);
+    fillRect(g, 10, 10, 12, 14, pCol);
+    fillRect(g, 8, 24, 16, 4, pCol);
+    // Shine
+    fillRect(g, 10, 10, 3, 4, '#ffffff40');
+    return c;
+  }
 
-  // Default: generic item
-  return extractTile(TILE_MAP.gold_coin);
+  // Default
+  fillRect(g, 8, 8, 16, 16, '#aa8833');
+  return c;
 }
 
-// ── Exported API (same interface as before) ──────
+// ── Projectile Sprites ───────────────────────────
+
+function buildFireball() {
+  const c = makeCanvas();
+  const g = c.getContext('2d');
+  g.fillStyle = '#ff6600';
+  g.beginPath();
+  g.arc(16, 16, 8, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = '#ffcc00';
+  g.beginPath();
+  g.arc(16, 16, 5, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = '#ffffff';
+  g.beginPath();
+  g.arc(16, 16, 2, 0, Math.PI * 2);
+  g.fill();
+  return c;
+}
+
+function buildArrow() {
+  const c = makeCanvas();
+  const g = c.getContext('2d');
+  fillRect(g, 6, 15, 20, 2, '#8a6a2a');
+  // Arrowhead
+  fillRect(g, 24, 13, 4, 6, '#a0a0b0');
+  fillRect(g, 26, 14, 2, 4, '#c0c0d0');
+  // Fletching
+  fillRect(g, 4, 12, 4, 3, '#aa4040');
+  fillRect(g, 4, 17, 4, 3, '#aa4040');
+  return c;
+}
+
+function buildIceShard() {
+  const c = makeCanvas();
+  const g = c.getContext('2d');
+  g.fillStyle = '#60c0ff';
+  g.beginPath();
+  g.moveTo(16, 4);
+  g.lineTo(24, 16);
+  g.lineTo(16, 28);
+  g.lineTo(8, 16);
+  g.closePath();
+  g.fill();
+  g.fillStyle = '#a0e0ff';
+  g.beginPath();
+  g.moveTo(16, 8);
+  g.lineTo(20, 16);
+  g.lineTo(16, 24);
+  g.lineTo(12, 16);
+  g.closePath();
+  g.fill();
+  fillRect(g, 15, 14, 2, 2, '#ffffff');
+  return c;
+}
+
+function buildLightning() {
+  const c = makeCanvas();
+  const g = c.getContext('2d');
+  g.strokeStyle = '#ffff40';
+  g.lineWidth = 3;
+  g.beginPath();
+  g.moveTo(12, 2);
+  g.lineTo(18, 12);
+  g.lineTo(12, 14);
+  g.lineTo(20, 30);
+  g.stroke();
+  g.strokeStyle = '#ffffff';
+  g.lineWidth = 1;
+  g.beginPath();
+  g.moveTo(12, 2);
+  g.lineTo(18, 12);
+  g.lineTo(12, 14);
+  g.lineTo(20, 30);
+  g.stroke();
+  return c;
+}
+
+// ── Exported API ─────────────────────────────────
 
 export function getTileSprite(tileType) {
-  if (!tileSeedCache[tileType] || !sheetReady) {
+  if (!tileSeedCache[tileType]) {
     tileSeedCache[tileType] = buildTileSprite(tileType);
   }
   return tileSeedCache[tileType];

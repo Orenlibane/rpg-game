@@ -1103,6 +1103,59 @@ function buildLightning() {
   return c;
 }
 
+// ── Chest Sprites ────────────────────────────────
+
+function buildChestClosed() {
+  const c = makeCanvas();
+  const g = c.getContext('2d');
+  drawPixels(g, [
+    '................',
+    '................',
+    '................',
+    '................',
+    '...0000000000...',
+    '..0BBBBBBBBBB0..',
+    '..0BBBBBBBBBB0..',
+    '..0BBBBggBBBB0..',
+    '..0BBBBggBBBB0..',
+    '..0BBBBBBBBBB0..',
+    '..0WWWWWWWWWW0..',
+    '..0WWWWWWWWWW0..',
+    '..0WWWWWWWWWW0..',
+    '..00000000000...',
+    '................',
+    '................',
+  ], { '0': '#1a1a1a', 'B': '#8a5a1a', 'W': '#6a4a18', 'g': '#e0c040' });
+  return c;
+}
+
+function buildChestOpen() {
+  const c = makeCanvas();
+  const g = c.getContext('2d');
+  drawPixels(g, [
+    '................',
+    '..0000000000....',
+    '..0BBBBBBBBBB0..',
+    '..0BBBBBBBBBB0..',
+    '..0BBBBBBBBBB0..',
+    '..00000000000...',
+    '..0WWWWWWWWWW0..',
+    '..0WggWggWggW0..',
+    '..0WggWggWggW0..',
+    '..0WWWWWWWWWW0..',
+    '..0WWWWWWWWWW0..',
+    '..0WWWWWWWWWW0..',
+    '..00000000000...',
+    '................',
+    '................',
+    '................',
+  ], { '0': '#1a1a1a', 'B': '#8a5a1a', 'W': '#6a4a18', 'g': '#e0c040' });
+  // Sparkle
+  fillRect(g, 12, 14, 2, 2, '#ffffaa');
+  fillRect(g, 18, 16, 2, 2, '#ffffaa');
+  return c;
+}
+
 // ── Torch Sprite ─────────────────────────────────
 
 function buildTorchSprite(frame) {
@@ -1195,6 +1248,16 @@ export function getItemSprite(iconCode) {
   const key = 'item_' + iconCode;
   if (!cache[key]) cache[key] = buildItemSprite(iconCode);
   return cache[key];
+}
+
+export function getChestClosedSprite() {
+  if (!cache.chestClosed) cache.chestClosed = buildChestClosed();
+  return cache.chestClosed;
+}
+
+export function getChestOpenSprite() {
+  if (!cache.chestOpen) cache.chestOpen = buildChestOpen();
+  return cache.chestOpen;
 }
 
 export function getTorchSprite() {

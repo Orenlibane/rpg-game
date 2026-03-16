@@ -46,6 +46,9 @@ export const state = {
   throwMode: false,       // true when player is aiming a throw
   portalPos: null,        // { x, y } if portal exists on current floor
   lastDungeonFloor: 0,    // for continuing from village
+  chests: [],             // { x, y, items: [...], gold, opened }
+  showChest: false,       // true when chest overlay is visible
+  activeChest: null,      // reference to the chest being viewed
 };
 
 // ── Logging ──────────────────────────────────
@@ -224,6 +227,28 @@ export function enterDungeon(floor = 1) {
     state.items.push({ x: ix, y: iy, item: { ...ITEMS[itemId] } });
   }
 
+  // Spawn chests (1-2 per floor)
+  state.chests = [];
+  state.showChest = false;
+  state.activeChest = null;
+  const numChests = randInt(1, 2);
+  for (let i = 0; i < numChests; i++) {
+    const room = floorRooms[randInt(1, floorRooms.length - 1)];
+    const cx = randInt(room.x + 1, room.x + room.w - 2);
+    const cy = randInt(room.y + 1, room.y + room.h - 2);
+    if (isOccupied(cx, cy)) continue;
+    // Generate chest contents
+    const chestItems = [];
+    const chestItemCount = randInt(1, 3);
+    for (let j = 0; j < chestItemCount; j++) {
+      const pool = eligibleItems.length > 0 ? eligibleItems : allItemIds;
+      const itemId = pool[randInt(0, pool.length - 1)];
+      chestItems.push({ ...ITEMS[itemId] });
+    }
+    const chestGold = randInt(5, 10 + floor * 5);
+    state.chests.push({ x: cx, y: cy, items: chestItems, gold: chestGold, opened: false });
+  }
+
   // Place portal every 5 floors (in second room)
   state.portalPos = null;
   if (floor % 5 === 0 && floorRooms.length > 1) {
@@ -347,6 +372,65 @@ export function healPlayer() {
 
 export function closeShop() {
   state.showShop = false;
+}
+
+// ── Chest System ─────────────────────────────
+
+export function closeChest() {
+  state.showChest = false;
+  state.activeChest = null;
+}
+
+export function takeChestItem(index) {
+  const chest = state.activeChest;
+  if (!chest || index < 0 || index >= chest.items.length) return;
+  const p = state.player;
+  if (p.inventory.length >= BACKPACK_SIZE) {
+    log('Backpack is full!', 'info');
+    return;
+  }
+  const item = chest.items.splice(index, 1)[0];
+  const newItem = { ...item };
+  if (newItem.stackable) {
+    const existing = p.inventory.find(i => i.id === newItem.id && (i.count || 1) < (i.maxStack || 5));
+    if (existing) {
+      existing.count = (existing.count || 1) + 1;
+    } else {
+      newItem.count = 1;
+      p.inventory.push(newItem);
+    }
+  } else {
+    p.inventory.push(newItem);
+  }
+  log(`Took ${item.name} from chest.`, 'item');
+}
+
+export function takeChestGold() {
+  const chest = state.activeChest;
+  if (!chest || chest.gold <= 0) return;
+  state.player.gold += chest.gold;
+  log(`Took ${chest.gold} gold from chest.`, 'item');
+  chest.gold = 0;
+}
+
+export function takeAllFromChest() {
+  const chest = state.activeChest;
+  if (!chest) return;
+  if (chest.gold > 0) takeChestGold();
+  while (chest.items.length > 0) {
+    if (state.player.inventory.length >= BACKPACK_SIZE) {
+      log('Backpack is full!', 'info');
+      break;
+    }
+    takeChestItem(0);
+  }
+  if (chest.items.length === 0 && chest.gold <= 0) {
+    closeChest();
+  }
+}
+
+export function getActiveChest() {
+  return state.activeChest;
 }
 
 export function buyItem(shopIndex) {
@@ -1002,7 +1086,7 @@ function moveEnemies() {
 // ── Player Turn ──────────────────────────────
 
 export function playerMove(dx, dy) {
-  if (state.gameOver || state.pendingLevelUp) return;
+  if (state.gameOver || state.pendingLevelUp || state.showChest) return;
 
   const nx = state.player.x + dx;
   const ny = state.player.y + dy;
@@ -1058,6 +1142,16 @@ export function playerMove(dx, dy) {
   // Merchant
   if (state.mode === 'village' && state.map[ny][nx] === TILE.MERCHANT) {
     state.showShop = true;
+    return;
+  }
+
+  // Check for chest
+  const chest = state.chests.find(c => c.x === nx && c.y === ny && !c.opened);
+  if (chest) {
+    chest.opened = true;
+    state.activeChest = chest;
+    state.showChest = true;
+    log('You found a treasure chest!', 'item');
     return;
   }
 

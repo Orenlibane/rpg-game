@@ -2,7 +2,7 @@ import {
   state, selectClass, playerMove, playerWait, useItem,
   chooseLevelUp, restartGame, shootBow, toggleBestiary, toggleMinimap,
   enterThrowMode, cancelThrowMode, throwInDirection, castSpell,
-  healPlayer, closeHealer, closeShop,
+  healPlayer, closeHealer, closeShop, closeChest, takeAllFromChest,
 } from './engine.js';
 import { render } from './renderer.js';
 import { PLAYER_CLASS } from './constants.js';
@@ -72,6 +72,7 @@ document.addEventListener('keydown', (e) => {
 
   // Escape closes overlays
   if (e.key === 'Escape') {
+    if (state.showChest) { closeChest(); render(); return; }
     if (state.showHealer) { closeHealer(); render(); return; }
     if (state.showShop) { closeShop(); render(); return; }
   }
@@ -83,6 +84,7 @@ document.addEventListener('keydown', (e) => {
   if (state.showMinimap) return;
   if (state.showHealer) return;
   if (state.showShop) return;
+  if (state.showChest) return;
 
   // Throw mode: intercept direction keys
   if (state.throwMode) {
@@ -215,5 +217,15 @@ document.getElementById('close-healer').addEventListener('click', () => {
 // Shop
 document.getElementById('close-shop').addEventListener('click', () => {
   closeShop();
+  render();
+});
+
+// Chest
+document.getElementById('close-chest').addEventListener('click', () => {
+  closeChest();
+  render();
+});
+document.getElementById('take-all-chest').addEventListener('click', () => {
+  takeAllFromChest();
   render();
 });

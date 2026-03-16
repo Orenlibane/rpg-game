@@ -950,3 +950,86 @@ button:hover, .choice-btn:hover {
 .shop-sell-btn { background: #4a2a30; color: #e08080; border-color: #6a4a50; }
 .shop-sell-btn:hover { background: #6a3a40; }
 .shop-buy-btn:disabled, .shop-sell-btn:disabled { opacity: 0.3; cursor: default; }
+
+/* ── Chest Overlay ──────────────────────────── */
+
+.title-chest { color: #e0c040 !important; }
+
+.chest-panel {
+  max-width: 450px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+#chest-gold {
+  font-size: 14px;
+  color: #e0c860;
+  margin-bottom: 12px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.chest-gold-amount {
+  font-weight: bold;
+}
+
+.chest-take-gold-btn {
+  background: #4a3a10;
+  color: #e0c860;
+  border: 1px solid #8a6a20;
+  border-radius: 4px;
+  padding: 3px 12px;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.chest-take-gold-btn:hover { background: #6a5a20; }
+
+.chest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.chest-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #12121e;
+  border: 1px solid #2a2a3a;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.chest-item:hover { border-color: #4a4a6a; }
+
+.chest-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.chest-item-tier { font-size: 10px; }
+.chest-item-name { color: #c0a860; }
+.chest-item-desc { font-size: 10px; color: #888; }
+
+.chest-take-btn {
+  background: #2a4a30;
+  color: #80e080;
+  border: 1px solid #4a6a50;
+  border-radius: 3px;
+  padding: 3px 12px;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+.chest-take-btn:hover { background: #3a6a40; }

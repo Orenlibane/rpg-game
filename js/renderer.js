@@ -3,8 +3,8 @@ import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_S
 // Lookups for bestiary
 const BASE_STATS_LOOKUP = BASE_STATS;
 const GOLD_LOOKUP = GOLD_REWARDS;
-import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame } from './sprites.js';
-import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, healPlayer, closeHealer, closeShop } from './engine.js';
+import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js';
+import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, closeChest } from './engine.js';
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
@@ -109,6 +109,16 @@ export function render() {
     const sy = (gi.y - camY) * TILE_SIZE;
     if (sx < 0 || sy < 0 || sx >= canvas.width || sy >= canvas.height) continue;
     const sprite = getItemSprite(gi.item.icon);
+    ctx.drawImage(sprite, sx, sy);
+  }
+
+  // Draw chests
+  for (const chest of state.chests) {
+    if (!state.visibility[chest.y] || !state.visibility[chest.y][chest.x]) continue;
+    const sx = (chest.x - camX) * TILE_SIZE;
+    const sy = (chest.y - camY) * TILE_SIZE;
+    if (sx < 0 || sy < 0 || sx >= canvas.width || sy >= canvas.height) continue;
+    const sprite = chest.opened ? getChestOpenSprite() : getChestClosedSprite();
     ctx.drawImage(sprite, sx, sy);
   }
 
@@ -323,6 +333,9 @@ function updateUI() {
 
   // Shop overlay
   updateShopOverlay();
+
+  // Chest overlay
+  updateChestOverlay();
 }
 
 // ── Stats Allocation Panel ──────────────────
@@ -673,6 +686,72 @@ document.getElementById('shop-tab-sell').addEventListener('click', () => {
   render();
 });
 
+// ── Chest Overlay ───────────────────────────
+
+function updateChestOverlay() {
+  const overlay = document.getElementById('chest-overlay');
+  if (!state.showChest) {
+    overlay.classList.add('hidden');
+    return;
+  }
+  overlay.classList.remove('hidden');
+
+  const chest = getActiveChest();
+  if (!chest) return;
+
+  const goldEl = document.getElementById('chest-gold');
+  if (chest.gold > 0) {
+    goldEl.innerHTML = `<span class="chest-gold-amount">Gold: ${chest.gold}</span> <button class="chest-take-gold-btn">Take Gold</button>`;
+    goldEl.querySelector('.chest-take-gold-btn').addEventListener('click', () => {
+      takeChestGold();
+      render();
+    });
+  } else {
+    goldEl.textContent = 'Gold: taken';
+    goldEl.style.color = '#555';
+  }
+
+  const listEl = document.getElementById('chest-items-list');
+  listEl.innerHTML = '';
+
+  if (chest.items.length === 0) {
+    listEl.innerHTML = '<div class="chest-item"><span style="color:#555">No items remaining</span></div>';
+  } else {
+    for (let i = 0; i < chest.items.length; i++) {
+      const item = chest.items[i];
+      const div = document.createElement('div');
+      div.className = 'chest-item';
+
+      // Tier color
+      const tierColors = { 1: '#aaa', 2: '#4488ee', 3: '#e0a040' };
+      const tierNames = { 1: 'Common', 2: 'Uncommon', 3: 'Rare' };
+      const tierHtml = item.tier ? `<span class="chest-item-tier" style="color:${tierColors[item.tier]}">[${tierNames[item.tier]}]</span> ` : '';
+
+      div.innerHTML = `
+        <div class="chest-item-info">
+          ${tierHtml}<span class="chest-item-name">${item.icon} ${item.name}</span>
+          <span class="chest-item-desc">${item.desc || ''}</span>
+        </div>
+        <button class="chest-take-btn">Take</button>
+      `;
+      const idx = i;
+      div.querySelector('.chest-take-btn').addEventListener('click', () => {
+        takeChestItem(idx);
+        render();
+      });
+      listEl.appendChild(div);
+    }
+  }
+
+  // Hide take all if empty
+  const takeAllBtn = document.getElementById('take-all-chest');
+  if (chest.items.length === 0 && chest.gold <= 0) {
+    takeAllBtn.style.display = 'none';
+  } else {
+    takeAllBtn.style.display = '';
+  }
+}
+
 // ── Item Tooltip ────────────────────────────
 
 const tooltip = document.getElementById('item-tooltip');
@@ -941,6 +1020,15 @@ function renderCanvas() {
     const sy = (gi.y - camY) * TILE_SIZE;
     if (sx < 0 || sy < 0 || sx >= canvas.width || sy >= canvas.height) continue;
     ctx.drawImage(getItemSprite(gi.item.icon), sx, sy);
+  }
+
+  // Draw chests
+  for (const chest of state.chests) {
+    if (!state.visibility[chest.y] || !state.visibility[chest.y][chest.x]) continue;
+    const sx = (chest.x - camX) * TILE_SIZE;
+    const sy = (chest.y - camY) * TILE_SIZE;
+    if (sx < 0 || sy < 0 || sx >= canvas.width || sy >= canvas.height) continue;
+    ctx.drawImage(chest.opened ? getChestOpenSprite() : getChestClosedSprite(), sx, sy);
   }
 
   // Draw enemies

@@ -1,11 +1,13 @@
 import {
   state, selectClass, playerMove, playerWait, useItem,
-  chooseLevelUp, restartGame, shootBow, toggleBestiary, toggleMinimap,
+  chooseLevelUp, restartGame, shootBow, toggleBestiary, toggleArmory, toggleMinimap,
   enterThrowMode, cancelThrowMode, throwInDirection, castSpell,
-  healPlayer, closeHealer, closeShop, closeChest, takeAllFromChest,
-} from './engine.js';
-import { render } from './renderer.js';
-import { PLAYER_CLASS } from './constants.js';
+  healPlayer, closeHealer, closeShop, closeChest, takeAllFromChest, closeQuestBoard,
+  toggleSettings, closeSettings, applyCheatCode,
+  toggleCharSheet, closeCharSheet,
+} from './engine.js?v=8';
+import { render } from './renderer.js?v=8';
+import { PLAYER_CLASS } from './constants.js?v=8';
 
 // ── Class Selection ──────────────────────────
 
@@ -70,20 +72,62 @@ document.addEventListener('keydown', (e) => {
     }
   }
 
+  // Settings toggle
+  if (e.key === 'p' || e.key === 'P') {
+    if (state.phase !== 'class_select') {
+      e.preventDefault();
+      toggleSettings();
+      render();
+      return;
+    }
+  }
+
+  // Armory toggle
+  if (e.key === 'i' || e.key === 'I') {
+    if (state.phase !== 'class_select') {
+      e.preventDefault();
+      toggleArmory();
+      render();
+      return;
+    }
+  }
+
+  // Character sheet toggle
+  if (e.key === 'c' || e.key === 'C') {
+    if (state.phase !== 'class_select') {
+      e.preventDefault();
+      toggleCharSheet();
+      render();
+      return;
+    }
+  }
+
   // Escape closes overlays
   if (e.key === 'Escape') {
+    const itemPopup = document.getElementById('item-popup');
+    if (!itemPopup.classList.contains('hidden')) {
+      itemPopup.classList.add('hidden');
+      return;
+    }
     if (state.showChest) { closeChest(); render(); return; }
     if (state.showHealer) { closeHealer(); render(); return; }
     if (state.showShop) { closeShop(); render(); return; }
+    if (state.showQuestBoard) { closeQuestBoard(); render(); return; }
+    if (state.showSettings) { closeSettings(); render(); return; }
+    if (state.showCharSheet) { closeCharSheet(); render(); return; }
   }
 
   if (state.phase === 'class_select') return;
   if (state.gameOver) return;
   if (state.pendingLevelUp) return;
   if (state.showBestiary) return;
+  if (state.showArmory) return;
   if (state.showMinimap) return;
   if (state.showHealer) return;
   if (state.showShop) return;
+  if (state.showQuestBoard) return;
+  if (state.showSettings) return;
+  if (state.showCharSheet) return;
   if (state.showChest) return;
 
   // Throw mode: intercept direction keys
@@ -135,7 +179,12 @@ document.addEventListener('keydown', (e) => {
     case '5': case '6': case '7': case '8':
     case '9': case '0':
       e.preventDefault();
-      useItem(e.key === '0' ? 9 : parseInt(e.key) - 1);
+      {
+        const idx = e.key === '0' ? 9 : parseInt(e.key) - 1;
+        if (idx < state.player.inventory.length) {
+          window.dispatchEvent(new CustomEvent('showItemPopup', { detail: idx }));
+        }
+      }
       break;
   }
 
@@ -198,6 +247,11 @@ closeBestiaryBtn.addEventListener('click', () => {
   render();
 });
 
+document.getElementById('close-armory').addEventListener('click', () => {
+  toggleArmory();
+  render();
+});
+
 const closeMinimapBtn = document.getElementById('close-minimap');
 closeMinimapBtn.addEventListener('click', () => {
   toggleMinimap();
@@ -211,6 +265,43 @@ document.getElementById('heal-btn').addEventListener('click', () => {
 });
 document.getElementById('close-healer').addEventListener('click', () => {
   closeHealer();
+  render();
+});
+
+// Settings
+document.getElementById('close-settings').addEventListener('click', () => {
+  closeSettings();
+  render();
+});
+
+// Character Sheet
+document.getElementById('close-charsheet').addEventListener('click', () => {
+  closeCharSheet();
+  render();
+});
+document.getElementById('cheat-submit').addEventListener('click', () => {
+  const input = document.getElementById('cheat-input');
+  const code = input.value.trim();
+  if (code) {
+    const result = applyCheatCode(code);
+    if (result) {
+      document.getElementById('godmode-status').textContent = state.godMode ? 'God Mode: ON' : 'God Mode: OFF';
+      document.getElementById('godmode-status').style.color = state.godMode ? '#60e060' : '#888';
+    }
+    input.value = '';
+    render();
+  }
+});
+document.getElementById('cheat-input').addEventListener('keydown', (e) => {
+  e.stopPropagation(); // prevent game key handling
+  if (e.key === 'Enter') {
+    document.getElementById('cheat-submit').click();
+  }
+});
+
+// Quest Board
+document.getElementById('close-quest').addEventListener('click', () => {
+  closeQuestBoard();
   render();
 });
 

@@ -3,7 +3,7 @@ import {
   DUNGEON_W, DUNGEON_H,
   MIN_ROOM_SIZE, MAX_ROOM_SIZE, MAX_ROOMS,
   FLOOR_THEMES,
-} from './constants.js';
+} from './constants.js?v=8';
 
 // ── Village (fixed layout) ───────────────────────
 
@@ -48,6 +48,11 @@ export function generateVillage() {
   const merchantX = 16;
   const merchantY = 5;
   map[merchantY][merchantX] = TILE.MERCHANT;
+
+  // Quest Board (near center, south side)
+  const questX = 8;
+  const questY = 5;
+  map[questY][questX] = TILE.QUEST_BOARD;
 
   // Player start position
   const playerStart = { x: 11, y: 9 };

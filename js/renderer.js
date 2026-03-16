@@ -1,10 +1,10 @@
-import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME } from './constants.js';
+import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO } from './constants.js?v=8';
 
 // Lookups for bestiary
 const BASE_STATS_LOOKUP = BASE_STATS;
 const GOLD_LOOKUP = GOLD_REWARDS;
-import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js';
-import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, closeChest } from './engine.js';
+import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js?v=8';
+import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet } from './engine.js?v=8';
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
@@ -27,7 +27,6 @@ function getCamera() {
 }
 
 // ── Render ───────────────────────────────────
-
 export function render() {
   if (state.phase === 'class_select') return;
 
@@ -50,7 +49,7 @@ export function render() {
       if (!revealed) continue;
 
       const tile = state.map[my][mx];
-      const sprite = getTileSprite(tile);
+      const sprite = getTileSprite(tile, mx, my);
       const sx = vx * TILE_SIZE;
       const sy = vy * TILE_SIZE;
 
@@ -137,13 +136,39 @@ export function render() {
       ctx.lineWidth = 2;
       ctx.strokeRect(sx + 1, sy + 1, TILE_SIZE - 2, TILE_SIZE - 2);
     }
+    // Miniboss purple glow
+    else if (enemy.isMiniboss) {
+      ctx.strokeStyle = '#c060e0';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(sx + 1, sy + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+      ctx.fillStyle = 'rgba(180, 80, 220, 0.12)';
+      ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+    }
+    // Elite cyan glow
+    else if (enemy.isElite) {
+      ctx.strokeStyle = '#40c0e0';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(sx + 1, sy + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+      ctx.fillStyle = 'rgba(60, 180, 220, 0.10)';
+      ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+    }
 
     // HP bar above enemy
     const hpPct = enemy.hp / enemy.maxHp;
+    const barY = sy - 6;
     ctx.fillStyle = '#300';
-    ctx.fillRect(sx + 4, sy - 4, TILE_SIZE - 8, 3);
+    ctx.fillRect(sx + 4, barY, TILE_SIZE - 8, 4);
     ctx.fillStyle = hpPct > 0.5 ? '#0c0' : hpPct > 0.25 ? '#cc0' : '#c00';
-    ctx.fillRect(sx + 4, sy - 4, (TILE_SIZE - 8) * hpPct, 3);
+    ctx.fillRect(sx + 4, barY, (TILE_SIZE - 8) * hpPct, 4);
+
+    // Elite/Miniboss name label
+    if (enemy.isElite || enemy.isMiniboss) {
+      ctx.fillStyle = enemy.isMiniboss ? '#c060e0' : '#40c0e0';
+      ctx.font = '9px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(enemy.elitePrefix || 'Elite', sx + TILE_SIZE / 2, barY - 2);
+      ctx.textAlign = 'start';
+    }
   }
 
   // Draw projectiles
@@ -255,6 +280,10 @@ function updateUI() {
         <span class="slot-label">${SLOT_LABELS[slot]}</span>
         <span class="slot-item">${item.icon} ${item.name}</span>
       `;
+      div.style.cursor = 'pointer';
+      div.addEventListener('click', () => {
+        showItemPopup(item, slot, 'equipment');
+      });
     } else {
       div.innerHTML = `
         <span class="slot-label">${SLOT_LABELS[slot]}</span>
@@ -277,8 +306,8 @@ function updateUI() {
       const count = item.count || 1;
       // Draw item sprite as canvas
       const spriteCanvas = document.createElement('canvas');
-      spriteCanvas.width = 32;
-      spriteCanvas.height = 32;
+      spriteCanvas.width = TILE_SIZE;
+      spriteCanvas.height = TILE_SIZE;
       spriteCanvas.className = 'inv-sprite';
       const sctx = spriteCanvas.getContext('2d');
       sctx.drawImage(getItemSprite(item.icon), 0, 0);
@@ -290,7 +319,7 @@ function updateUI() {
         slot.appendChild(countEl);
       }
       slot.addEventListener('click', () => {
-        window.dispatchEvent(new CustomEvent('useItem', { detail: i }));
+        showItemPopup(item, i, 'inventory');
       });
       slot.addEventListener('mouseenter', (e) => showItemTooltip(e, item));
       slot.addEventListener('mousemove', (e) => positionTooltip(e));
@@ -301,8 +330,12 @@ function updateUI() {
     grid.appendChild(slot);
   }
 
-  // Stat points panel
-  updateStatsAllocPanel();
+  // Hide stats-alloc from sidebar (moved to character sheet)
+  const statsAllocPanel = document.getElementById('stats-alloc-panel');
+  if (statsAllocPanel) statsAllocPanel.style.display = 'none';
+
+  // Character sheet overlay
+  updateCharacterSheet();
 
   // Spells panel (mage only)
   updateSpellsPanel();
@@ -322,8 +355,14 @@ function updateUI() {
   }
   msgLog.scrollTop = msgLog.scrollHeight;
 
+  // Side minimap in panel
+  updateSideMinimap();
+
   // Bestiary overlay
   updateBestiary();
+
+  // Armory overlay
+  updateArmory();
 
   // Minimap overlay
   updateMinimap();
@@ -336,6 +375,22 @@ function updateUI() {
 
   // Chest overlay
   updateChestOverlay();
+
+  // Quest board overlay
+  updateQuestBoardOverlay();
+
+  // Settings overlay
+  const settingsOverlay = document.getElementById('settings-overlay');
+  if (state.showSettings) {
+    settingsOverlay.classList.remove('hidden');
+    const gm = document.getElementById('godmode-status');
+    if (gm) {
+      gm.textContent = state.godMode ? 'God Mode: ON' : 'God Mode: OFF';
+      gm.style.color = state.godMode ? '#60e060' : '#888';
+    }
+  } else {
+    settingsOverlay.classList.add('hidden');
+  }
 }
 
 // ── Stats Allocation Panel ──────────────────
@@ -345,41 +400,175 @@ function updateStatsAllocPanel() {
   if (!panel) return;
 
   const p = state.player;
-  if (!p || p.statPoints <= 0) {
+  if (!p || !p.attrs) {
     panel.style.display = 'none';
     return;
   }
 
+  // Always show the character sheet, but only show + buttons when points available
   panel.style.display = '';
-  document.getElementById('stat-points-count').textContent = p.statPoints;
+  // Show/hide the points badge in heading
+  const heading = panel.querySelector('h3');
+  if (heading) heading.innerHTML = p.statPoints > 0
+    ? `Attributes <span class="attr-points-badge">${p.statPoints} pts</span>`
+    : 'Attributes';
 
   const grid = document.getElementById('stats-alloc-grid');
   grid.innerHTML = '';
 
-  const stats = [
-    { key: 'hp', label: 'Max HP', value: p.maxHp, bonus: '+3' },
-    { key: 'power', label: 'Power', value: p.power, bonus: '+1' },
-    { key: 'armor', label: 'Armor', value: p.armor, bonus: '+1' },
-  ];
-  if (p.maxMana > 0) {
-    stats.push({ key: 'mana', label: 'Max Mana', value: p.maxMana, bonus: '+5' });
-  }
-
-  for (const s of stats) {
+  const attrKeys = ['str', 'agi', 'int', 'vit', 'cha'];
+  for (const key of attrKeys) {
     const row = document.createElement('div');
-    row.className = 'stat-alloc-row';
+    row.className = 'attr-row';
+
+    const val = p.attrs[key];
+    const label = ATTR_LABELS[key];
+    const desc = ATTR_DESCRIPTIONS[key];
+
     row.innerHTML = `
-      <span class="stat-alloc-name">${s.label}</span>
-      <span class="stat-alloc-val">${s.value}</span>
-      <button class="stat-alloc-btn">${s.bonus}</button>
+      <div class="attr-main">
+        <span class="attr-abbr">${key.toUpperCase()}</span>
+        <span class="attr-name">${label}</span>
+        <span class="attr-val">${val}</span>
+        ${p.statPoints > 0 ? '<button class="attr-plus-btn">+</button>' : ''}
+      </div>
+      <div class="attr-desc">${desc}</div>
     `;
-    const btn = row.querySelector('.stat-alloc-btn');
-    btn.addEventListener('click', () => {
-      allocateStat(s.key);
-      render();
-    });
+
+    if (p.statPoints > 0) {
+      const btn = row.querySelector('.attr-plus-btn');
+      btn.addEventListener('click', () => {
+        allocateStat(key);
+        render();
+      });
+    }
     grid.appendChild(row);
   }
+
+  // Show derived stats summary
+  const derived = document.createElement('div');
+  derived.className = 'derived-stats';
+  const dodge = getPlayerDodgeChance();
+  const discount = getPlayerShopDiscount();
+  derived.innerHTML = `
+    <div class="derived-row"><span>Dodge</span><span>${dodge}%</span></div>
+    <div class="derived-row"><span>Shop Discount</span><span>${discount}%</span></div>
+  `;
+  grid.appendChild(derived);
+}
+
+// ── Character Sheet Overlay ────────────────
+
+function updateCharacterSheet() {
+  const overlay = document.getElementById('charsheet-overlay');
+  if (!overlay) return;
+  if (!state.showCharSheet) {
+    overlay.classList.add('hidden');
+    return;
+  }
+  overlay.classList.remove('hidden');
+
+  const p = state.player;
+  if (!p) return;
+
+  // Portrait
+  const portraitEl = document.getElementById('charsheet-portrait');
+  portraitEl.innerHTML = '';
+  const pc = document.createElement('canvas');
+  pc.width = TILE_SIZE; pc.height = TILE_SIZE;
+  const pctx = pc.getContext('2d');
+  pctx.drawImage(getPlayerSprite(state.playerClass), 0, 0);
+  portraitEl.appendChild(pc);
+
+  // Info
+  const classNames = { warrior: 'Warrior', mage: 'Mage', archer: 'Archer' };
+  const infoEl = document.getElementById('charsheet-info');
+  infoEl.innerHTML = `
+    <div class="cs-name">${classNames[state.playerClass] || 'Adventurer'}</div>
+    <div class="cs-class">Level ${p.level} | Floor ${state.floor}</div>
+    <div class="cs-stats">
+      <span>HP <strong>${p.hp}/${p.maxHp}</strong></span>
+      <span>Pow <strong>${getPlayerPower()}</strong></span>
+      <span>Arm <strong>${getPlayerArmor()}</strong></span>
+      <span>Gold <strong>${p.gold}</strong></span>
+    </div>
+  `;
+
+  // Equipment
+  const equipEl = document.getElementById('charsheet-equip');
+  equipEl.innerHTML = '<h4>Equipment</h4>';
+  for (const slot of Object.values(EQUIP_SLOT)) {
+    const item = p.equipment[slot];
+    const row = document.createElement('div');
+    row.className = 'cs-equip-slot';
+    if (item) {
+      const sc = document.createElement('canvas');
+      sc.width = TILE_SIZE; sc.height = TILE_SIZE;
+      const sctx = sc.getContext('2d');
+      sctx.drawImage(getItemSprite(item.icon), 0, 0);
+      row.appendChild(sc);
+      row.innerHTML += `<span class="cs-equip-label">${SLOT_LABELS[slot]}</span><span class="cs-equip-name">${item.name}</span>`;
+      row.style.cursor = 'pointer';
+      row.addEventListener('click', () => {
+        showItemPopup(item, slot, 'equipment');
+      });
+    } else {
+      row.innerHTML = `<span class="cs-equip-label">${SLOT_LABELS[slot]}</span><span class="cs-equip-name empty">- empty -</span>`;
+    }
+    equipEl.appendChild(row);
+  }
+
+  // Attributes
+  const pointsEl = document.getElementById('charsheet-points');
+  if (p.statPoints > 0) {
+    pointsEl.style.display = '';
+    pointsEl.textContent = p.statPoints + ' pts';
+  } else {
+    pointsEl.style.display = 'none';
+  }
+
+  const attrsEl = document.getElementById('charsheet-attrs');
+  attrsEl.innerHTML = '';
+  const attrKeys = ['str', 'agi', 'int', 'vit', 'cha'];
+  for (const key of attrKeys) {
+    const val = p.attrs[key];
+    const label = ATTR_LABELS[key];
+    const desc = ATTR_DESCRIPTIONS[key];
+
+    const row = document.createElement('div');
+    row.className = 'cs-attr-row';
+    row.innerHTML = `
+      <span class="cs-attr-abbr">${key.toUpperCase()}</span>
+      <span class="cs-attr-name">${label}</span>
+      <span class="cs-attr-val">${val}</span>
+    `;
+    if (p.statPoints > 0) {
+      const btn = document.createElement('button');
+      btn.className = 'cs-attr-plus';
+      btn.textContent = '+';
+      btn.addEventListener('click', () => {
+        allocateStat(key);
+        render();
+      });
+      row.appendChild(btn);
+    }
+    attrsEl.appendChild(row);
+
+    const descEl = document.createElement('div');
+    descEl.className = 'cs-attr-desc';
+    descEl.textContent = desc;
+    attrsEl.appendChild(descEl);
+  }
+
+  // Derived stats
+  const derivedEl = document.getElementById('charsheet-derived');
+  derivedEl.innerHTML = '';
+  const dodge = getPlayerDodgeChance();
+  const discount = getPlayerShopDiscount();
+  derivedEl.innerHTML = `
+    <div class="cs-derived-row"><span>Dodge Chance</span><span>${dodge}%</span></div>
+    <div class="cs-derived-row"><span>Shop Discount</span><span>${discount}%</span></div>
+  `;
 }
 
 // ── Active Effects Display ─────────────────
@@ -430,7 +619,132 @@ function updateSpellsPanel() {
   }
 }
 
+// ── Side Minimap (Right Panel) ──────────────
+
+function updateSideMinimap() {
+  const panel = document.getElementById('side-minimap-panel');
+  if (!panel) return;
+
+  if (!state.map || !state.revealed || !state.player) {
+    panel.style.display = 'none';
+    return;
+  }
+
+  panel.style.display = '';
+
+  const canvas = document.getElementById('side-minimap-canvas');
+  const mctx = canvas.getContext('2d');
+
+  // Scale to fit panel width (~240px usable)
+  const panelWidth = 236;
+  const SCALE = Math.max(2, Math.floor(panelWidth / state.mapW));
+  canvas.width = state.mapW * SCALE;
+  canvas.height = state.mapH * SCALE;
+  canvas.style.width = canvas.width + 'px';
+  canvas.style.height = canvas.height + 'px';
+
+  mctx.fillStyle = '#000';
+  mctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const wallColor = '#3a3a4a';
+  const floorColor = '#1a2a1a';
+  const stairsColor = '#e0c040';
+  const entranceColor = '#40a060';
+  const grassColor = '#1a3a1a';
+  const dirtColor = '#3a2a1a';
+  const hutColor = '#5a4a2a';
+  const healerColor = '#40c080';
+  const merchantColor = '#c0a040';
+
+  for (let y = 0; y < state.mapH; y++) {
+    for (let x = 0; x < state.mapW; x++) {
+      if (!state.revealed[y][x]) continue;
+
+      const tile = state.map[y][x];
+      const props = TILE_PROPS[tile];
+      if (!props) continue;
+
+      if (tile === TILE.CAVE_STAIRS) {
+        mctx.fillStyle = stairsColor;
+      } else if (tile === TILE.CAVE_ENTRANCE) {
+        mctx.fillStyle = entranceColor;
+      } else if (tile === TILE.HEALER) {
+        mctx.fillStyle = healerColor;
+      } else if (tile === TILE.MERCHANT) {
+        mctx.fillStyle = merchantColor;
+      } else if (tile === TILE.QUEST_BOARD) {
+        mctx.fillStyle = '#c08040';
+      } else if (tile === TILE.GRASS) {
+        mctx.fillStyle = grassColor;
+      } else if (tile === TILE.DIRT) {
+        mctx.fillStyle = dirtColor;
+      } else if (tile === TILE.HUT) {
+        mctx.fillStyle = hutColor;
+      } else if (props.walkable) {
+        mctx.fillStyle = floorColor;
+      } else {
+        mctx.fillStyle = wallColor;
+      }
+
+      if (!state.visibility[y][x]) {
+        mctx.globalAlpha = 0.35;
+      } else {
+        mctx.globalAlpha = 1;
+      }
+
+      mctx.fillRect(x * SCALE, y * SCALE, SCALE, SCALE);
+    }
+  }
+
+  mctx.globalAlpha = 1;
+
+  // Draw chests
+  if (state.chests) {
+    for (const ch of state.chests) {
+      if (!state.revealed[ch.y] || !state.revealed[ch.y][ch.x]) continue;
+      mctx.fillStyle = ch.opened ? '#4a3a1a' : '#c0a040';
+      mctx.fillRect(ch.x * SCALE, ch.y * SCALE, SCALE, SCALE);
+    }
+  }
+
+  // Draw enemies — only visible ones unless All-Seeing Eye equipped
+  const hasEye = playerHasAllSeeingEye();
+  for (const enemy of state.enemies) {
+    if (enemy.hp <= 0) continue;
+    const inFOV = state.visibility[enemy.y] && state.visibility[enemy.y][enemy.x];
+    if (!inFOV && !hasEye) continue;
+    mctx.globalAlpha = inFOV ? 1 : 0.45;
+    mctx.fillStyle = enemy.isBoss ? '#e0c040' : '#e04040';
+    mctx.fillRect(enemy.x * SCALE, enemy.y * SCALE, SCALE, SCALE);
+  }
+  mctx.globalAlpha = 1;
+
+  // Draw ground items
+  for (const gi of state.items) {
+    if (!state.visibility[gi.y] || !state.visibility[gi.y][gi.x]) continue;
+    mctx.fillStyle = '#40c040';
+    mctx.fillRect(gi.x * SCALE, gi.y * SCALE, SCALE, SCALE);
+  }
+
+  // Draw player
+  mctx.fillStyle = '#4080ff';
+  const ps = Math.max(SCALE, 3);
+  mctx.fillRect(state.player.x * SCALE, state.player.y * SCALE, ps, ps);
+
+  // Compact legend
+  const legendEl = document.getElementById('side-minimap-legend');
+  legendEl.innerHTML = `
+    <span class="sml-item"><span class="sml-dot" style="background:#4080ff"></span>You</span>
+    <span class="sml-item"><span class="sml-dot" style="background:#e04040"></span>Foe</span>
+    <span class="sml-item"><span class="sml-dot" style="background:#40c040"></span>Item</span>
+    <span class="sml-item"><span class="sml-dot" style="background:#e0c040"></span>Exit</span>
+  `;
+}
+
 // ── Bestiary Rendering ──────────────────────
+
+let bestiarySelectedType = null;
+let bestiaryTab = 'creatures';
 
 function updateBestiary() {
   const overlay = document.getElementById('bestiary-overlay');
@@ -440,145 +754,382 @@ function updateBestiary() {
   }
   overlay.classList.remove('hidden');
 
-  const content = document.getElementById('bestiary-content');
-  const entries = getBestiaryEntries();
-
-  // Build a map of type -> entry for quick lookup
-  const entryMap = {};
-  for (const e of entries) entryMap[e.type] = e;
-
-  // Area theme colors for headers
-  const areaColors = {
-    goblin_cave: '#6a8a4a',
-    spider_cavern: '#8a6a8a',
-    crypt: '#8a8a7a',
-    mushroom_grotto: '#5a8a6a',
-    scorched_depths: '#a06040',
-    frozen_halls: '#5a7aa0',
-  };
-
-  // Floor range descriptions
-  const floorDesc = (t) => `Floors ${t.minFloor}–${t.maxFloor === 99 ? '∞' : t.maxFloor}`;
-
-  content.innerHTML = '';
-
-  for (const [themeKey, theme] of Object.entries(FLOOR_THEMES)) {
-    // Collect monsters for this area (from spawnWeights + boss)
-    const areaMonsters = Object.keys(theme.spawnWeights);
-    const boss = BOSS_FOR_THEME[themeKey];
-    if (boss) areaMonsters.push(boss);
-
-    // Area header with theme tile preview
-    const section = document.createElement('div');
-    section.className = 'bestiary-area';
-
-    const headerColor = areaColors[themeKey] || '#888';
-
-    // Area header
-    const header = document.createElement('div');
-    header.className = 'bestiary-area-header';
-
-    // Draw floor tile preview
-    const tileCanvas = document.createElement('canvas');
-    tileCanvas.width = 32;
-    tileCanvas.height = 32;
-    tileCanvas.className = 'bestiary-area-tile';
-    const tctx = tileCanvas.getContext('2d');
-    const floorSprite = getTileSprite(theme.floorTile);
-    tctx.drawImage(floorSprite, 0, 0);
-
-    const wallCanvas = document.createElement('canvas');
-    wallCanvas.width = 32;
-    wallCanvas.height = 32;
-    wallCanvas.className = 'bestiary-area-tile';
-    const wctx = wallCanvas.getContext('2d');
-    const wallSprite = getTileSprite(theme.wallTile);
-    wctx.drawImage(wallSprite, 0, 0);
-
-    const headerInfo = document.createElement('div');
-    headerInfo.className = 'bestiary-area-info';
-    headerInfo.innerHTML = `
-      <div class="bestiary-area-name" style="color:${headerColor}">${theme.name}</div>
-      <div class="bestiary-area-floors">${floorDesc(theme)} &middot; ${areaMonsters.length} creatures</div>
-    `;
-
-    header.appendChild(wallCanvas);
-    header.appendChild(tileCanvas);
-    header.appendChild(headerInfo);
-    section.appendChild(header);
-
-    // Render monsters in this area
-    const grid = document.createElement('div');
-    grid.className = 'bestiary-area-grid';
-
-    for (const monsterType of areaMonsters) {
-      const entry = entryMap[monsterType];
-      if (!entry) continue;
-
-      const isBoss = monsterType === boss;
-      const card = document.createElement('div');
-
-      if (entry.discovered) {
-        card.className = 'bestiary-card' + (isBoss ? ' bestiary-boss' : '');
-
-        // Sprite
-        const spriteCanvas = document.createElement('canvas');
-        spriteCanvas.width = 32;
-        spriteCanvas.height = 32;
-        spriteCanvas.className = 'bestiary-card-sprite';
-        const sctx = spriteCanvas.getContext('2d');
-        sctx.drawImage(getEnemySprite(entry.type), 0, 0);
-
-        // Info
-        const info = document.createElement('div');
-        info.className = 'bestiary-card-info';
-        info.innerHTML = `
-          <div class="bestiary-card-top">
-            <span class="bestiary-card-name">${entry.name}</span>
-            ${isBoss ? '<span class="bestiary-boss-tag">BOSS</span>' : ''}
-          </div>
-          <div class="bestiary-card-stats">
-            <span>HP ${entry.baseHp}</span>
-            <span>Pow ${entry.basePower}</span>
-            <span>XP ${BASE_STATS_LOOKUP[entry.type]?.xpReward || '?'}</span>
-            <span class="bestiary-gold-stat">${GOLD_LOOKUP[entry.type] || '?'}g</span>
-          </div>
-          <div class="bestiary-card-kills">Defeated: ${entry.kills}</div>
-          <div class="bestiary-card-desc">${entry.desc}</div>
-        `;
-
-        card.appendChild(spriteCanvas);
-        card.appendChild(info);
-      } else {
-        card.className = 'bestiary-card undiscovered';
-        card.innerHTML = `
-          <div class="bestiary-card-sprite-unknown">?</div>
-          <div class="bestiary-card-info">
-            <div class="bestiary-card-top">
-              <span class="bestiary-card-name">???</span>
-              ${isBoss ? '<span class="bestiary-boss-tag">BOSS</span>' : ''}
-            </div>
-            <div class="bestiary-card-desc">Defeat this creature to learn about it.</div>
-          </div>
-        `;
-      }
-
-      grid.appendChild(card);
-    }
-
-    section.appendChild(grid);
-    content.appendChild(section);
+  // Player portrait in header
+  const portraitEl = document.getElementById('bestiary-player-portrait');
+  if (portraitEl && state.player) {
+    portraitEl.innerHTML = '';
+    const pc = document.createElement('canvas');
+    pc.width = TILE_SIZE; pc.height = TILE_SIZE;
+    pc.style.width = '28px'; pc.style.height = '28px';
+    pc.style.imageRendering = 'pixelated';
+    const pctx = pc.getContext('2d');
+    pctx.drawImage(getPlayerSprite(state.playerClass), 0, 0);
+    portraitEl.appendChild(pc);
   }
 
-  // Count totals
+  const entries = getBestiaryEntries();
   const total = entries.length;
   const discovered = entries.filter(e => e.discovered).length;
-  const totalKills = entries.reduce((sum, e) => sum + e.kills, 0);
-  const footer = document.createElement('div');
-  footer.className = 'bestiary-footer';
-  footer.textContent = `Discovered: ${discovered}/${total} · Total Kills: ${totalKills}`;
-  content.appendChild(footer);
+
+  // Update creature count in tab
+  const countEl = document.getElementById('bestiary-count');
+  countEl.textContent = `(${discovered} / ${total})`;
+
+  // Filter based on active tab
+  let filtered;
+  if (bestiaryTab === 'bosses') {
+    filtered = entries.filter(e => e.isBoss);
+  } else {
+    filtered = entries;
+  }
+
+  // Sort: discovered first, then by level
+  filtered.sort((a, b) => {
+    if (a.discovered && !b.discovered) return -1;
+    if (!a.discovered && b.discovered) return 1;
+    return (a.level || 0) - (b.level || 0);
+  });
+
+  // Auto-select first discovered if none selected
+  if (!bestiarySelectedType) {
+    const first = filtered.find(e => e.discovered);
+    if (first) bestiarySelectedType = first.type;
+  }
+
+  // Render left list
+  const listPanel = document.getElementById('bestiary-list');
+  listPanel.innerHTML = '';
+
+  for (const entry of filtered) {
+    const slot = document.createElement('div');
+    const isSelected = entry.type === bestiarySelectedType;
+    slot.className = 'bst-slot' + (isSelected ? ' bst-selected' : '') + (entry.discovered ? '' : ' bst-undiscovered');
+
+    if (entry.discovered) {
+      // Sprite portrait
+      const spriteCanvas = document.createElement('canvas');
+      spriteCanvas.width = TILE_SIZE;
+      spriteCanvas.height = TILE_SIZE;
+      spriteCanvas.className = 'bst-slot-sprite';
+      const sctx = spriteCanvas.getContext('2d');
+      sctx.drawImage(getEnemySprite(entry.type), 0, 0);
+
+      // Element icon
+      const elemColor = ELEMENT_COLORS[entry.element] || '#888';
+      const elemDot = document.createElement('span');
+      elemDot.className = 'bst-elem-dot';
+      elemDot.style.background = elemColor;
+      elemDot.title = entry.element;
+
+      const info = document.createElement('div');
+      info.className = 'bst-slot-info';
+      info.innerHTML = `
+        <div class="bst-slot-name">${entry.name}</div>
+        <div class="bst-slot-level">Level ${entry.level}${entry.isBoss ? ' <span class="bestiary-boss-tag">BOSS</span>' : ''}</div>
+      `;
+
+      slot.appendChild(elemDot);
+      slot.appendChild(spriteCanvas);
+      slot.appendChild(info);
+
+      slot.addEventListener('click', () => {
+        bestiarySelectedType = entry.type;
+        updateBestiary();
+      });
+    } else {
+      slot.innerHTML = `
+        <span class="bst-elem-dot" style="background:#333"></span>
+        <div class="bst-slot-unknown">?</div>
+        <div class="bst-slot-info">
+          <div class="bst-slot-name">???</div>
+          <div class="bst-slot-level">Level ??</div>
+        </div>
+      `;
+    }
+
+    listPanel.appendChild(slot);
+  }
+
+  // Render right detail panel
+  const detailPanel = document.getElementById('bestiary-detail');
+  const selected = entries.find(e => e.type === bestiarySelectedType);
+
+  if (!selected || !selected.discovered) {
+    detailPanel.innerHTML = '<div class="bestiary-detail-empty">Select a discovered creature</div>';
+    return;
+  }
+
+  // Build large sprite (scaled up)
+  const largeSpriteCanvas = document.createElement('canvas');
+  largeSpriteCanvas.width = 128;
+  largeSpriteCanvas.height = 128;
+  largeSpriteCanvas.className = 'bst-detail-sprite';
+  const lctx = largeSpriteCanvas.getContext('2d');
+  lctx.imageSmoothingEnabled = false;
+  lctx.drawImage(getEnemySprite(selected.type), 0, 0, TILE_SIZE, TILE_SIZE, 0, 0, 128, 128);
+
+  const elemColor = ELEMENT_COLORS[selected.element] || '#888';
+  const xpReward = BASE_STATS_LOOKUP[selected.type]?.xpReward || '?';
+  const goldReward = GOLD_LOOKUP[selected.type] || '?';
+
+  detailPanel.innerHTML = `
+    <div class="bst-detail-title">${selected.title || selected.name}</div>
+    <div class="bst-detail-sprite-area">
+      <div class="bst-detail-sprite-wrap" id="bst-sprite-target"></div>
+    </div>
+    <div class="bst-detail-lore-cols">
+      <div class="bst-detail-lore-col">
+        <div class="bst-detail-label">LORE</div>
+        <div class="bst-detail-text">${selected.lore || selected.desc}</div>
+      </div>
+      <div class="bst-detail-lore-col">
+        <div class="bst-detail-label">HABITAT</div>
+        <div class="bst-detail-text">${selected.habitat || 'Unknown'}</div>
+        <div class="bst-detail-label" style="margin-top:6px">THREAT</div>
+        <div class="bst-detail-text">${selected.threat || 'Unknown'}</div>
+        <div class="bst-detail-label" style="margin-top:6px">KNOWN MOVES</div>
+        <div class="bst-detail-text">${selected.moves || 'Unknown'}</div>
+      </div>
+    </div>
+    <div class="bst-detail-stats">
+      <div class="bst-stat"><span class="bst-stat-icon bst-hp-icon"></span><span class="bst-stat-label">HP:</span> <span class="bst-stat-val bst-hp-val">${selected.baseHp}</span></div>
+      <div class="bst-stat"><span class="bst-stat-icon bst-atk-icon"></span><span class="bst-stat-label">ATTACK:</span> <span class="bst-stat-val bst-atk-val">${selected.basePower}</span></div>
+      <div class="bst-stat"><span class="bst-stat-icon bst-def-icon"></span><span class="bst-stat-label">DEFENSE:</span> <span class="bst-stat-val bst-def-val">${BASE_STATS_LOOKUP[selected.type]?.armor || 0}</span></div>
+      <div class="bst-stat"><span class="bst-stat-icon bst-elem-icon" style="background:${elemColor}"></span><span class="bst-stat-label">ELEMENT:</span> <span class="bst-stat-val" style="color:${elemColor}">${selected.element}</span></div>
+    </div>
+    <div class="bst-detail-footer">
+      <span>XP Reward: ${xpReward}</span>
+      <span class="bestiary-gold-stat">Gold: ${goldReward}</span>
+      <span class="bst-kills-stat">Defeated: ${selected.kills}</span>
+    </div>
+  `;
+
+  // Append the pre-rendered canvas
+  document.getElementById('bst-sprite-target').appendChild(largeSpriteCanvas);
 }
+
+// Tab switching
+document.getElementById('bestiary-tab-creatures')?.addEventListener('click', () => {
+  bestiaryTab = 'creatures';
+  document.querySelectorAll('.bestiary-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('bestiary-tab-creatures').classList.add('active');
+  updateBestiary();
+});
+document.getElementById('bestiary-tab-bosses')?.addEventListener('click', () => {
+  bestiaryTab = 'bosses';
+  document.querySelectorAll('.bestiary-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('bestiary-tab-bosses').classList.add('active');
+  updateBestiary();
+});
+document.getElementById('bestiary-tab-lore')?.addEventListener('click', () => {
+  bestiaryTab = 'creatures';
+  document.querySelectorAll('.bestiary-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('bestiary-tab-lore').classList.add('active');
+  updateBestiary();
+});
+document.getElementById('bestiary-tab-map')?.addEventListener('click', () => {
+  bestiaryTab = 'creatures';
+  document.querySelectorAll('.bestiary-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('bestiary-tab-map').classList.add('active');
+  updateBestiary();
+});
+
+// ── Armory Rendering ──────────────────────────
+
+let armorySelectedId = null;
+let armoryTab = 'all';
+
+const TIER_COLORS = { 1: '#888', 2: '#4a9ae0', 3: '#c060e0' };
+const TIER_NAMES = { 1: 'Common', 2: 'Uncommon', 3: 'Rare' };
+const TYPE_LABELS = {
+  [ITEM_TYPE.WEAPON]: 'Weapon',
+  [ITEM_TYPE.HELMET]: 'Helmet',
+  [ITEM_TYPE.CHEST]: 'Chest Armor',
+  [ITEM_TYPE.GLOVES]: 'Gloves',
+  [ITEM_TYPE.BOOTS]: 'Boots',
+  [ITEM_TYPE.CAPE]: 'Cape',
+  [ITEM_TYPE.CONSUMABLE]: 'Consumable',
+};
+
+function updateArmory() {
+  const overlay = document.getElementById('armory-overlay');
+  if (!state.showArmory) {
+    overlay.classList.add('hidden');
+    return;
+  }
+  overlay.classList.remove('hidden');
+
+  const entries = getArmoryEntries();
+  const total = entries.length;
+  const discovered = entries.filter(e => e.discovered).length;
+
+  const countEl = document.getElementById('armory-count');
+  countEl.textContent = `(${discovered}/${total})`;
+
+  // Filter by tab
+  let filtered;
+  if (armoryTab === 'weapons') {
+    filtered = entries.filter(e => e.type === ITEM_TYPE.WEAPON);
+  } else if (armoryTab === 'armor') {
+    filtered = entries.filter(e =>
+      e.type === ITEM_TYPE.HELMET || e.type === ITEM_TYPE.CHEST ||
+      e.type === ITEM_TYPE.GLOVES || e.type === ITEM_TYPE.BOOTS ||
+      e.type === ITEM_TYPE.CAPE
+    );
+  } else if (armoryTab === 'consumables') {
+    filtered = entries.filter(e => e.type === ITEM_TYPE.CONSUMABLE);
+  } else {
+    filtered = entries;
+  }
+
+  // Sort: discovered first, then by tier desc, then by name
+  filtered.sort((a, b) => {
+    if (a.discovered && !b.discovered) return -1;
+    if (!a.discovered && b.discovered) return 1;
+    const ta = a.tier || 0, tb = b.tier || 0;
+    if (tb !== ta) return tb - ta;
+    return a.name.localeCompare(b.name);
+  });
+
+  // Auto-select first discovered
+  if (!armorySelectedId) {
+    const first = filtered.find(e => e.discovered);
+    if (first) armorySelectedId = first.id;
+  }
+
+  // Render left list
+  const listPanel = document.getElementById('armory-list');
+  listPanel.innerHTML = '';
+
+  for (const entry of filtered) {
+    const slot = document.createElement('div');
+    const isSelected = entry.id === armorySelectedId;
+    slot.className = 'arm-slot' + (isSelected ? ' arm-selected' : '') + (entry.discovered ? '' : ' arm-undiscovered');
+
+    if (entry.discovered) {
+      const spriteCanvas = document.createElement('canvas');
+      spriteCanvas.width = TILE_SIZE;
+      spriteCanvas.height = TILE_SIZE;
+      spriteCanvas.className = 'arm-slot-sprite';
+      const sctx = spriteCanvas.getContext('2d');
+      sctx.drawImage(getItemSprite(entry.icon), 0, 0);
+
+      const tierColor = TIER_COLORS[entry.tier] || '#888';
+      const tierDot = document.createElement('span');
+      tierDot.className = 'arm-tier-dot';
+      tierDot.style.background = tierColor;
+      tierDot.title = TIER_NAMES[entry.tier] || 'Common';
+
+      const info = document.createElement('div');
+      info.className = 'arm-slot-info';
+      info.innerHTML = `
+        <div class="arm-slot-name" style="color:${tierColor}">${entry.name}</div>
+        <div class="arm-slot-type">${TYPE_LABELS[entry.type] || 'Item'}${entry.tier ? ' T' + entry.tier : ''}</div>
+      `;
+
+      slot.appendChild(tierDot);
+      slot.appendChild(spriteCanvas);
+      slot.appendChild(info);
+
+      slot.addEventListener('click', () => {
+        armorySelectedId = entry.id;
+        updateArmory();
+      });
+    } else {
+      slot.innerHTML = `
+        <span class="arm-tier-dot" style="background:#333"></span>
+        <div class="arm-slot-unknown">?</div>
+        <div class="arm-slot-info">
+          <div class="arm-slot-name" style="color:#333">???</div>
+          <div class="arm-slot-type">Unknown</div>
+        </div>
+      `;
+    }
+
+    listPanel.appendChild(slot);
+  }
+
+  // Render right detail panel
+  const detailPanel = document.getElementById('armory-detail');
+  const selected = entries.find(e => e.id === armorySelectedId);
+
+  if (!selected || !selected.discovered) {
+    detailPanel.innerHTML = '<div class="armory-detail-empty">Select a discovered item</div>';
+    return;
+  }
+
+  const tierColor = TIER_COLORS[selected.tier] || '#888';
+  const tierName = TIER_NAMES[selected.tier] || 'Common';
+
+  // Build large sprite
+  const largeSpriteCanvas = document.createElement('canvas');
+  largeSpriteCanvas.width = 128;
+  largeSpriteCanvas.height = 128;
+  largeSpriteCanvas.className = 'arm-detail-sprite';
+  const lctx = largeSpriteCanvas.getContext('2d');
+  lctx.imageSmoothingEnabled = false;
+  lctx.drawImage(getItemSprite(selected.icon), 0, 0, TILE_SIZE, TILE_SIZE, 0, 0, 128, 128);
+
+  // Build stat lines
+  const statLines = [];
+  if (selected.power) statLines.push({ label: 'POWER', val: '+' + selected.power, color: '#e0a060' });
+  if (selected.armor) statLines.push({ label: 'ARMOR', val: '+' + selected.armor, color: '#60a0e0' });
+  if (selected.spellBonus) statLines.push({ label: 'SPELL DMG', val: '+' + selected.spellBonus, color: '#c080e0' });
+  if (selected.rangeBonus) statLines.push({ label: 'RANGE', val: '+' + selected.rangeBonus, color: '#60c080' });
+  if (selected.manaBonus) statLines.push({ label: 'MAX MANA', val: '+' + selected.manaBonus, color: '#60a0e0' });
+  if (selected.powerBonus) statLines.push({ label: 'POWER', val: '+' + selected.powerBonus, color: '#e0a060' });
+  if (selected.healAmount) statLines.push({ label: 'HEALS', val: selected.healAmount + ' HP', color: '#60c060' });
+  if (selected.manaAmount) statLines.push({ label: 'RESTORES', val: selected.manaAmount + ' MP', color: '#6080e0' });
+  if (selected.curePoison) statLines.push({ label: 'EFFECT', val: 'Cure Poison', color: '#80c060' });
+  if (selected.effect) statLines.push({ label: 'BUFF', val: `+${selected.effect.amount} ${selected.effect.name} (${selected.effect.turns}t)`, color: '#e0c060' });
+
+  const statsHtml = statLines.map(s =>
+    `<div class="arm-stat"><span class="arm-stat-icon" style="background:${s.color}"></span><span class="arm-stat-label">${s.label}:</span> <span class="arm-stat-val" style="color:${s.color}">${s.val}</span></div>`
+  ).join('');
+
+  detailPanel.innerHTML = `
+    <div class="arm-detail-title" style="color:${tierColor}">${selected.name}</div>
+    <div class="arm-detail-subtitle">${TYPE_LABELS[selected.type] || 'Item'} &middot; <span style="color:${tierColor}">${tierName}</span></div>
+    <div class="arm-detail-sprite-area">
+      <div class="arm-detail-sprite-wrap" id="arm-sprite-target"></div>
+    </div>
+    <div class="arm-detail-desc">${selected.desc}</div>
+    ${statsHtml ? `<div class="arm-detail-stats">${statsHtml}</div>` : ''}
+    <div class="arm-detail-footer">
+      <span>Times Found: ${selected.timesFound}</span>
+      ${selected.stackable ? '<span class="arm-stack-tag">Stackable (max ' + (selected.maxStack || 5) + ')</span>' : ''}
+      ${selected.slot ? '<span>Slot: ' + selected.slot + '</span>' : ''}
+    </div>
+  `;
+
+  document.getElementById('arm-sprite-target').appendChild(largeSpriteCanvas);
+}
+
+// Armory tab switching
+document.getElementById('armory-tab-all')?.addEventListener('click', () => {
+  armoryTab = 'all';
+  document.querySelectorAll('.armory-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('armory-tab-all').classList.add('active');
+  updateArmory();
+});
+document.getElementById('armory-tab-weapons')?.addEventListener('click', () => {
+  armoryTab = 'weapons';
+  document.querySelectorAll('.armory-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('armory-tab-weapons').classList.add('active');
+  updateArmory();
+});
+document.getElementById('armory-tab-armor')?.addEventListener('click', () => {
+  armoryTab = 'armor';
+  document.querySelectorAll('.armory-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('armory-tab-armor').classList.add('active');
+  updateArmory();
+});
+document.getElementById('armory-tab-consumables')?.addEventListener('click', () => {
+  armoryTab = 'consumables';
+  document.querySelectorAll('.armory-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('armory-tab-consumables').classList.add('active');
+  updateArmory();
+});
 
 // ── Healer Overlay ──────────────────────────
 
@@ -631,11 +1182,15 @@ function updateShopOverlay() {
     for (const entry of items) {
       const div = document.createElement('div');
       div.className = 'shop-item';
-      const canBuy = p.gold >= entry.price && p.inventory.length < 30;
+      const price = getDiscountedPrice(entry.price);
+      const canBuy = p.gold >= price && p.inventory.length < 30;
+      const priceHtml = price < entry.price
+        ? `<s style="color:#666">${entry.price}</s> ${price}g`
+        : `${price}g`;
       div.innerHTML = `
         <span class="shop-item-name">${entry.item.icon} ${entry.item.name}</span>
         <span class="shop-item-desc">${entry.item.desc}</span>
-        <span class="shop-item-price">${entry.price}g</span>
+        <span class="shop-item-price">${priceHtml}</span>
         <button class="shop-buy-btn" ${canBuy ? '' : 'disabled'}>Buy</button>
       `;
       div.querySelector('.shop-buy-btn').addEventListener('click', () => {
@@ -752,6 +1307,230 @@ function updateChestOverlay() {
   }
 }
 
+// ── Quest Board Overlay ─────────────────────
+
+let questBoardTab = 'available';
+
+function updateQuestBoardOverlay() {
+  const overlay = document.getElementById('quest-overlay');
+  if (!state.showQuestBoard) {
+    overlay.classList.add('hidden');
+    return;
+  }
+  overlay.classList.remove('hidden');
+
+  const listEl = document.getElementById('quest-list');
+  listEl.innerHTML = '';
+
+  if (questBoardTab === 'available') {
+    const available = getAvailableQuests();
+    if (available.length === 0) {
+      listEl.innerHTML = '<div class="quest-empty">No quests available. Complete active quests first!</div>';
+    } else {
+      for (const quest of available) {
+        const div = document.createElement('div');
+        div.className = 'quest-card';
+        let rewardHtml = `<span class="quest-reward-gold">${quest.goldReward}g</span> <span class="quest-reward-xp">${quest.xpReward} XP</span>`;
+        if (quest.itemReward) {
+          const ri = ITEMS[quest.itemReward];
+          if (ri) rewardHtml += ` <span class="quest-reward-item">${ri.name}</span>`;
+        }
+        div.innerHTML = `
+          <div class="quest-card-header">
+            <span class="quest-card-name">${quest.name}</span>
+          </div>
+          <div class="quest-card-desc">${quest.desc}</div>
+          <div class="quest-card-rewards">Rewards: ${rewardHtml}</div>
+          <button class="quest-accept-btn">Accept</button>
+        `;
+        div.querySelector('.quest-accept-btn').addEventListener('click', () => {
+          acceptQuest(quest.id);
+          render();
+        });
+        listEl.appendChild(div);
+      }
+    }
+  } else {
+    // Active quests
+    const active = getActiveQuests();
+    if (active.length === 0) {
+      listEl.innerHTML = '<div class="quest-empty">No active quests. Visit the board to accept some!</div>';
+    } else {
+      for (const quest of active) {
+        const div = document.createElement('div');
+        div.className = 'quest-card' + (quest.completed ? ' quest-complete' : '');
+        const pct = Math.min(100, Math.floor(quest.progress / quest.amount * 100));
+        let rewardHtml = `<span class="quest-reward-gold">${quest.goldReward}g</span> <span class="quest-reward-xp">${quest.xpReward} XP</span>`;
+        if (quest.itemReward) {
+          const ri = ITEMS[quest.itemReward];
+          if (ri) rewardHtml += ` <span class="quest-reward-item">${ri.name}</span>`;
+        }
+        div.innerHTML = `
+          <div class="quest-card-header">
+            <span class="quest-card-name">${quest.name}</span>
+            <span class="quest-progress-text">${quest.progress}/${quest.amount}</span>
+          </div>
+          <div class="quest-progress-bar"><div class="quest-progress-fill" style="width:${pct}%"></div></div>
+          <div class="quest-card-desc">${quest.desc}</div>
+          <div class="quest-card-rewards">Rewards: ${rewardHtml}</div>
+          <div class="quest-card-actions">
+            ${quest.completed ? '<button class="quest-turnin-btn">Turn In</button>' : ''}
+            <button class="quest-abandon-btn">Abandon</button>
+          </div>
+        `;
+        if (quest.completed) {
+          div.querySelector('.quest-turnin-btn').addEventListener('click', () => {
+            turnInQuest(quest.id);
+            render();
+          });
+        }
+        div.querySelector('.quest-abandon-btn').addEventListener('click', () => {
+          abandonQuest(quest.id);
+          render();
+        });
+        listEl.appendChild(div);
+      }
+    }
+  }
+}
+
+// Quest board tab switching
+document.getElementById('quest-tab-available')?.addEventListener('click', () => {
+  questBoardTab = 'available';
+  document.querySelectorAll('.quest-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('quest-tab-available').classList.add('active');
+  updateQuestBoardOverlay();
+});
+document.getElementById('quest-tab-active')?.addEventListener('click', () => {
+  questBoardTab = 'active';
+  document.querySelectorAll('.quest-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('quest-tab-active').classList.add('active');
+  updateQuestBoardOverlay();
+});
+
+// ── Item Detail Popup ───────────────────────
+
+const itemPopup = document.getElementById('item-popup');
+const itemPopupContent = document.getElementById('item-popup-content');
+const itemPopupButtons = document.getElementById('item-popup-buttons');
+
+function showItemPopup(item, index, source) {
+  hideItemTooltip();
+
+  const tierNames = { 1: 'Common', 2: 'Uncommon', 3: 'Rare' };
+  const typeLabels = { weapon: 'Weapon', helmet: 'Helmet', chest: 'Chest Armor', gloves: 'Gloves', boots: 'Boots', cape: 'Cape', consumable: 'Consumable' };
+
+  let html = '';
+  if (item.tier) {
+    html += `<div class="tooltip-tier tier-${item.tier}">${tierNames[item.tier] || ''}</div>`;
+  }
+  html += `<div class="popup-item-name">${item.name}</div>`;
+  html += `<div class="popup-item-type">${typeLabels[item.type] || item.type}</div>`;
+
+  const stats = [];
+  if (item.power) stats.push(`+${item.power} Power`);
+  if (item.armor) stats.push(`+${item.armor} Armor`);
+  if (item.spellBonus) stats.push(`+${item.spellBonus} Spell Damage`);
+  if (item.rangeBonus) stats.push(`+${item.rangeBonus} Range`);
+  if (item.manaBonus) stats.push(`+${item.manaBonus} Max Mana`);
+  if (item.healAmount) stats.push(`Restores ${item.healAmount} HP`);
+  if (item.manaAmount) stats.push(`Restores ${item.manaAmount} Mana`);
+  if (item.effect) stats.push(`${item.effect.name}: +${item.effect.amount} ${item.effect.stat} (${item.effect.turns} turns)`);
+  if (item.count && item.count > 1) stats.push(`Count: ${item.count}`);
+  // Item features
+  if (item.features) {
+    for (const f of item.features) {
+      const info = FEATURE_INFO[f.type];
+      if (info) stats.push(`<span style="color:${info.color}">${info.desc(f.value)}</span>`);
+    }
+  }
+
+  if (stats.length > 0) {
+    html += '<div class="popup-stats">';
+    for (const s of stats) html += `<div class="popup-stat">${s}</div>`;
+    html += '</div>';
+  }
+  if (item.desc) {
+    html += `<div class="popup-desc">${item.desc}</div>`;
+  }
+
+  itemPopupContent.innerHTML = html;
+  itemPopupButtons.innerHTML = '';
+
+  if (source === 'inventory') {
+    // Use/Equip button
+    if (item.type === ITEM_TYPE.CONSUMABLE) {
+      const useBtn = document.createElement('button');
+      useBtn.className = 'popup-btn popup-btn-use';
+      useBtn.textContent = 'Use';
+      useBtn.addEventListener('click', () => {
+        useItem(index);
+        closeItemPopup();
+        render();
+      });
+      itemPopupButtons.appendChild(useBtn);
+    } else {
+      const equipBtn = document.createElement('button');
+      equipBtn.className = 'popup-btn popup-btn-use';
+      equipBtn.textContent = 'Equip';
+      equipBtn.addEventListener('click', () => {
+        useItem(index);
+        closeItemPopup();
+        render();
+      });
+      itemPopupButtons.appendChild(equipBtn);
+    }
+
+    // Drop button
+    const dropBtn = document.createElement('button');
+    dropBtn.className = 'popup-btn popup-btn-drop';
+    dropBtn.textContent = 'Drop';
+    dropBtn.addEventListener('click', () => {
+      dropItem(index);
+      closeItemPopup();
+      render();
+    });
+    itemPopupButtons.appendChild(dropBtn);
+
+    // Destroy button
+    const destroyBtn = document.createElement('button');
+    destroyBtn.className = 'popup-btn popup-btn-destroy';
+    destroyBtn.textContent = 'Destroy';
+    destroyBtn.addEventListener('click', () => {
+      destroyItem(index);
+      closeItemPopup();
+      render();
+    });
+    itemPopupButtons.appendChild(destroyBtn);
+  } else if (source === 'equipment') {
+    // Unequip button
+    const unequipBtn = document.createElement('button');
+    unequipBtn.className = 'popup-btn popup-btn-use';
+    unequipBtn.textContent = 'Unequip';
+    unequipBtn.addEventListener('click', () => {
+      unequipItem(index);  // index is the slot key here
+      closeItemPopup();
+      render();
+    });
+    itemPopupButtons.appendChild(unequipBtn);
+  }
+
+  itemPopup.classList.remove('hidden');
+}
+
+function closeItemPopup() {
+  itemPopup.classList.add('hidden');
+}
+
+document.getElementById('item-popup-close').addEventListener('click', closeItemPopup);
+
+window.addEventListener('showItemPopup', (e) => {
+  const idx = e.detail;
+  if (idx >= 0 && idx < state.player.inventory.length) {
+    showItemPopup(state.player.inventory[idx], idx, 'inventory');
+  }
+});
+
 // ── Item Tooltip ────────────────────────────
 
 const tooltip = document.getElementById('item-tooltip');
@@ -782,6 +1561,12 @@ function showItemTooltip(e, item) {
   if (item.healAmount) stats.push(`Restores ${item.healAmount} HP`);
   if (item.effect) stats.push(`${item.effect.name}: +${item.effect.amount} ${item.effect.stat} (${item.effect.turns} turns)`);
   if (item.count && item.count > 1) stats.push(`Count: ${item.count}`);
+  if (item.features) {
+    for (const f of item.features) {
+      const info = FEATURE_INFO[f.type];
+      if (info) stats.push(`<span style="color:${info.color}">${info.desc(f.value)}</span>`);
+    }
+  }
 
   if (stats.length > 0) {
     html += '<div class="tooltip-stats">';
@@ -881,13 +1666,17 @@ function updateMinimap() {
 
   mctx.globalAlpha = 1;
 
-  // Draw visible enemies
+  // Draw enemies — gated by All-Seeing Eye
+  const hasEyeMap = playerHasAllSeeingEye();
   for (const enemy of state.enemies) {
     if (enemy.hp <= 0) continue;
-    if (!state.visibility[enemy.y] || !state.visibility[enemy.y][enemy.x]) continue;
+    const visible = state.visibility[enemy.y] && state.visibility[enemy.y][enemy.x];
+    if (!visible && !hasEyeMap) continue;
+    mctx.globalAlpha = visible ? 1 : 0.45;
     mctx.fillStyle = enemy.isBoss ? '#e0c040' : '#e04040';
     mctx.fillRect(enemy.x * SCALE, enemy.y * SCALE, SCALE, SCALE);
   }
+  mctx.globalAlpha = 1;
 
   // Draw ground items (visible)
   for (const gi of state.items) {
@@ -971,7 +1760,7 @@ function renderCanvas() {
       const revealed = state.revealed[my][mx];
       if (!revealed) continue;
       const tile = state.map[my][mx];
-      const sprite = getTileSprite(tile);
+      const sprite = getTileSprite(tile, mx, my);
       const sx = vx * TILE_SIZE;
       const sy = vy * TILE_SIZE;
       ctx.drawImage(sprite, sx, sy);

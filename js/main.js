@@ -5,9 +5,12 @@ import {
   healPlayer, closeHealer, closeShop, closeChest, takeAllFromChest, closeQuestBoard,
   toggleSettings, closeSettings, applyCheatCode,
   toggleCharSheet, closeCharSheet,
-} from './engine.js?v=9';
-import { render } from './renderer.js?v=9';
-import { PLAYER_CLASS } from './constants.js?v=9';
+  toggleSkillTree, closeSkillTree, useActiveSkill, getSkillRank,
+  toggleAchievements, closeAchievements,
+  loadGame, hasSaveGame, deleteSave,
+} from './engine.js?v=11';
+import { render } from './renderer.js?v=11';
+import { PLAYER_CLASS } from './constants.js?v=11';
 
 // ── Class Selection ──────────────────────────
 
@@ -31,6 +34,19 @@ document.getElementById('pick-archer').addEventListener('click', () => {
   selectClass(PLAYER_CLASS.ARCHER);
   classSelectEl.classList.add('hidden');
   render();
+});
+
+// ── Continue (Load Save) ────────────────────
+const continueSaveBtn = document.getElementById('continue-save');
+if (hasSaveGame()) {
+  continueSaveBtn.style.display = '';
+}
+continueSaveBtn.addEventListener('click', () => {
+  if (loadGame()) {
+    classSelectEl.classList.add('hidden');
+    if (state.playerClass === PLAYER_CLASS.MAGE) addManaLevelUpBtn();
+    render();
+  }
 });
 
 function addManaLevelUpBtn() {
@@ -102,6 +118,26 @@ document.addEventListener('keydown', (e) => {
     }
   }
 
+  // Skill tree toggle
+  if (e.key === 'v' || e.key === 'V') {
+    if (state.phase !== 'class_select') {
+      e.preventDefault();
+      toggleSkillTree();
+      render();
+      return;
+    }
+  }
+
+  // Achievements toggle
+  if (e.key === 'n' || e.key === 'N') {
+    if (state.phase !== 'class_select') {
+      e.preventDefault();
+      toggleAchievements();
+      render();
+      return;
+    }
+  }
+
   // Escape closes overlays
   if (e.key === 'Escape') {
     const itemPopup = document.getElementById('item-popup');
@@ -115,6 +151,8 @@ document.addEventListener('keydown', (e) => {
     if (state.showQuestBoard) { closeQuestBoard(); render(); return; }
     if (state.showSettings) { closeSettings(); render(); return; }
     if (state.showCharSheet) { closeCharSheet(); render(); return; }
+    if (state.showSkillTree) { closeSkillTree(); render(); return; }
+    if (state.showAchievements) { closeAchievements(); render(); return; }
   }
 
   if (state.phase === 'class_select') return;
@@ -128,6 +166,8 @@ document.addEventListener('keydown', (e) => {
   if (state.showQuestBoard) return;
   if (state.showSettings) return;
   if (state.showCharSheet) return;
+  if (state.showSkillTree) return;
+  if (state.showAchievements) return;
   if (state.showChest) return;
 
   // Throw mode: intercept direction keys
@@ -157,15 +197,33 @@ document.addEventListener('keydown', (e) => {
       break;
     case 'f': case 'F':
       e.preventDefault();
-      castSpell('fire_spell');
+      if (state.playerClass === PLAYER_CLASS.MAGE) {
+        castSpell('fire_spell');
+      } else if (state.playerClass === PLAYER_CLASS.WARRIOR && getSkillRank('cleave') > 0) {
+        useActiveSkill('cleave');
+      } else if (state.playerClass === PLAYER_CLASS.ARCHER && getSkillRank('multishot') > 0) {
+        useActiveSkill('multishot');
+      }
       break;
     case 'g': case 'G':
       e.preventDefault();
-      castSpell('ice_shard');
+      if (state.playerClass === PLAYER_CLASS.MAGE) {
+        castSpell('ice_shard');
+      } else if (state.playerClass === PLAYER_CLASS.WARRIOR && getSkillRank('execute') > 0) {
+        useActiveSkill('execute');
+      } else if (state.playerClass === PLAYER_CLASS.ARCHER && getSkillRank('poison_arrow') > 0) {
+        useActiveSkill('poison_arrow');
+      }
       break;
     case 'h': case 'H':
       e.preventDefault();
-      castSpell('chain_lightning');
+      if (state.playerClass === PLAYER_CLASS.MAGE) {
+        castSpell('chain_lightning');
+      } else if (state.playerClass === PLAYER_CLASS.WARRIOR && getSkillRank('battle_cry') > 0) {
+        useActiveSkill('battle_cry');
+      } else if (state.playerClass === PLAYER_CLASS.ARCHER && getSkillRank('smoke_bomb') > 0) {
+        useActiveSkill('smoke_bomb');
+      }
       break;
     case 'j': case 'J':
       e.preventDefault();
@@ -225,6 +283,7 @@ restartBtn.addEventListener('click', () => {
   gameOverEl.classList.add('hidden');
   restartGame();
   classSelectEl.classList.remove('hidden');
+  continueSaveBtn.style.display = 'none';
   // Remove mana button if it exists (will be re-added if mage is picked)
   const manaBtn = document.getElementById('choose-mana');
   if (manaBtn) manaBtn.remove();
@@ -274,6 +333,12 @@ document.getElementById('close-settings').addEventListener('click', () => {
   render();
 });
 
+// Skill Tree
+document.getElementById('close-skilltree').addEventListener('click', () => {
+  closeSkillTree();
+  render();
+});
+
 // Character Sheet
 document.getElementById('close-charsheet').addEventListener('click', () => {
   closeCharSheet();
@@ -318,5 +383,11 @@ document.getElementById('close-chest').addEventListener('click', () => {
 });
 document.getElementById('take-all-chest').addEventListener('click', () => {
   takeAllFromChest();
+  render();
+});
+
+// Achievements
+document.getElementById('close-achievements').addEventListener('click', () => {
+  closeAchievements();
   render();
 });

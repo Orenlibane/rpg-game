@@ -1,4 +1,4 @@
-import { TILE, TILE_SIZE, ENTITY } from './constants.js?v=9';
+import { TILE, TILE_SIZE, ENTITY } from './constants.js?v=11';
 
 const cache = {};
 const tileSeedCache = {};
@@ -577,6 +577,141 @@ function buildTileSprite(tileType, variant) {
       fillRect(g, 11, 7, 2, 1, '#c04040');
       fillRect(g, 19, 7, 2, 1, '#c04040');
       fillRect(g, 15, 13, 2, 1, '#c04040');
+      break;
+
+    case TILE.PILLAR:
+      fillRect(g, 0, 0, 32, 32, '#2a2a3a');
+      fillRect(g, 10, 2, 12, 28, '#6a6a7a');
+      fillRect(g, 8, 0, 16, 4, '#7a7a8a');
+      fillRect(g, 8, 28, 16, 4, '#7a7a8a');
+      fillRect(g, 12, 4, 8, 24, '#7e7e8e');
+      if (variant === 1) { fillRect(g, 13, 10, 2, 2, '#8e8e9e'); }
+      break;
+
+    case TILE.WATER:
+      fillRect(g, 0, 0, 32, 32, '#1a3050');
+      fillRect(g, 0, 0, 32, 32, '#1e3a5a');
+      g.fillStyle = '#2a4a6a';
+      g.fillRect(2, 8 + variant * 2, 6, 2);
+      g.fillRect(12, 14 + variant, 8, 2);
+      g.fillRect(24, 10 + variant * 2, 5, 2);
+      g.fillStyle = '#3a5a8a';
+      g.fillRect(6, 20, 20, 2);
+      g.fillRect(4, 26 - variant, 10, 2);
+      if (variant === 2) { g.fillStyle = '#4a7aba'; g.fillRect(16, 6, 4, 2); }
+      break;
+
+    case TILE.CARPET:
+      fillRect(g, 0, 0, 32, 32, '#6a2020');
+      fillRect(g, 2, 2, 28, 28, '#8a3030');
+      fillRect(g, 0, 0, 32, 2, '#aa8030');
+      fillRect(g, 0, 30, 32, 2, '#aa8030');
+      fillRect(g, 0, 0, 2, 32, '#aa8030');
+      fillRect(g, 30, 0, 2, 32, '#aa8030');
+      if (variant === 0) { fillRect(g, 14, 14, 4, 4, '#7a2828'); }
+      if (variant === 1) { fillRect(g, 6, 6, 3, 3, '#7a2828'); fillRect(g, 23, 23, 3, 3, '#7a2828'); }
+      if (variant === 2) { fillRect(g, 14, 6, 4, 3, '#7a2828'); fillRect(g, 14, 23, 4, 3, '#7a2828'); }
+      break;
+
+    case TILE.RUBBLE:
+      fillRect(g, 0, 0, 32, 32, '#2a2a3a');
+      g.fillStyle = '#4a4a5a';
+      g.fillRect(4, 20, 6, 4);
+      g.fillRect(18, 14, 5, 3);
+      g.fillRect(10, 26, 4, 3);
+      g.fillStyle = '#3a3a4a';
+      g.fillRect(22, 22, 6, 5);
+      g.fillRect(8, 8, 3, 3);
+      if (variant === 1) { g.fillStyle = '#555565'; g.fillRect(14, 18, 3, 3); }
+      if (variant === 2) { g.fillStyle = '#4a4a5a'; g.fillRect(2, 12, 4, 3); g.fillRect(26, 6, 3, 4); }
+      break;
+
+    case TILE.BARREL:
+      fillRect(g, 0, 0, 32, 32, '#2a2a3a');
+      fillRect(g, 9, 8, 14, 20, '#6a4a1a');
+      fillRect(g, 10, 9, 12, 18, '#7a5a2a');
+      fillRect(g, 8, 6, 16, 4, '#5a3a10');
+      fillRect(g, 9, 12, 14, 2, '#8a8a8a');
+      fillRect(g, 9, 22, 14, 2, '#8a8a8a');
+      fillRect(g, 13, 9, 6, 2, '#8a6a2a');
+      break;
+
+    case TILE.BOOKSHELF:
+      fillRect(g, 0, 0, 32, 32, '#3a2008');
+      fillRect(g, 2, 2, 28, 28, '#5a3a1a');
+      fillRect(g, 2, 10, 28, 2, '#3a2008');
+      fillRect(g, 2, 20, 28, 2, '#3a2008');
+      { const bc = ['#a03030','#3030a0','#30a030','#a0a030','#8030a0'];
+        for (let row = 0; row < 3; row++) {
+          const by = 3 + row * 10;
+          for (let b = 0; b < 5; b++) {
+            g.fillStyle = bc[(b + variant + row) % bc.length];
+            g.fillRect(4 + b * 5, by, 3, 6);
+          }
+        }
+      }
+      break;
+
+    case TILE.WEAPON_RACK:
+      fillRect(g, 0, 0, 32, 32, '#3a3020');
+      fillRect(g, 2, 2, 28, 28, '#4a3a28');
+      fillRect(g, 4, 14, 24, 3, '#6a6a6a');
+      fillRect(g, 8, 4, 2, 24, '#a0a0b0');
+      fillRect(g, 6, 16, 6, 2, '#8a6a2a');
+      fillRect(g, 20, 4, 2, 24, '#a0a0b0');
+      fillRect(g, 18, 6, 6, 4, '#7a7a8a');
+      if (variant === 1) { fillRect(g, 14, 6, 2, 20, '#90909a'); fillRect(g, 12, 16, 6, 2, '#8a6a2a'); }
+      break;
+
+    case TILE.SARCOPHAGUS:
+      fillRect(g, 0, 0, 32, 32, '#2a2a3a');
+      fillRect(g, 6, 4, 20, 24, '#5a5a6a');
+      fillRect(g, 8, 6, 16, 20, '#6a6a7a');
+      fillRect(g, 10, 8, 12, 6, '#7a7a8a');
+      fillRect(g, 14, 10, 4, 2, '#8a8a9a');
+      fillRect(g, 15, 9, 2, 4, '#8a8a9a');
+      if (variant === 1) { fillRect(g, 10, 18, 12, 2, '#5a5a6a'); }
+      if (variant === 2) { fillRect(g, 12, 16, 8, 4, '#7a7a8a'); }
+      break;
+
+    case TILE.FOUNTAIN:
+      fillRect(g, 0, 0, 32, 32, '#2a2a3a');
+      // Basin
+      fillRect(g, 6, 14, 20, 14, '#6a6a7a');
+      fillRect(g, 8, 16, 16, 10, '#3a6a9a');
+      // Column
+      fillRect(g, 14, 4, 4, 14, '#7a7a8a');
+      // Top basin
+      fillRect(g, 10, 2, 12, 4, '#8a8a9a');
+      fillRect(g, 12, 3, 8, 2, '#4a8aba');
+      // Water sparkle
+      if (variant === 0) { fillRect(g, 11, 20, 2, 2, '#6aafda'); }
+      if (variant === 1) { fillRect(g, 19, 18, 2, 2, '#6aafda'); }
+      if (variant === 2) { fillRect(g, 15, 22, 2, 2, '#6aafda'); }
+      break;
+
+    case TILE.DUNGEON_MERCHANT:
+      fillRect(g, 0, 0, 32, 32, '#2a2a3a');
+      drawPixels(g, [
+        '................',
+        '......0000......',
+        '.....044440.....',
+        '.....04ee40.....',
+        '.....044440.....',
+        '......0000......',
+        '.....033330.....',
+        '....03333330....',
+        '....03300330....',
+        '....03333330....',
+        '.....033330.....',
+        '.....030030.....',
+        '......0..0......',
+        '......0..0......',
+        '.....00..00.....',
+        '................',
+      ], { '0': '#1a1a1a', '3': '#3a3050', '4': '#4a4060', 'e': '#aaaa40' });
+      fillRect(g, 22, 18, 4, 4, '#e0c040');
+      fillRect(g, 23, 19, 2, 2, '#f0d860');
       break;
 
     default:

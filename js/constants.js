@@ -22,6 +22,17 @@ export const TILE = {
   HEALER:        18,
   MERCHANT:      19,
   QUEST_BOARD:   20,
+  // Dungeon decoration tiles
+  PILLAR:           21,
+  WATER:            22,
+  CARPET:           23,
+  RUBBLE:           24,
+  BARREL:           25,
+  BOOKSHELF:        26,
+  WEAPON_RACK:      27,
+  SARCOPHAGUS:      28,
+  FOUNTAIN:         29,
+  DUNGEON_MERCHANT: 30,
 };
 
 
@@ -47,6 +58,16 @@ export const TILE_PROPS = {
   [TILE.HEALER]:        { name: 'Healer',        walkable: true,  transparent: true  },
   [TILE.MERCHANT]:      { name: 'Merchant',      walkable: true,  transparent: true  },
   [TILE.QUEST_BOARD]:   { name: 'Quest Board',   walkable: true,  transparent: true  },
+  [TILE.PILLAR]:           { name: 'Pillar',           walkable: false, transparent: true  },
+  [TILE.WATER]:            { name: 'Pool',             walkable: true,  transparent: true  },
+  [TILE.CARPET]:           { name: 'Carpet',           walkable: true,  transparent: true  },
+  [TILE.RUBBLE]:           { name: 'Rubble',           walkable: true,  transparent: true  },
+  [TILE.BARREL]:           { name: 'Barrel',           walkable: false, transparent: true  },
+  [TILE.BOOKSHELF]:        { name: 'Bookshelf',        walkable: false, transparent: false },
+  [TILE.WEAPON_RACK]:      { name: 'Weapon Rack',      walkable: false, transparent: true  },
+  [TILE.SARCOPHAGUS]:      { name: 'Sarcophagus',      walkable: false, transparent: true  },
+  [TILE.FOUNTAIN]:         { name: 'Fountain',         walkable: false, transparent: true  },
+  [TILE.DUNGEON_MERCHANT]: { name: 'Wandering Trader', walkable: true,  transparent: true  },
 };
 
 // ── Item Features ────────────────────────────────
@@ -832,8 +853,8 @@ export const BOW_RANGE = 6;
 // ── Map Sizes ─────────────────────────────────────
 export const VILLAGE_W = 22;
 export const VILLAGE_H = 16;
-export const DUNGEON_W = 40;
-export const DUNGEON_H = 30;
+export const DUNGEON_W = 80;
+export const DUNGEON_H = 60;
 
 // ── Rendering ─────────────────────────────────────
 export const TILE_SIZE = 48;
@@ -845,12 +866,12 @@ export const GOBLIN_SIGHT_RANGE = 5;
 export const ORC_SIGHT_RANGE = 6;
 
 // ── Dungeon Gen ───────────────────────────────────
-export const MIN_ROOM_SIZE = 4;
-export const MAX_ROOM_SIZE = 8;
-export const MAX_ROOMS = 9;
+export const MIN_ROOM_SIZE = 5;
+export const MAX_ROOM_SIZE = 12;
+export const MAX_ROOMS = 20;
 
-export const ITEMS_PER_FLOOR_MIN = 1;
-export const ITEMS_PER_FLOOR_MAX = 3;
+export const ITEMS_PER_FLOOR_MIN = 3;
+export const ITEMS_PER_FLOOR_MAX = 6;
 
 // ── Inventory ─────────────────────────────────────
 export const BACKPACK_SIZE = 30;
@@ -866,6 +887,16 @@ export const BOSS_FOR_THEME = {
 };
 
 export const ELITE_PREFIXES = ['Savage', 'Frenzied', 'Ancient', 'Corrupted', 'Enraged', 'Cursed', 'Venomous', 'Spectral', 'Blazing', 'Frozen'];
+
+// ── Room Types ──────────────────────────────────
+export const ROOM_TYPE = {
+  NORMAL:        'normal',
+  TREASURE:      'treasure_room',
+  LIBRARY:       'library',
+  ARMORY:        'armory',
+  FOUNTAIN:      'fountain_room',
+  CRYPT_CHAMBER: 'crypt_chamber',
+};
 
 // ── Mage Spells ───────────────────────────────────
 // ── Gold & Shop ──────────────────────────────────
@@ -941,6 +972,16 @@ export const SHOP_INVENTORY = [
   { itemId: 'fire_staff',       price: 50 },
 ];
 
+export const DUNGEON_SHOP_INVENTORY = [
+  { itemId: 'minor_health_pot', price: 12 },
+  { itemId: 'major_health_pot', price: 28 },
+  { itemId: 'mana_potion',      price: 16 },
+  { itemId: 'strength_potion',  price: 30 },
+  { itemId: 'shield_potion',    price: 30 },
+  { itemId: 'haste_potion',     price: 35 },
+  { itemId: 'regen_potion',     price: 32 },
+];
+
 // ── Spells ───────────────────────────────────────
 export const SPELLS = {
   fire_spell: {
@@ -993,3 +1034,144 @@ export const QUEST_POOL = [
   { id: 'collect_100g',   name: 'Fortune Seeker',    type: 'collect',  target: null,             amount: 100,goldReward: 30, xpReward: 40,  desc: 'Accumulate 100 gold',  itemReward: 'strength_potion' },
   { id: 'kill_boss',      name: 'Boss Slayer',       type: 'kill',     target: ENTITY.GOBLIN_WARLORD, amount: 1, goldReward: 60, xpReward: 80, desc: 'Defeat the Goblin Warlord', itemReward: 'oracle_helm' },
 ];
+
+// ── Skill Trees ──────────────────────────────────
+
+export const SKILL_TREES = {
+  warrior: {
+    might: {
+      name: 'Might',
+      skills: [
+        { id: 'power_strike', name: 'Power Strike', maxRank: 3, type: 'passive',
+          desc: ['10% chance for double melee damage', '20% chance for double melee damage', '30% chance for double melee damage'],
+          icon: '⚔' },
+        { id: 'cleave', name: 'Cleave', maxRank: 3, type: 'active', key: 'F', cooldown: 5,
+          desc: ['Hit adjacent enemies for 50% damage', 'Hit adjacent enemies for 75% damage', 'Hit adjacent enemies for 100% damage'],
+          icon: '🌀', requires: 'power_strike' },
+        { id: 'execute', name: 'Execute', maxRank: 1, type: 'active', key: 'G', cooldown: 6,
+          desc: ['Deal 3x damage to enemies below 30% HP'],
+          icon: '💀', requires: 'cleave' },
+      ]
+    },
+    fortitude: {
+      name: 'Fortitude',
+      skills: [
+        { id: 'tough_skin', name: 'Tough Skin', maxRank: 3, type: 'passive',
+          desc: ['+1 armor', '+2 armor', '+3 armor'],
+          icon: '🛡' },
+        { id: 'battle_cry', name: 'Battle Cry', maxRank: 1, type: 'active', key: 'H', cooldown: 12,
+          desc: ['Stun all visible enemies for 2 turns'],
+          icon: '📯', requires: 'tough_skin' },
+        { id: 'bloodlust', name: 'Bloodlust', maxRank: 3, type: 'passive',
+          desc: ['Heal 3 HP on kill', 'Heal 5 HP on kill', 'Heal 8 HP on kill'],
+          icon: '🩸', requires: 'tough_skin' },
+      ]
+    },
+  },
+  mage: {
+    elemental: {
+      name: 'Elemental',
+      skills: [
+        { id: 'empower', name: 'Empower', maxRank: 3, type: 'passive',
+          desc: ['+2 spell damage', '+4 spell damage', '+6 spell damage'],
+          icon: '🔥' },
+        { id: 'frost_mastery', name: 'Frost Mastery', maxRank: 3, type: 'passive',
+          desc: ['Ice shard slows 1 turn', 'Ice shard slows 2 turns', 'Ice shard slows 3 turns'],
+          icon: '❄', requires: 'empower' },
+        { id: 'chain_master', name: 'Chain Master', maxRank: 3, type: 'passive',
+          desc: ['Chain lightning +1 target', 'Chain lightning +2 targets', 'Chain lightning +3 targets'],
+          icon: '⚡', requires: 'empower' },
+      ]
+    },
+    arcane: {
+      name: 'Arcane',
+      skills: [
+        { id: 'mana_flow', name: 'Mana Flow', maxRank: 3, type: 'passive',
+          desc: ['+5 max mana', '+10 max mana', '+15 max mana'],
+          icon: '💧' },
+        { id: 'spell_shield', name: 'Spell Shield', maxRank: 3, type: 'passive',
+          desc: ['10% to negate damage (3 mana)', '20% to negate damage (3 mana)', '30% to negate damage (3 mana)'],
+          icon: '🔮', requires: 'mana_flow' },
+        { id: 'arcane_mastery', name: 'Arcane Mastery', maxRank: 3, type: 'passive',
+          desc: ['All spell costs -1', 'All spell costs -2', 'All spell costs -3'],
+          icon: '✨', requires: 'mana_flow' },
+      ]
+    },
+  },
+  archer: {
+    marksmanship: {
+      name: 'Marksmanship',
+      skills: [
+        { id: 'steady_aim', name: 'Steady Aim', maxRank: 3, type: 'passive',
+          desc: ['+1 ranged damage', '+2 ranged damage', '+3 ranged damage'],
+          icon: '🎯' },
+        { id: 'multishot', name: 'Multishot', maxRank: 3, type: 'active', key: 'F', cooldown: 5,
+          desc: ['Fire at 2 targets', 'Fire at 3 targets', 'Fire at all visible targets'],
+          icon: '🏹', requires: 'steady_aim' },
+        { id: 'headshot', name: 'Headshot', maxRank: 3, type: 'passive',
+          desc: ['10% crit chance (2x damage)', '15% crit chance (2x damage)', '20% crit chance (2x damage)'],
+          icon: '💥', requires: 'steady_aim' },
+      ]
+    },
+    survival: {
+      name: 'Survival',
+      skills: [
+        { id: 'evasion_skill', name: 'Evasion', maxRank: 3, type: 'passive',
+          desc: ['+5% dodge chance', '+10% dodge chance', '+15% dodge chance'],
+          icon: '💨' },
+        { id: 'poison_arrow', name: 'Poison Arrow', maxRank: 3, type: 'active', key: 'G', cooldown: 4,
+          desc: ['Poison for 2 dmg over 3 turns', 'Poison for 3 dmg over 3 turns', 'Poison for 4 dmg over 3 turns'],
+          icon: '🧪', requires: 'evasion_skill' },
+        { id: 'smoke_bomb', name: 'Smoke Bomb', maxRank: 1, type: 'active', key: 'H', cooldown: 10,
+          desc: ['Invisible for 3 turns, enemies lose track'],
+          icon: '💭', requires: 'evasion_skill' },
+      ]
+    },
+  },
+};
+
+// ── Achievements ─────────────────────────────────
+
+export const ACHIEVEMENTS = {
+  // Combat
+  first_blood:    { name: 'First Blood',    desc: 'Kill your first enemy',          icon: '🗡', category: 'combat' },
+  monster_slayer: { name: 'Monster Slayer',  desc: 'Kill 50 enemies',               icon: '⚔', category: 'combat' },
+  massacre:       { name: 'Massacre',        desc: 'Kill 200 enemies',              icon: '💀', category: 'combat' },
+  elite_hunter:   { name: 'Elite Hunter',    desc: 'Defeat an elite enemy',         icon: '✦', category: 'combat' },
+  boss_slayer:    { name: 'Boss Slayer',     desc: 'Defeat a miniboss',             icon: '👑', category: 'combat' },
+  goblin_bane:    { name: 'Goblin Bane',     desc: 'Kill 20 goblins',              icon: '👺', category: 'combat' },
+  undead_purger:  { name: 'Undead Purger',   desc: 'Kill 20 undead creatures',      icon: '☠', category: 'combat' },
+  dragon_slayer:  { name: 'Dragon Slayer',   desc: 'Defeat a dragon-type boss',     icon: '🐉', category: 'combat' },
+
+  // Exploration
+  spelunker:      { name: 'Spelunker',       desc: 'Reach floor 5',                icon: '🕳', category: 'exploration' },
+  deep_diver:     { name: 'Deep Diver',      desc: 'Reach floor 10',               icon: '⛏', category: 'exploration' },
+  abyss_walker:   { name: 'Abyss Walker',    desc: 'Reach floor 20',               icon: '🌀', category: 'exploration' },
+  explorer:       { name: 'Explorer',        desc: 'Discover 10 bestiary entries',  icon: '📖', category: 'exploration' },
+  naturalist:     { name: 'Naturalist',      desc: 'Discover 25 bestiary entries',  icon: '📚', category: 'exploration' },
+  portal_user:    { name: 'Town Portal',     desc: 'Use a portal to return to village', icon: '🌀', category: 'exploration' },
+
+  // Progression
+  level_5:        { name: 'Apprentice',      desc: 'Reach level 5',                icon: '⭐', category: 'progression' },
+  level_10:       { name: 'Veteran',         desc: 'Reach level 10',               icon: '🌟', category: 'progression' },
+  level_20:       { name: 'Legend',           desc: 'Reach level 20',               icon: '💫', category: 'progression' },
+  first_skill:    { name: 'Talented',        desc: 'Learn your first skill',        icon: '📗', category: 'progression' },
+  skill_master:   { name: 'Skill Master',    desc: 'Max out any skill',            icon: '📘', category: 'progression' },
+  quest_complete: { name: 'Errand Runner',   desc: 'Complete your first quest',     icon: '📜', category: 'progression' },
+
+  // Wealth
+  wealthy:        { name: 'Wealthy',         desc: 'Accumulate 500 gold total',     icon: '💰', category: 'wealth' },
+  rich:           { name: 'Rich',            desc: 'Accumulate 2000 gold total',    icon: '👑', category: 'wealth' },
+  shopper:        { name: 'Shopper',         desc: 'Buy 10 items from the shop',    icon: '🛒', category: 'wealth' },
+
+  // Collection
+  collector:      { name: 'Collector',       desc: 'Discover 10 items in armory',   icon: '🎒', category: 'collection' },
+  curator:        { name: 'Curator',         desc: 'Discover 25 items in armory',   icon: '🏛', category: 'collection' },
+  chest_hunter:   { name: 'Chest Hunter',    desc: 'Open 10 chests',               icon: '📦', category: 'collection' },
+  fully_equipped: { name: 'Fully Equipped',  desc: 'Fill all equipment slots',      icon: '🛡', category: 'collection' },
+
+  // Special
+  survivor:       { name: 'Survivor',        desc: 'Die and restart the game',      icon: '💔', category: 'special' },
+  godlike:        { name: 'Godlike',         desc: 'Activate god mode',             icon: '😇', category: 'special', hidden: true },
+  speed_runner:   { name: 'Speed Runner',    desc: 'Reach floor 5 in under 150 turns', icon: '⚡', category: 'special' },
+};

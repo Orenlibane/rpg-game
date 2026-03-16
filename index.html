@@ -101,9 +101,11 @@
         <div class="control-row"><kbd>J</kbd> Heal (Mage)</div>
         <div class="control-row"><kbd>R</kbd> Shoot bow (Archer)</div>
         <div class="control-row"><kbd>C</kbd> Character</div>
+        <div class="control-row"><kbd>V</kbd> Skills</div>
         <div class="control-row"><kbd>B</kbd> Bestiary</div>
         <div class="control-row"><kbd>I</kbd> Armory</div>
         <div class="control-row"><kbd>M</kbd> Map</div>
+        <div class="control-row"><kbd>N</kbd> Achievements</div>
         <div class="control-row"><kbd>P</kbd> Settings</div>
       </div>
     </div>
@@ -133,6 +135,7 @@
           <p>Shoots arrows at enemies from a distance. Press <kbd>R</kbd> to fire. Fast and precise.</p>
         </div>
       </div>
+      <button id="continue-save" class="class-btn continue-btn" style="display:none">Continue</button>
     </div>
   </div>
 
@@ -322,6 +325,42 @@
     </div>
   </div>
 
+  <!-- Skill Tree Overlay -->
+  <div id="skilltree-overlay" class="overlay hidden">
+    <div class="overlay-content skilltree-panel">
+      <div class="skilltree-header">
+        <h1 class="title-skilltree">Skill Tree</h1>
+        <span id="skill-points-display" class="skill-points-badge">0 SP</span>
+        <button id="close-skilltree" class="skilltree-close-btn">X</button>
+      </div>
+      <div class="skilltree-body" id="skilltree-body"></div>
+    </div>
+  </div>
+
+  <!-- Achievement Overlay -->
+  <div id="achievement-overlay" class="overlay hidden">
+    <div class="overlay-content achievement-panel">
+      <div class="achievement-header">
+        <h1 class="title-achievement">Achievements</h1>
+        <span id="achievement-count" class="achievement-count-badge"></span>
+        <button id="close-achievements" class="achievement-close-btn">X</button>
+      </div>
+      <div class="achievement-tabs">
+        <button class="ach-tab active" data-category="all">All</button>
+        <button class="ach-tab" data-category="combat">Combat</button>
+        <button class="ach-tab" data-category="exploration">Explore</button>
+        <button class="ach-tab" data-category="progression">Progress</button>
+        <button class="ach-tab" data-category="wealth">Wealth</button>
+        <button class="ach-tab" data-category="collection">Collection</button>
+        <button class="ach-tab" data-category="special">Special</button>
+      </div>
+      <div id="achievement-list" class="achievement-list"></div>
+    </div>
+  </div>
+
+  <!-- Achievement Toast -->
+  <div id="achievement-toast" class="achievement-toast hidden"></div>
+
   <!-- Item Tooltip Popover -->
   <div id="item-tooltip" class="item-tooltip hidden"></div>
 
@@ -343,9 +382,9 @@
       document.body.appendChild(d);
     };
   </script>
-  <script type="module" src="js/main.js?v=9"></script>
+  <script type="module" src="js/main.js?v=11"></script>
   <script type="module">
-    import('./js/main.js?v=9').catch(function(e) {
+    import('./js/main.js?v=11').catch(function(e) {
       var d = document.createElement('div');
       d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:red;color:white;padding:10px;z-index:9999;font-size:14px';
       d.textContent = 'MODULE LOAD ERROR: ' + e.message;

@@ -6,11 +6,11 @@ import {
   FIRE_SPELL_COST, FIRE_SPELL_RANGE, FIRE_SPELL_POWER, BOW_RANGE,
   ITEMS_PER_FLOOR_MIN, ITEMS_PER_FLOOR_MAX,
   GOBLIN_SIGHT_RANGE, ORC_SIGHT_RANGE,
-  GOLD_REWARDS, HEALER_COST, SHOP_INVENTORY,
-  ATTR_BONUSES, FEATURE_INFO, QUEST_POOL,
-} from './constants.js?v=9';
-import { generateVillage, generateDungeon } from './mapgen.js?v=9';
-import { computeFOV } from './fov.js?v=9';
+  GOLD_REWARDS, HEALER_COST, SHOP_INVENTORY, DUNGEON_SHOP_INVENTORY,
+  ATTR_BONUSES, FEATURE_INFO, QUEST_POOL, SKILL_TREES, ACHIEVEMENTS,
+} from './constants.js?v=11';
+import { generateVillage, generateDungeon } from './mapgen.js?v=11';
+import { computeFOV } from './fov.js?v=11';
 
 function randInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -50,6 +50,7 @@ export const state = {
   showMinimap: false,
   showHealer: false,
   showShop: false,
+  isDungeonShop: false,
   floorTheme: null,       // current floor theme key
   throwMode: false,       // true when player is aiming a throw
   portalPos: null,        // { x, y } if portal exists on current floor
@@ -59,7 +60,20 @@ export const state = {
   activeChest: null,      // reference to the chest being viewed
   showSettings: false,
   showCharSheet: false,
+  showSkillTree: false,
+  showAchievements: false,
   godMode: false,         // unkillable when true
+  // Achievement system
+  achievements: {},       // { [achievementId]: timestamp }
+  achievementToast: null, // { id, name, icon, timer } for popup display
+  stats: {                // cumulative stats for achievement tracking
+    totalKills: 0,
+    totalGoldEarned: 0,
+    chestsOpened: 0,
+    highestFloor: 0,
+    itemsBought: 0,
+    deaths: 0,
+  },
 };
 
 // ── Logging ──────────────────────────────────
@@ -88,6 +102,10 @@ function createEntity(type, x, y) {
       [EQUIP_SLOT.CAPE]: null,
     },
     inventory: [],
+    skills: {},          // { skillId: rank }
+    skillCooldowns: {},  // { skillId: turnsRemaining }
+    skillPoints: 0,
+    invisible: 0,        // turns of invisibility remaining
   };
 }
 
@@ -179,10 +197,35 @@ export function initVillage() {
     state.player.mana = state.player.maxMana;
   }
 
-  state.portalPos = null;
+  // If returning from dungeon via portal, place a return portal near player
+  if (state.lastDungeonFloor > 0) {
+    const px = state.player.x + 1;
+    const py = state.player.y;
+    if (px < state.mapW && state.map[py][px] === TILE.GRASS) {
+      state.map[py][px] = TILE.PORTAL;
+      state.portalPos = { x: px, y: py };
+    } else {
+      // Try other adjacent positions
+      const offsets = [[-1,0],[0,-1],[0,1],[1,1],[-1,-1]];
+      for (const [ox, oy] of offsets) {
+        const tx = state.player.x + ox, ty = state.player.y + oy;
+        if (tx >= 0 && tx < state.mapW && ty >= 0 && ty < state.mapH && state.map[ty][tx] === TILE.GRASS) {
+          state.map[ty][tx] = TILE.PORTAL;
+          state.portalPos = { x: tx, y: ty };
+          break;
+        }
+      }
+    }
+  } else {
+    state.portalPos = null;
+  }
+
   state.revealed = Array.from({ length: state.mapH }, () => new Uint8Array(state.mapW));
   updateFOV();
   log('You arrive at the village. A cave entrance beckons to the north-east.', 'info');
+  if (state.lastDungeonFloor > 0) {
+    log(`A portal shimmers nearby — it leads back to floor ${state.lastDungeonFloor}.`, 'level');
+  }
   log('Visit the Healer (west) or Merchant (east) near the huts.', 'info');
 }
 
@@ -219,8 +262,10 @@ export function enterDungeon(floor = 1) {
   state.mode = 'dungeon';
   state.floor = floor;
   state.map = dungeon.map;
+  if (floor > state.stats.highestFloor) state.stats.highestFloor = floor;
   // Quest: reach floor
   updateQuestProgress('reach', floor);
+  checkAchievements();
   state.mapW = dungeon.map[0].length;
   state.mapH = dungeon.map.length;
   state.stairsPos = dungeon.stairsPos;
@@ -233,13 +278,13 @@ export function enterDungeon(floor = 1) {
 
   // Spawn enemies using theme spawn weights
   state.enemies = [];
-  const enemyCount = 4 + floor * 2 + randInt(0, 3);
+  const enemyCount = 8 + floor * 3 + randInt(0, 5);
   for (let i = 0; i < enemyCount; i++) {
     const type = weightedRandomPick(theme.spawnWeights);
     const room = floorRooms[randInt(1, floorRooms.length - 1)];
     const ex = randInt(room.x + 1, room.x + room.w - 2);
     const ey = randInt(room.y + 1, room.y + room.h - 2);
-    if (!isOccupied(ex, ey)) {
+    if (!isOccupied(ex, ey) && canWalk(ex, ey)) {
       const enemy = createEntity(type, ex, ey);
       // Scale stats by floor
       enemy.maxHp += floor * 2;
@@ -267,14 +312,14 @@ export function enterDungeon(floor = 1) {
     const mbRoom = floorRooms[mbRoomIdx];
     const mbx = mbRoom.cx;
     const mby = mbRoom.cy;
-    if (!isOccupied(mbx, mby)) {
+    if (!isOccupied(mbx, mby) && canWalk(mbx, mby)) {
       const miniboss = createEntity(mbType, mbx, mby);
       miniboss.isMiniboss = true;
       miniboss.elitePrefix = ELITE_PREFIXES[randInt(0, ELITE_PREFIXES.length - 1)];
-      miniboss.maxHp = Math.floor((miniboss.maxHp + floor * 3) * 2.5);
+      miniboss.maxHp = Math.floor((miniboss.maxHp + floor * 2) * 1.6);
       miniboss.hp = miniboss.maxHp;
-      miniboss.power = Math.floor((miniboss.power + Math.floor(floor / 2)) * 1.8);
-      miniboss.armor = (miniboss.armor || 0) + 2;
+      miniboss.power = Math.floor((miniboss.power + Math.floor(floor / 3)) * 1.3);
+      miniboss.armor = (miniboss.armor || 0) + 1;
       state.enemies.push(miniboss);
       log(`A ${miniboss.elitePrefix} ${getEnemyName(miniboss)} guards this floor!`, 'combat');
     }
@@ -305,25 +350,33 @@ export function enterDungeon(floor = 1) {
   // Filter items to appropriate tier for this floor
   const tierMax = Math.min(3, 1 + Math.floor(floor / 2));
   const eligibleItems = allItemIds.filter(id => (ITEMS[id].tier || 0) <= tierMax || ITEMS[id].type === ITEM_TYPE.CONSUMABLE);
+  const isSpecialTile = (x, y) => {
+    const t = state.map[y] && state.map[y][x];
+    return t === TILE.CAVE_STAIRS || t === TILE.PORTAL || t === TILE.CAVE_ENTRANCE ||
+           t === TILE.DUNGEON_MERCHANT || t === TILE.FOUNTAIN || t === TILE.SARCOPHAGUS;
+  };
   for (let i = 0; i < numItems; i++) {
     const room = floorRooms[randInt(1, floorRooms.length - 1)];
     const ix = randInt(room.x + 1, room.x + room.w - 2);
     const iy = randInt(room.y + 1, room.y + room.h - 2);
+    if (isSpecialTile(ix, iy) || !canWalk(ix, iy)) continue; // don't place items on stairs/portals/decorations
     const pool = eligibleItems.length > 0 ? eligibleItems : allItemIds;
     const itemId = pool[randInt(0, pool.length - 1)];
     state.items.push({ x: ix, y: iy, item: { ...ITEMS[itemId] } });
   }
 
-  // Spawn chests (1-2 per floor)
+  // Spawn chests (2-4 per floor)
   state.chests = [];
   state.showChest = false;
   state.activeChest = null;
-  const numChests = randInt(1, 2);
+  const numChests = randInt(2, 4);
   for (let i = 0; i < numChests; i++) {
     const room = floorRooms[randInt(1, floorRooms.length - 1)];
     const cx = randInt(room.x + 1, room.x + room.w - 2);
     const cy = randInt(room.y + 1, room.y + room.h - 2);
-    if (isOccupied(cx, cy)) continue;
+    if (isOccupied(cx, cy) || isSpecialTile(cx, cy)) continue;
+    const tileThere = state.map[cy] && state.map[cy][cx];
+    if (tileThere && !TILE_PROPS[tileThere]?.walkable) continue;
     // Generate chest contents
     const chestItems = [];
     const chestItemCount = randInt(1, 3);
@@ -336,6 +389,29 @@ export function enterDungeon(floor = 1) {
     state.chests.push({ x: cx, y: cy, items: chestItems, gold: chestGold, opened: false });
   }
 
+  // Extra chests in treasure rooms
+  for (const room of floorRooms) {
+    if (room.type === 'treasure_room') {
+      const extraChests = randInt(2, 3);
+      for (let i = 0; i < extraChests; i++) {
+        const cx = randInt(room.x + 1, room.x + room.w - 2);
+        const cy = randInt(room.y + 1, room.y + room.h - 2);
+        if (isOccupied(cx, cy) || isSpecialTile(cx, cy)) continue;
+        const tileThere = state.map[cy] && state.map[cy][cx];
+        if (tileThere && !TILE_PROPS[tileThere]?.walkable) continue;
+        const chestItems = [];
+        const chestItemCount = randInt(2, 4);
+        for (let j = 0; j < chestItemCount; j++) {
+          const pool = eligibleItems.length > 0 ? eligibleItems : allItemIds;
+          const itemId = pool[randInt(0, pool.length - 1)];
+          chestItems.push({ ...ITEMS[itemId] });
+        }
+        const chestGold = randInt(10, 20 + floor * 8);
+        state.chests.push({ x: cx, y: cy, items: chestItems, gold: chestGold, opened: false });
+      }
+    }
+  }
+
   // Place portal every 5 floors (in second room)
   state.portalPos = null;
   if (floor % 5 === 0 && floorRooms.length > 1) {
@@ -345,6 +421,23 @@ export function enterDungeon(floor = 1) {
     state.map[py][px] = TILE.PORTAL;
     state.portalPos = { x: px, y: py };
     log('A shimmering portal to the village has appeared!', 'level');
+  }
+
+  // Dungeon merchant: ~25% chance per floor
+  state.isDungeonShop = false;
+  if (Math.random() < 0.25 && floorRooms.length > 2) {
+    const merchantRoomIdx = randInt(1, floorRooms.length - 2);
+    const merchantRoom = floorRooms[merchantRoomIdx];
+    const mx = merchantRoom.cx;
+    const my = merchantRoom.cy + 1;
+    if (my > merchantRoom.y && my < merchantRoom.y + merchantRoom.h - 1 &&
+        !isOccupied(mx, my) && !isSpecialTile(mx, my)) {
+      const tileThere = state.map[my] && state.map[my][mx];
+      if (tileThere && TILE_PROPS[tileThere]?.walkable) {
+        state.map[my][mx] = TILE.DUNGEON_MERCHANT;
+        log('A wandering merchant has set up shop on this floor.', 'info');
+      }
+    }
   }
 
   state.revealed = Array.from({ length: state.mapH }, () => new Uint8Array(state.mapW));
@@ -445,14 +538,20 @@ function getEnemyNameLower(entity) {
 
 // ── Bestiary ─────────────────────────────────
 
-function recordKill(entityType) {
+function recordKill(entityType, enemy) {
   if (!state.bestiary[entityType]) {
     state.bestiary[entityType] = { kills: 0 };
   }
   state.bestiary[entityType].kills++;
+  state.stats.totalKills++;
   // Quest progress
   updateQuestProgress('kill', entityType);
   updateQuestProgress('kill_any', null);
+  // Achievement: elite/miniboss/boss kills
+  if (enemy && enemy.isElite) unlockAchievement('elite_hunter');
+  if (enemy && enemy.isMiniboss) unlockAchievement('boss_slayer');
+  if (enemy && (entityType === 'ancient_wyrm' || entityType === 'dragon_whelp')) unlockAchievement('dragon_slayer');
+  checkAchievements();
 }
 
 export function getBestiaryEntries() {
@@ -608,10 +707,302 @@ export function closeCharSheet() {
   state.showCharSheet = false;
 }
 
+export function toggleSkillTree() {
+  state.showSkillTree = !state.showSkillTree;
+}
+
+export function closeSkillTree() {
+  state.showSkillTree = false;
+}
+
+// ── Skill Helpers ──────────────────────────────
+
+export function getSkillRank(skillId) {
+  return (state.player && state.player.skills && state.player.skills[skillId]) || 0;
+}
+
+function findSkillDef(skillId) {
+  const tree = SKILL_TREES[state.playerClass];
+  if (!tree) return null;
+  for (const branch of Object.values(tree)) {
+    for (const skill of branch.skills) {
+      if (skill.id === skillId) return skill;
+    }
+  }
+  return null;
+}
+
+export function canLearnSkill(skillId) {
+  const p = state.player;
+  if (!p || p.skillPoints <= 0) return false;
+  const tree = SKILL_TREES[state.playerClass];
+  if (!tree) return false;
+  const def = findSkillDef(skillId);
+  if (!def) return false;
+  const currentRank = getSkillRank(skillId);
+  if (currentRank >= def.maxRank) return false;
+  // Check prerequisite
+  if (def.requires && getSkillRank(def.requires) < 1) return false;
+  return true;
+}
+
+export function learnSkill(skillId) {
+  if (!canLearnSkill(skillId)) return false;
+  const p = state.player;
+  if (!p.skills) p.skills = {};
+  p.skills[skillId] = (p.skills[skillId] || 0) + 1;
+  p.skillPoints--;
+  const def = findSkillDef(skillId);
+  const rank = p.skills[skillId];
+  log(`Learned ${def.name} (rank ${rank})!`, 'level');
+  // Apply passive effects that change stats
+  if (skillId === 'tough_skin') recalcDerivedStats();
+  if (skillId === 'mana_flow') recalcDerivedStats();
+  return true;
+}
+
+export function getSkillTree() {
+  return SKILL_TREES[state.playerClass] || {};
+}
+
+// ── Active Skills ──────────────────────────────
+
+function getAdjacentEnemies() {
+  const px = state.player.x, py = state.player.y;
+  return state.enemies.filter(e => e.hp > 0 && Math.abs(e.x - px) <= 1 && Math.abs(e.y - py) <= 1 && !(e.x === px && e.y === py));
+}
+
+export function useActiveSkill(skillId) {
+  if (state.gameOver || state.pendingLevelUp) return false;
+  const rank = getSkillRank(skillId);
+  if (rank < 1) { log('Skill not learned!', 'info'); return false; }
+  const def = findSkillDef(skillId);
+  if (!def || def.type !== 'active') return false;
+  const p = state.player;
+  const cd = p.skillCooldowns || {};
+  if (cd[skillId] > 0) { log(`${def.name} on cooldown (${cd[skillId]} turns)!`, 'info'); return false; }
+
+  switch (skillId) {
+    case 'cleave': {
+      const targets = getAdjacentEnemies();
+      if (targets.length === 0) { log('No adjacent enemies!', 'info'); return false; }
+      const dmgPct = [0.5, 0.75, 1.0][rank - 1];
+      const power = getEffectivePower(p);
+      for (const t of targets) {
+        const armor = getEffectiveArmor(t);
+        const dmg = Math.max(1, Math.floor(power * dmgPct) - armor + randInt(-1, 1));
+        t.hp -= dmg;
+        log(`Cleave hits ${getEnemyName(t)} for ${dmg}!`, 'combat');
+        if (t.hp <= 0) {
+          t.hp = 0;
+          log(`${getEnemyName(t)} defeated!`, 'combat');
+          recordKill(t.type, t);
+          grantXP(t.xpReward || 8);
+          grantGold(t);
+          dropLoot(t);
+          onKillEffects();
+        }
+      }
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'execute': {
+      const target = findNearestVisibleEnemy(2);
+      if (!target) { log('No enemies nearby!', 'info'); return false; }
+      if (target.hp > target.maxHp * 0.3) { log(`${getEnemyName(target)} has too much HP! (need below 30%)`, 'info'); return false; }
+      const power = getEffectivePower(p);
+      const dmg = Math.max(1, power * 3 - getEffectiveArmor(target));
+      target.hp -= dmg;
+      log(`Execute ${getEnemyName(target)} for ${dmg}!`, 'combat');
+      if (target.hp <= 0) {
+        target.hp = 0;
+        log(`${getEnemyName(target)} executed!`, 'combat');
+        recordKill(target.type, target);
+        grantXP(target.xpReward || 8);
+        grantGold(target);
+        dropLoot(target);
+        onKillEffects();
+      }
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'battle_cry': {
+      const visible = state.enemies.filter(e => e.hp > 0 && state.visibility[e.y] && state.visibility[e.y][e.x]);
+      if (visible.length === 0) { log('No visible enemies!', 'info'); return false; }
+      for (const e of visible) {
+        e.stunTurns = (e.stunTurns || 0) + 2;
+      }
+      log(`Battle Cry stuns ${visible.length} enemies for 2 turns!`, 'combat');
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'multishot': {
+      const maxTargets = rank >= 3 ? 99 : rank + 1;
+      const bowRange = BOW_RANGE + getRangeBonus(p);
+      const targets = findMultipleVisibleEnemies(bowRange, maxTargets);
+      if (targets.length === 0) { log('No enemies in range!', 'info'); return false; }
+      const bowPower = getEffectiveRangedPower(p);
+      for (const t of targets) {
+        state.projectiles.push({ x: t.x, y: t.y, type: 'arrow', ttl: 3 });
+        rangedAttack(t, bowPower, 'arrow');
+      }
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'poison_arrow': {
+      const bowRange = BOW_RANGE + getRangeBonus(p);
+      const target = findNearestVisibleEnemy(bowRange);
+      if (!target) { log('No enemies in range!', 'info'); return false; }
+      const bowPower = getEffectiveRangedPower(p);
+      state.projectiles.push({ x: target.x, y: target.y, type: 'arrow', ttl: 3 });
+      rangedAttack(target, bowPower, 'poison arrow');
+      const poisonDmg = rank + 1; // 2, 3, 4
+      target.poisonDot = { dmg: poisonDmg, turns: 3 };
+      log(`${getEnemyName(target)} is poisoned for ${poisonDmg} per turn!`, 'combat');
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'smoke_bomb': {
+      p.invisible = 3;
+      log('You vanish in a cloud of smoke! Invisible for 3 turns.', 'combat');
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+  }
+  return false;
+}
+
+function onKillEffects() {
+  // Bloodlust passive heal on kill
+  const blRank = getSkillRank('bloodlust');
+  if (blRank > 0) {
+    const heal = [3, 5, 8][blRank - 1];
+    const healed = Math.min(heal, state.player.maxHp - state.player.hp);
+    if (healed > 0) {
+      state.player.hp += healed;
+      log(`Bloodlust heals ${healed} HP!`, 'item');
+    }
+  }
+}
+
+// ── Achievement System ─────────────────────────
+
+function unlockAchievement(id) {
+  if (state.achievements[id]) return; // already unlocked
+  if (!ACHIEVEMENTS[id]) return;
+  state.achievements[id] = Date.now();
+  const ach = ACHIEVEMENTS[id];
+  log(`Achievement Unlocked: ${ach.icon} ${ach.name}!`, 'level');
+  state.achievementToast = { id, name: ach.name, icon: ach.icon, timer: 180 }; // ~3 seconds at 60fps
+}
+
+export function checkAchievements() {
+  const p = state.player;
+  if (!p) return;
+
+  const totalKills = state.stats.totalKills;
+  const bestiary = state.bestiary;
+
+  // Combat
+  if (totalKills >= 1) unlockAchievement('first_blood');
+  if (totalKills >= 50) unlockAchievement('monster_slayer');
+  if (totalKills >= 200) unlockAchievement('massacre');
+
+  // Goblin kills
+  const goblinTypes = ['goblin', 'goblin_shaman', 'goblin_berserker', 'goblin_scout', 'goblin_chief'];
+  const goblinKills = goblinTypes.reduce((sum, t) => sum + (bestiary[t] ? bestiary[t].kills : 0), 0);
+  if (goblinKills >= 20) unlockAchievement('goblin_bane');
+
+  // Undead kills
+  const undeadTypes = ['skeleton', 'zombie', 'wraith', 'phantom', 'death_knight', 'necromancer', 'bone_archer'];
+  const undeadKills = undeadTypes.reduce((sum, t) => sum + (bestiary[t] ? bestiary[t].kills : 0), 0);
+  if (undeadKills >= 20) unlockAchievement('undead_purger');
+
+  // Exploration
+  if (state.stats.highestFloor >= 5) unlockAchievement('spelunker');
+  if (state.stats.highestFloor >= 10) unlockAchievement('deep_diver');
+  if (state.stats.highestFloor >= 20) unlockAchievement('abyss_walker');
+
+  // Bestiary discovery count
+  const discovered = Object.values(bestiary).filter(b => b.kills > 0).length;
+  if (discovered >= 10) unlockAchievement('explorer');
+  if (discovered >= 25) unlockAchievement('naturalist');
+
+  // Progression
+  if (p.level >= 5) unlockAchievement('level_5');
+  if (p.level >= 10) unlockAchievement('level_10');
+  if (p.level >= 20) unlockAchievement('level_20');
+
+  // Skills
+  if (p.skills) {
+    const learnedAny = Object.values(p.skills).some(r => r > 0);
+    if (learnedAny) unlockAchievement('first_skill');
+    // Check if any skill is maxed
+    const tree = SKILL_TREES[state.playerClass];
+    if (tree) {
+      for (const branch of Object.values(tree)) {
+        for (const skill of branch.skills) {
+          if ((p.skills[skill.id] || 0) >= skill.maxRank) {
+            unlockAchievement('skill_master');
+          }
+        }
+      }
+    }
+  }
+
+  // Wealth
+  if (state.stats.totalGoldEarned >= 500) unlockAchievement('wealthy');
+  if (state.stats.totalGoldEarned >= 2000) unlockAchievement('rich');
+  if (state.stats.itemsBought >= 10) unlockAchievement('shopper');
+
+  // Collection
+  const armoryCount = Object.keys(state.armory).length;
+  if (armoryCount >= 10) unlockAchievement('collector');
+  if (armoryCount >= 25) unlockAchievement('curator');
+  if (state.stats.chestsOpened >= 10) unlockAchievement('chest_hunter');
+
+  // Fully equipped
+  if (p.equipment) {
+    const slots = Object.values(p.equipment);
+    if (slots.length >= 6 && slots.every(s => s !== null)) unlockAchievement('fully_equipped');
+  }
+
+  // Speed runner
+  if (state.stats.highestFloor >= 5 && state.turnCount <= 150) unlockAchievement('speed_runner');
+
+  // Quest complete
+  if (state.completedQuestIds.length >= 1) unlockAchievement('quest_complete');
+}
+
+export function getAchievements() {
+  const result = [];
+  for (const [id, def] of Object.entries(ACHIEVEMENTS)) {
+    const unlocked = !!state.achievements[id];
+    if (def.hidden && !unlocked) continue; // hide secret achievements
+    result.push({ id, ...def, unlocked, time: state.achievements[id] || null });
+  }
+  return result;
+}
+
+export function toggleAchievements() {
+  state.showAchievements = !state.showAchievements;
+}
+
+export function closeAchievements() {
+  state.showAchievements = false;
+}
+
 export function applyCheatCode(code) {
   if (code.toLowerCase() === 'godmode') {
     state.godMode = !state.godMode;
     log(state.godMode ? 'God mode ENABLED!' : 'God mode disabled.', 'level');
+    unlockAchievement('godlike');
     return true;
   }
   return false;
@@ -639,6 +1030,7 @@ export function healPlayer() {
 
 export function closeShop() {
   state.showShop = false;
+  state.isDungeonShop = false;
 }
 
 // ── Chest System ─────────────────────────────
@@ -708,7 +1100,8 @@ export function getDiscountedPrice(basePrice) {
 }
 
 export function buyItem(shopIndex) {
-  const entry = SHOP_INVENTORY[shopIndex];
+  const inventory = state.isDungeonShop ? DUNGEON_SHOP_INVENTORY : SHOP_INVENTORY;
+  const entry = inventory[shopIndex];
   if (!entry) return;
   const p = state.player;
   const price = getDiscountedPrice(entry.price);
@@ -727,16 +1120,20 @@ export function buyItem(shopIndex) {
     if (existing) {
       existing.count = (existing.count || 1) + 1;
       p.gold -= price;
+      state.stats.itemsBought++;
       registerArmoryItem(entry.itemId);
       log(`Bought ${item.name} for ${price} gold.`, 'item');
+      checkAchievements();
       return;
     }
   }
   item.count = 1;
   p.inventory.push(item);
   p.gold -= price;
+  state.stats.itemsBought++;
   registerArmoryItem(entry.itemId);
   log(`Bought ${item.name} for ${price} gold.`, 'item');
+  checkAchievements();
 }
 
 export function sellItem(invIndex) {
@@ -744,7 +1141,7 @@ export function sellItem(invIndex) {
   if (invIndex < 0 || invIndex >= p.inventory.length) return;
   const item = p.inventory[invIndex];
   // Sell price = roughly half of shop price, or a base value
-  const shopEntry = SHOP_INVENTORY.find(s => s.itemId === item.id);
+  const shopEntry = SHOP_INVENTORY.find(s => s.itemId === item.id) || DUNGEON_SHOP_INVENTORY.find(s => s.itemId === item.id);
   let sellPrice = shopEntry ? Math.floor(shopEntry.price / 2) : 3;
   if (item.tier === 2) sellPrice = Math.max(sellPrice, 10);
   if (item.tier === 3) sellPrice = Math.max(sellPrice, 25);
@@ -758,7 +1155,8 @@ export function sellItem(invIndex) {
 }
 
 export function getShopInventory() {
-  return SHOP_INVENTORY.map((entry, idx) => ({
+  const inventory = state.isDungeonShop ? DUNGEON_SHOP_INVENTORY : SHOP_INVENTORY;
+  return inventory.map((entry, idx) => ({
     index: idx,
     item: ITEMS[entry.itemId],
     price: entry.price,
@@ -787,6 +1185,12 @@ function recalcDerivedStats() {
   p.power = (p.basePower || 1) + ATTR_BONUSES.str.powerBonus(a.str);
   // Base armor from AGI
   p.armor = (p.baseArmor || 0) + ATTR_BONUSES.agi.armorBonus(a.agi);
+
+  // Skill bonuses
+  const tsRank = (p.skills && p.skills.tough_skin) || 0;
+  if (tsRank > 0) p.armor += tsRank; // +1/+2/+3 armor
+  const mfRank = (p.skills && p.skills.mana_flow) || 0;
+  if (mfRank > 0) p.maxMana += [5, 10, 15][mfRank - 1];
 
   // Keep hp/mana within bounds, heal the difference if max increased
   if (p.maxHp > oldMaxHp) p.hp = Math.min(p.maxHp, p.hp + (p.maxHp - oldMaxHp));
@@ -921,9 +1325,24 @@ export function getPlayerPower() { return getEffectivePower(state.player); }
 export function getPlayerArmor() { return getEffectiveArmor(state.player); }
 
 function attack(attacker, defender) {
-  // Dodge check (AGI-based) for the defender
+  // Spell Shield (mage passive) - negate damage using mana
+  if (defender.type === ENTITY.PLAYER) {
+    const ssRank = getSkillRank('spell_shield');
+    if (ssRank > 0 && defender.mana >= 3) {
+      const shieldChance = [10, 20, 30][ssRank - 1];
+      if (Math.random() * 100 < shieldChance) {
+        defender.mana -= 3;
+        log('Spell Shield absorbs the attack! (-3 mana)', 'combat');
+        return;
+      }
+    }
+  }
+
+  // Dodge check (AGI-based + Evasion skill) for the defender
   if (defender.attrs) {
-    const dodgeChance = ATTR_BONUSES.agi.dodgeChance(defender.attrs.agi);
+    let dodgeChance = ATTR_BONUSES.agi.dodgeChance(defender.attrs.agi);
+    const evRank = defender.type === ENTITY.PLAYER ? getSkillRank('evasion_skill') : 0;
+    if (evRank > 0) dodgeChance += [5, 10, 15][evRank - 1];
     if (Math.random() * 100 < dodgeChance) {
       const aName = attacker.type === ENTITY.PLAYER ? 'You' : getEnemyName(attacker);
       const dName = defender.type === ENTITY.PLAYER ? 'You' : getEnemyNameLower(defender);
@@ -939,6 +1358,18 @@ function attack(attacker, defender) {
   const power = getEffectivePower(attacker);
   const armor = getEffectiveArmor(defender);
   let baseDmg = Math.max(1, power - armor + randInt(-1, 1));
+
+  // Power Strike passive (warrior skill)
+  if (attacker.type === ENTITY.PLAYER) {
+    const psRank = getSkillRank('power_strike');
+    if (psRank > 0) {
+      const chance = [10, 20, 30][psRank - 1];
+      if (Math.random() * 100 < chance) {
+        baseDmg *= 2;
+        log('Power Strike!', 'combat');
+      }
+    }
+  }
 
   // Crit check
   const critChance = getFeatureValue(attacker, 'crit_chance');
@@ -1016,13 +1447,14 @@ function attack(attacker, defender) {
       }
     } else {
       log(`You defeated ${getEnemyNameLower(defender)}!`, 'combat');
-      recordKill(defender.type);
+      recordKill(defender.type, defender);
       let xpAward = defender.xpReward || 8;
       if (defender.isElite) xpAward = Math.floor(xpAward * 2);
       if (defender.isMiniboss) xpAward = Math.floor(xpAward * 3);
       grantXP(xpAward);
       grantGold(defender);
       dropLoot(defender);
+      if (attacker.type === ENTITY.PLAYER) onKillEffects();
     }
   }
   if (attacker.hp <= 0) {
@@ -1038,21 +1470,36 @@ function attack(attacker, defender) {
 
 function rangedAttack(defender, damage, attackName) {
   const armor = getEffectiveArmor(defender);
-  const finalDamage = Math.max(1, damage - armor + randInt(-1, 1));
-  defender.hp -= finalDamage;
+  // Steady Aim bonus
+  const saRank = getSkillRank('steady_aim');
+  if (saRank > 0) damage += saRank;
+  let finalDamage = Math.max(1, damage - armor + randInt(-1, 1));
 
-  log(`Your ${attackName} hits ${getEnemyNameLower(defender)} for ${finalDamage} damage!`, 'combat');
+  // Headshot crit
+  const hsRank = getSkillRank('headshot');
+  let critText = '';
+  if (hsRank > 0) {
+    const critChance = [10, 15, 20][hsRank - 1];
+    if (Math.random() * 100 < critChance) {
+      finalDamage *= 2;
+      critText = ' CRITICAL!';
+    }
+  }
+
+  defender.hp -= finalDamage;
+  log(`Your ${attackName} hits ${getEnemyNameLower(defender)} for ${finalDamage} damage!${critText}`, 'combat');
 
   if (defender.hp <= 0) {
     defender.hp = 0;
     log(`You defeated ${getEnemyNameLower(defender)}!`, 'combat');
-    recordKill(defender.type);
+    recordKill(defender.type, defender);
     let xpAward2 = defender.xpReward || 8;
     if (defender.isElite) xpAward2 = Math.floor(xpAward2 * 2);
     if (defender.isMiniboss) xpAward2 = Math.floor(xpAward2 * 3);
     grantXP(xpAward2);
     grantGold(defender);
     dropLoot(defender);
+    onKillEffects();
   }
 }
 
@@ -1071,7 +1518,8 @@ function grantXP(amount) {
     p.level++;
     p.xpToLevel = Math.floor(p.xpToLevel * 1.5);
     p.statPoints += 2;
-    log(`Level up! You are now level ${p.level}! +2 stat points.`, 'level');
+    p.skillPoints = (p.skillPoints || 0) + 1;
+    log(`Level up! You are now level ${p.level}! +2 stat points, +1 skill point.`, 'level');
   }
 }
 
@@ -1088,12 +1536,31 @@ function grantGold(enemy) {
     gold += Math.floor(gold * chaBonus / 100);
   }
   state.player.gold += gold;
+  state.stats.totalGoldEarned += gold;
   log(`+${gold} gold`, 'item');
+  checkAchievements();
 }
 
 function dropLoot(enemy) {
   const lootTable = LOOT_TABLES[enemy.type];
   if (!lootTable) return;
+
+  // Find a safe drop position (not on stairs/portal)
+  let dropX = enemy.x, dropY = enemy.y;
+  const t = state.map[dropY] && state.map[dropY][dropX];
+  if (t === TILE.CAVE_STAIRS || t === TILE.PORTAL || t === TILE.CAVE_ENTRANCE) {
+    // Shift to an adjacent walkable tile
+    const offsets = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]];
+    for (const [ox, oy] of offsets) {
+      const tx = dropX + ox, ty = dropY + oy;
+      if (tx >= 0 && tx < state.mapW && ty >= 0 && ty < state.mapH && canWalk(tx, ty)) {
+        const tt = state.map[ty][tx];
+        if (tt !== TILE.CAVE_STAIRS && tt !== TILE.PORTAL && tt !== TILE.CAVE_ENTRANCE) {
+          dropX = tx; dropY = ty; break;
+        }
+      }
+    }
+  }
 
   // Elites and minibosses get boosted drop rates and can drop multiple
   const isSpecial = enemy.isElite || enemy.isMiniboss || enemy.isBoss;
@@ -1103,18 +1570,18 @@ function dropLoot(enemy) {
     const effectiveChance = Math.min(drop.chance * chanceMultiplier, 0.95);
     if (Math.random() < effectiveChance) {
       const item = { ...ITEMS[drop.itemId] };
-      state.items.push({ x: enemy.x, y: enemy.y, item });
+      state.items.push({ x: dropX, y: dropY, item });
       log(`${getEnemyName(enemy)} dropped ${item.name}!`, 'item');
       if (!isSpecial) break; // only special enemies can drop multiple items
     }
   }
 
   // Elites and minibosses always drop at least one item
-  if (isSpecial && !state.items.find(i => i.x === enemy.x && i.y === enemy.y)) {
+  if (isSpecial && !state.items.find(i => i.x === dropX && i.y === dropY)) {
     const fallback = lootTable[randInt(0, Math.min(2, lootTable.length - 1))];
     if (fallback) {
       const item = { ...ITEMS[fallback.itemId] };
-      state.items.push({ x: enemy.x, y: enemy.y, item });
+      state.items.push({ x: dropX, y: dropY, item });
       log(`${getEnemyName(enemy)} dropped ${item.name}!`, 'item');
     }
   }
@@ -1410,6 +1877,15 @@ function moveEnemies() {
   for (const enemy of state.enemies) {
     if (enemy.hp <= 0) continue;
 
+    // Stunned enemies skip turn
+    if (enemy.stunTurns > 0) continue;
+
+    // Slowed enemies skip every other turn
+    if (enemy.slowTurns > 0 && state.turnCount % 2 === 0) continue;
+
+    // If player is invisible, enemies don't chase
+    if (state.player.invisible > 0) continue;
+
     const dx = state.player.x - enemy.x;
     const dy = state.player.y - enemy.y;
     const dist = Math.abs(dx) + Math.abs(dy);
@@ -1603,11 +2079,19 @@ export function playerMove(dx, dy) {
     return;
   }
 
-  // Portal back to village
+  // Portal
   if (state.map[ny][nx] === TILE.PORTAL) {
-    log('You step through the portal and return to the village!', 'level');
-    state.lastDungeonFloor = state.floor; // remember where we were
-    initVillage();
+    unlockAchievement('portal_user');
+    if (state.mode === 'dungeon') {
+      log('You step through the portal and return to the village!', 'level');
+      state.lastDungeonFloor = state.floor;
+      initVillage();
+    } else if (state.mode === 'village' && state.lastDungeonFloor > 0) {
+      log(`You step through the portal back to floor ${state.lastDungeonFloor}!`, 'level');
+      const returnFloor = state.lastDungeonFloor;
+      state.lastDungeonFloor = 0;
+      enterDungeon(returnFloor);
+    }
     return;
   }
 
@@ -1620,6 +2104,13 @@ export function playerMove(dx, dy) {
   // Merchant
   if (state.mode === 'village' && state.map[ny][nx] === TILE.MERCHANT) {
     state.showShop = true;
+    return;
+  }
+
+  // Dungeon Merchant
+  if (state.mode === 'dungeon' && state.map[ny][nx] === TILE.DUNGEON_MERCHANT) {
+    state.showShop = true;
+    state.isDungeonShop = true;
     return;
   }
 
@@ -1645,7 +2136,9 @@ export function playerMove(dx, dy) {
     chest.opened = true;
     state.activeChest = chest;
     state.showChest = true;
+    state.stats.chestsOpened++;
     log('You found a treasure chest!', 'item');
+    checkAchievements();
     return;
   }
 
@@ -1668,6 +2161,41 @@ function endTurn() {
     p.ttl--;
     return p.ttl > 0;
   });
+
+  // Tick skill cooldowns
+  const cd = state.player.skillCooldowns;
+  if (cd) {
+    for (const key of Object.keys(cd)) {
+      if (cd[key] > 0) cd[key]--;
+    }
+  }
+
+  // Tick invisibility
+  if (state.player.invisible > 0) {
+    state.player.invisible--;
+    if (state.player.invisible === 0) log('You are no longer invisible.', 'info');
+  }
+
+  // Tick enemy slow/stun effects
+  for (const enemy of state.enemies) {
+    if (enemy.hp <= 0) continue;
+    if (enemy.stunTurns > 0) enemy.stunTurns--;
+    if (enemy.slowTurns > 0) enemy.slowTurns--;
+    // Poison DOT on enemies
+    if (enemy.poisonDot && enemy.poisonDot.turns > 0) {
+      enemy.hp -= enemy.poisonDot.dmg;
+      enemy.poisonDot.turns--;
+      log(`${getEnemyName(enemy)} takes ${enemy.poisonDot.dmg} poison damage!`, 'combat');
+      if (enemy.hp <= 0) {
+        enemy.hp = 0;
+        log(`${getEnemyName(enemy)} dies from poison!`, 'combat');
+        recordKill(enemy.type, enemy);
+        grantXP(enemy.xpReward || 8);
+        grantGold(enemy);
+        dropLoot(enemy);
+      }
+    }
+  }
 
   // Mana regen (1 per turn for mages, or if player has max mana via INT)
   if (state.player.maxMana > 0 && state.player.mana < state.player.maxMana) {
@@ -1709,6 +2237,15 @@ function endTurn() {
 
   state.enemies = state.enemies.filter(e => e.hp > 0);
   updateFOV();
+
+  // Decay achievement toast
+  if (state.achievementToast && state.achievementToast.timer > 0) {
+    state.achievementToast.timer--;
+    if (state.achievementToast.timer <= 0) state.achievementToast = null;
+  }
+
+  // Auto-save after every turn
+  autoSave();
 }
 
 // ── Throw System ────────────────────────────
@@ -1811,14 +2348,23 @@ export function castSpell(spellId) {
   const spell = SPELLS[spellId];
   if (!spell) return false;
 
-  if (state.player.mana < spell.manaCost) {
+  // Arcane Mastery reduces spell costs
+  const amRank = getSkillRank('arcane_mastery');
+  const costReduction = amRank > 0 ? amRank : 0;
+  const manaCost = Math.max(1, spell.manaCost - costReduction);
+
+  if (state.player.mana < manaCost) {
     log('Not enough mana!', 'info');
     return false;
   }
 
+  // Empower bonus damage
+  const empRank = getSkillRank('empower');
+  const empBonus = empRank > 0 ? [2, 4, 6][empRank - 1] : 0;
+
   if (spell.type === 'self_heal') {
-    state.player.mana -= spell.manaCost;
-    const healed = Math.min(spell.healAmount, state.player.maxHp - state.player.hp);
+    state.player.mana -= manaCost;
+    const healed = Math.min(spell.healAmount + empBonus, state.player.maxHp - state.player.hp);
     state.player.hp += healed;
     log(`You cast ${spell.name}. Restored ${healed} HP.`, 'item');
     endTurn();
@@ -1832,24 +2378,35 @@ export function castSpell(spellId) {
       log('No enemies in range!', 'info');
       return false;
     }
-    state.player.mana -= spell.manaCost;
+    state.player.mana -= manaCost;
     const projType = spellId === 'ice_shard' ? 'ice' : 'fire';
     state.projectiles.push({ x: target.x, y: target.y, type: projType, ttl: 3 });
-    const spellDamage = spell.damage + getSpellBonus(state.player);
+    const spellDamage = spell.damage + getSpellBonus(state.player) + empBonus;
     rangedAttack(target, spellDamage, spell.name.toLowerCase());
+    // Frost Mastery: ice shard slows
+    if (spellId === 'ice_shard' && target.hp > 0) {
+      const fmRank = getSkillRank('frost_mastery');
+      if (fmRank > 0) {
+        target.slowTurns = (target.slowTurns || 0) + fmRank;
+        log(`${getEnemyName(target)} is slowed for ${fmRank} turns!`, 'combat');
+      }
+    }
     endTurn();
     return true;
   }
 
   if (spell.type === 'ranged_multi') {
     const spellRange = spell.range + getRangeBonus(state.player);
-    const targets = findMultipleVisibleEnemies(spellRange, spell.maxTargets || 3);
+    // Chain Master: extra targets
+    const cmRank = getSkillRank('chain_master');
+    const maxTargets = (spell.maxTargets || 3) + cmRank;
+    const targets = findMultipleVisibleEnemies(spellRange, maxTargets);
     if (targets.length === 0) {
       log('No enemies in range!', 'info');
       return false;
     }
-    state.player.mana -= spell.manaCost;
-    const spellDamage = spell.damage + getSpellBonus(state.player);
+    state.player.mana -= manaCost;
+    const spellDamage = spell.damage + getSpellBonus(state.player) + empBonus;
     for (const target of targets) {
       state.projectiles.push({ x: target.x, y: target.y, type: 'lightning', ttl: 3 });
       rangedAttack(target, spellDamage, spell.name.toLowerCase());
@@ -1864,8 +2421,93 @@ export function castSpell(spellId) {
 // ── Restart ──────────────────────────────────
 
 export function restartGame() {
+  state.stats.deaths++;
+  unlockAchievement('survivor');
+  // Preserve achievements and stats across restarts
+  const savedAchievements = { ...state.achievements };
+  const savedStats = { ...state.stats };
   state.player = null;
   state.pendingLevelUp = false;
   state.bestiary = {};
   state.phase = 'class_select';
+  state.achievements = savedAchievements;
+  state.stats = savedStats;
+  deleteSave();
+}
+
+// ── Save / Load System ──────────────────────────
+
+function serializeState() {
+  const snap = {};
+  for (const key of Object.keys(state)) {
+    if (key === 'visibility' || key === 'achievementToast') continue; // transient
+    const val = state[key];
+    if (val === null || val === undefined) {
+      snap[key] = val;
+    } else if (Array.isArray(val) && val.length > 0 && val[0] instanceof Uint8Array) {
+      // 2D Uint8Array (map, revealed)
+      snap[key] = val.map(row => Array.from(row));
+    } else {
+      snap[key] = val;
+    }
+  }
+  return snap;
+}
+
+function deserializeState(snap) {
+  for (const key of Object.keys(snap)) {
+    if (key === 'visibility' || key === 'achievementToast') continue;
+    const val = snap[key];
+    if (Array.isArray(val) && val.length > 0 && Array.isArray(val[0]) &&
+        (key === 'map' || key === 'revealed')) {
+      state[key] = val.map(row => new Uint8Array(row));
+    } else {
+      state[key] = val;
+    }
+  }
+  // Recompute transient fields
+  state.visibility = Array.from({ length: state.mapH }, () => new Uint8Array(state.mapW));
+  state.achievementToast = null;
+  updateFOV();
+}
+
+function autoSave() {
+  try {
+    const json = JSON.stringify(serializeState());
+    localStorage.setItem('rpg_save', json);
+  } catch (_) { /* silently fail if storage full */ }
+}
+
+export function saveGame() {
+  try {
+    const json = JSON.stringify(serializeState());
+    localStorage.setItem('rpg_save', json);
+    log('Game saved.', 'info');
+    return true;
+  } catch (_) {
+    log('Failed to save game.', 'combat');
+    return false;
+  }
+}
+
+export function loadGame() {
+  const raw = localStorage.getItem('rpg_save');
+  if (!raw) return false;
+  try {
+    const snap = JSON.parse(raw);
+    deserializeState(snap);
+    log('Game loaded.', 'info');
+    return true;
+  } catch (_) {
+    log('Failed to load save.', 'combat');
+    return false;
+  }
+}
+
+export function hasSaveGame() {
+  return localStorage.getItem('rpg_save') !== null;
+}
+
+export function deleteSave() {
+  localStorage.removeItem('rpg_save');
 }

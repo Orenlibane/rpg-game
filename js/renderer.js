@@ -1,10 +1,10 @@
-import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO } from './constants.js?v=9';
+import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS } from './constants.js?v=11';
 
 // Lookups for bestiary
 const BASE_STATS_LOOKUP = BASE_STATS;
 const GOLD_LOOKUP = GOLD_REWARDS;
-import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js?v=9';
-import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet } from './engine.js?v=9';
+import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js?v=11';
+import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements } from './engine.js?v=11';
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
@@ -337,7 +337,16 @@ function updateUI() {
   // Character sheet overlay
   updateCharacterSheet();
 
-  // Spells panel (mage only)
+  // Skill tree overlay
+  updateSkillTreeOverlay();
+
+  // Achievement overlay
+  updateAchievementOverlay();
+
+  // Achievement toast
+  updateAchievementToast();
+
+  // Spells panel (mage only) — now shows abilities for all classes
   updateSpellsPanel();
 
   // Active effects display
@@ -591,31 +600,225 @@ function updateEffectsDisplay() {
   }
 }
 
+// ── Skill Tree Overlay Rendering ────────────
+
+function updateSkillTreeOverlay() {
+  const overlay = document.getElementById('skilltree-overlay');
+  if (!overlay) return;
+  if (!state.showSkillTree) {
+    overlay.classList.add('hidden');
+    return;
+  }
+  overlay.classList.remove('hidden');
+
+  const p = state.player;
+  if (!p) return;
+
+  // Update skill points display
+  document.getElementById('skill-points-display').textContent = `${p.skillPoints || 0} SP`;
+
+  const body = document.getElementById('skilltree-body');
+  body.innerHTML = '';
+
+  const tree = getSkillTree();
+  if (!tree || Object.keys(tree).length === 0) return;
+
+  for (const [branchKey, branch] of Object.entries(tree)) {
+    const branchDiv = document.createElement('div');
+    branchDiv.className = 'st-branch';
+
+    const branchTitle = document.createElement('h3');
+    branchTitle.className = 'st-branch-title';
+    branchTitle.textContent = branch.name;
+    branchDiv.appendChild(branchTitle);
+
+    for (const skill of branch.skills) {
+      const rank = getSkillRank(skill.id);
+      const canLearn = canLearnSkill(skill.id);
+      const maxed = rank >= skill.maxRank;
+
+      const skillDiv = document.createElement('div');
+      skillDiv.className = 'st-skill' + (rank > 0 ? ' st-learned' : '') + (maxed ? ' st-maxed' : '') + (canLearn ? ' st-available' : '');
+
+      const header = document.createElement('div');
+      header.className = 'st-skill-header';
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'st-skill-name';
+      nameSpan.textContent = `${skill.icon || ''} ${skill.name}`;
+      header.appendChild(nameSpan);
+
+      const rankSpan = document.createElement('span');
+      rankSpan.className = 'st-skill-rank';
+      rankSpan.textContent = `${rank}/${skill.maxRank}`;
+      header.appendChild(rankSpan);
+
+      if (skill.type === 'active' && skill.key) {
+        const keySpan = document.createElement('span');
+        keySpan.className = 'st-skill-key';
+        keySpan.textContent = skill.key;
+        header.appendChild(keySpan);
+      }
+
+      skillDiv.appendChild(header);
+
+      const descDiv = document.createElement('div');
+      descDiv.className = 'st-skill-desc';
+      const descIdx = Math.min(rank > 0 ? rank - 1 : 0, skill.desc.length - 1);
+      descDiv.textContent = skill.desc[descIdx];
+      if (rank > 0 && rank < skill.maxRank && skill.desc[rank]) {
+        descDiv.textContent += ` → ${skill.desc[rank]}`;
+      }
+      skillDiv.appendChild(descDiv);
+
+      if (skill.type === 'active') {
+        const cdDiv = document.createElement('div');
+        cdDiv.className = 'st-skill-meta';
+        cdDiv.textContent = `Active | CD: ${skill.cooldown} turns`;
+        if (rank > 0 && p.skillCooldowns && p.skillCooldowns[skill.id] > 0) {
+          cdDiv.textContent += ` (${p.skillCooldowns[skill.id]} turns left)`;
+        }
+        skillDiv.appendChild(cdDiv);
+      } else {
+        const typeDiv = document.createElement('div');
+        typeDiv.className = 'st-skill-meta';
+        typeDiv.textContent = 'Passive';
+        skillDiv.appendChild(typeDiv);
+      }
+
+      if (canLearn) {
+        const btn = document.createElement('button');
+        btn.className = 'st-learn-btn';
+        btn.textContent = rank > 0 ? 'Upgrade' : 'Learn';
+        btn.addEventListener('click', () => {
+          learnSkill(skill.id);
+          updateSkillTreeOverlay();
+        });
+        skillDiv.appendChild(btn);
+      }
+
+      branchDiv.appendChild(skillDiv);
+    }
+
+    body.appendChild(branchDiv);
+  }
+}
+
+// ── Achievement Overlay Rendering ────────────
+
+let achActiveTab = 'all';
+
+function updateAchievementOverlay() {
+  const overlay = document.getElementById('achievement-overlay');
+  if (!state.showAchievements) {
+    overlay.classList.add('hidden');
+    return;
+  }
+  overlay.classList.remove('hidden');
+
+  const achievements = getAchievements();
+  const unlocked = achievements.filter(a => a.unlocked).length;
+  const total = Object.keys(ACHIEVEMENTS).length;
+
+  document.getElementById('achievement-count').textContent = `${unlocked}/${total}`;
+
+  // Tab handling
+  const tabs = overlay.querySelectorAll('.ach-tab');
+  tabs.forEach(tab => {
+    const cat = tab.dataset.category;
+    tab.classList.toggle('active', cat === achActiveTab);
+    tab.onclick = () => {
+      achActiveTab = cat;
+      updateAchievementOverlay();
+    };
+  });
+
+  // Filter
+  const filtered = achActiveTab === 'all'
+    ? achievements
+    : achievements.filter(a => a.category === achActiveTab);
+
+  const list = document.getElementById('achievement-list');
+  list.innerHTML = '';
+
+  for (const ach of filtered) {
+    const div = document.createElement('div');
+    div.className = `ach-entry${ach.unlocked ? ' ach-unlocked' : ' ach-locked'}`;
+    div.innerHTML = `
+      <span class="ach-icon">${ach.unlocked ? ach.icon : '?'}</span>
+      <div class="ach-info">
+        <div class="ach-name">${ach.unlocked ? ach.name : (ach.hidden ? '???' : ach.name)}</div>
+        <div class="ach-desc">${ach.unlocked ? ach.desc : (ach.hidden ? 'Hidden achievement' : ach.desc)}</div>
+      </div>
+      ${ach.unlocked ? '<span class="ach-check">✓</span>' : ''}
+    `;
+    list.appendChild(div);
+  }
+}
+
+function updateAchievementToast() {
+  const toastEl = document.getElementById('achievement-toast');
+  if (!state.achievementToast) {
+    toastEl.classList.add('hidden');
+    return;
+  }
+  const t = state.achievementToast;
+  toastEl.classList.remove('hidden');
+  toastEl.innerHTML = `<span class="toast-icon">${t.icon}</span> Achievement: ${t.name}`;
+}
+
 // ── Spells Panel Rendering ──────────────────
 
 function updateSpellsPanel() {
   const panel = document.getElementById('spells-panel');
   if (!panel) return;
 
-  if (state.playerClass !== PLAYER_CLASS.MAGE) {
-    panel.style.display = 'none';
-    return;
-  }
-
-  panel.style.display = '';
   const grid = document.getElementById('spells-grid');
   grid.innerHTML = '';
+  const h3 = panel.querySelector('h3');
 
-  for (const spell of Object.values(SPELLS)) {
-    const div = document.createElement('div');
-    const canCast = state.player.mana >= spell.manaCost;
-    div.className = 'spell-slot' + (canCast ? '' : ' disabled');
-    div.innerHTML = `
-      <span class="spell-key">${spell.key.toUpperCase()}</span>
-      <span class="spell-name">${spell.name}</span>
-      <span class="spell-cost">${spell.manaCost} MP</span>
-    `;
-    grid.appendChild(div);
+  if (state.playerClass === PLAYER_CLASS.MAGE) {
+    panel.style.display = '';
+    if (h3) h3.textContent = 'Spells';
+    for (const spell of Object.values(SPELLS)) {
+      const amRank = getSkillRank('arcane_mastery');
+      const cost = Math.max(1, spell.manaCost - (amRank > 0 ? amRank : 0));
+      const div = document.createElement('div');
+      const canCast = state.player.mana >= cost;
+      div.className = 'spell-slot' + (canCast ? '' : ' disabled');
+      div.innerHTML = `
+        <span class="spell-key">${spell.key.toUpperCase()}</span>
+        <span class="spell-name">${spell.name}</span>
+        <span class="spell-cost">${cost} MP</span>
+      `;
+      grid.appendChild(div);
+    }
+  } else {
+    // Show active skills for warrior/archer
+    const tree = SKILL_TREES[state.playerClass];
+    if (!tree) { panel.style.display = 'none'; return; }
+    const activeSkills = [];
+    for (const branch of Object.values(tree)) {
+      for (const skill of branch.skills) {
+        if (skill.type === 'active' && getSkillRank(skill.id) > 0) {
+          activeSkills.push(skill);
+        }
+      }
+    }
+    if (activeSkills.length === 0) { panel.style.display = 'none'; return; }
+    panel.style.display = '';
+    if (h3) h3.textContent = 'Abilities';
+    for (const skill of activeSkills) {
+      const cd = (state.player.skillCooldowns && state.player.skillCooldowns[skill.id]) || 0;
+      const div = document.createElement('div');
+      div.className = 'spell-slot' + (cd > 0 ? ' disabled' : '');
+      div.innerHTML = `
+        <span class="spell-key">${skill.key}</span>
+        <span class="spell-name">${skill.name}</span>
+        <span class="spell-cost">${cd > 0 ? cd + ' CD' : 'Ready'}</span>
+      `;
+      grid.appendChild(div);
+    }
   }
 }
 
@@ -674,6 +877,18 @@ function updateSideMinimap() {
         mctx.fillStyle = merchantColor;
       } else if (tile === TILE.QUEST_BOARD) {
         mctx.fillStyle = '#c08040';
+      } else if (tile === TILE.DUNGEON_MERCHANT) {
+        mctx.fillStyle = '#e0c040';
+      } else if (tile === TILE.PILLAR) {
+        mctx.fillStyle = '#6a6a7a';
+      } else if (tile === TILE.WATER) {
+        mctx.fillStyle = '#2a4a6a';
+      } else if (tile === TILE.CARPET) {
+        mctx.fillStyle = '#8a3030';
+      } else if (tile === TILE.FOUNTAIN) {
+        mctx.fillStyle = '#3a6a9a';
+      } else if (tile === TILE.BOOKSHELF) {
+        mctx.fillStyle = '#4a3010';
       } else if (tile === TILE.GRASS) {
         mctx.fillStyle = grassColor;
       } else if (tile === TILE.DIRT) {
@@ -1165,6 +1380,12 @@ function updateShopOverlay() {
   }
   overlay.classList.remove('hidden');
 
+  // Update title based on shop type
+  const shopTitle = overlay.querySelector('.title-shop');
+  if (shopTitle) {
+    shopTitle.textContent = state.isDungeonShop ? 'Wandering Trader' : 'Merchant';
+  }
+
   const p = state.player;
   document.getElementById('shop-gold').textContent = `Your gold: ${p.gold}`;
 
@@ -1647,6 +1868,18 @@ function updateMinimap() {
         mctx.fillStyle = stairsColor;
       } else if (tile === TILE.CAVE_ENTRANCE) {
         mctx.fillStyle = entranceColor;
+      } else if (tile === TILE.DUNGEON_MERCHANT) {
+        mctx.fillStyle = '#e0c040';
+      } else if (tile === TILE.PILLAR) {
+        mctx.fillStyle = '#6a6a7a';
+      } else if (tile === TILE.WATER) {
+        mctx.fillStyle = '#2a4a6a';
+      } else if (tile === TILE.CARPET) {
+        mctx.fillStyle = '#8a3030';
+      } else if (tile === TILE.FOUNTAIN) {
+        mctx.fillStyle = '#3a6a9a';
+      } else if (tile === TILE.BOOKSHELF) {
+        mctx.fillStyle = '#4a3010';
       } else if (props.walkable) {
         mctx.fillStyle = floorColor;
       } else {

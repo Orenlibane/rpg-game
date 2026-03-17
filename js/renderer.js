@@ -1805,6 +1805,7 @@ document.getElementById('shop-tab-sell').addEventListener('click', () => {
 
 function updateBlacksmithOverlay() {
   const overlay = document.getElementById('blacksmith-overlay');
+  if (!overlay) return;
   if (!state.showBlacksmith) {
     overlay.classList.add('hidden');
     return;

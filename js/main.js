@@ -548,7 +548,7 @@ document.getElementById('close-shop').addEventListener('click', () => {
 });
 
 // Blacksmith
-document.getElementById('close-blacksmith').addEventListener('click', () => {
+document.getElementById('close-blacksmith')?.addEventListener('click', () => {
   closeBlacksmith();
   render();
 });

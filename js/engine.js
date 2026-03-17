@@ -10,10 +10,10 @@ import {
   ATTR_BONUSES, FEATURE_INFO, QUEST_POOL, SKILL_TREES, ACHIEVEMENTS,
   BOSS_SKILLS, ITEM_SETS, PRESTIGE,
   FISH_LOOT, ARENA_CONFIG,
-} from './constants.js?v=16';
+} from './constants.js?v=17';
 import { t } from './i18n.js';
-import { generateVillage, generateDungeon, generateArenaMap } from './mapgen.js?v=16';
-import { computeFOV } from './fov.js?v=16';
+import { generateVillage, generateDungeon, generateArenaMap } from './mapgen.js?v=17';
+import { computeFOV } from './fov.js?v=17';
 
 function randInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -3025,6 +3025,93 @@ export function declinePrestige() {
   enterDungeon(state.floor + 1);
 }
 
+// ── Cloud Auth ──────────────────────────────────
+
+let authToken = sessionStorage.getItem('rpg_auth_token') || null;
+let authUsername = sessionStorage.getItem('rpg_auth_user') || null;
+let cloudSaveTimer = null;
+const CLOUD_SAVE_INTERVAL = 30000; // 30 seconds
+
+export function getAuthToken() { return authToken; }
+export function getAuthUsername() { return authUsername; }
+export function isLoggedIn() { return !!authToken; }
+
+export function setAuth(token, username) {
+  authToken = token;
+  authUsername = username;
+  if (token) {
+    sessionStorage.setItem('rpg_auth_token', token);
+    sessionStorage.setItem('rpg_auth_user', username);
+  } else {
+    sessionStorage.removeItem('rpg_auth_token');
+    sessionStorage.removeItem('rpg_auth_user');
+  }
+}
+
+export async function apiRegister(username, password) {
+  const res = await fetch('/api/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+  return res.json();
+}
+
+export async function apiLogin(username, password) {
+  const res = await fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+  return res.json();
+}
+
+async function cloudSave() {
+  if (!authToken) return;
+  try {
+    const snap = serializeState();
+    await fetch('/api/save', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + authToken
+      },
+      body: JSON.stringify({ save: snap })
+    });
+  } catch (_) { /* silent fail — localStorage is the backup */ }
+}
+
+export async function cloudLoad() {
+  if (!authToken) return null;
+  try {
+    const res = await fetch('/api/load', {
+      headers: { 'Authorization': 'Bearer ' + authToken }
+    });
+    const data = await res.json();
+    return data.save || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+export function startCloudSync() {
+  if (cloudSaveTimer) clearInterval(cloudSaveTimer);
+  if (!authToken) return;
+  cloudSaveTimer = setInterval(() => {
+    if (state.phase === 'playing') cloudSave();
+  }, CLOUD_SAVE_INTERVAL);
+}
+
+export async function checkDbStatus() {
+  try {
+    const res = await fetch('/api/status');
+    const data = await res.json();
+    return data.db === true;
+  } catch (_) {
+    return false;
+  }
+}
+
 // ── Save / Load System ──────────────────────────
 
 function serializeState() {
@@ -3089,6 +3176,21 @@ export function loadGame() {
   try {
     const snap = JSON.parse(raw);
     deserializeState(snap);
+    log(t('log.game_loaded'), 'info');
+    return true;
+  } catch (_) {
+    log(t('log.load_failed'), 'combat');
+    return false;
+  }
+}
+
+export async function loadGameFromCloud() {
+  const snap = await cloudLoad();
+  if (!snap) return false;
+  try {
+    deserializeState(snap);
+    // Also cache locally
+    localStorage.setItem('rpg_save', JSON.stringify(snap));
     log(t('log.game_loaded'), 'info');
     return true;
   } catch (_) {

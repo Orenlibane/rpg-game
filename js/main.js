@@ -7,19 +7,149 @@ import {
   toggleCharSheet, closeCharSheet,
   toggleSkillTree, closeSkillTree, useActiveSkill, getSkillRank,
   toggleAchievements, closeAchievements,
-  loadGame, hasSaveGame, deleteSave,
+  loadGame, hasSaveGame, deleteSave, loadGameFromCloud,
   useTownPortal,
   activatePrestige, declinePrestige,
   closeFishing, castLine, reelIn,
   closeArena, enterArena, nextArenaWave, leaveArena,
   gameSettings, updateSetting, pickupItem,
-} from './engine.js?v=16';
-import { render, resizeCanvas } from './renderer.js?v=16';
-import { PLAYER_CLASS, PRESTIGE } from './constants.js?v=16';
+  apiRegister, apiLogin, setAuth, isLoggedIn, getAuthUsername,
+  startCloudSync, checkDbStatus,
+} from './engine.js?v=17';
+import { render, resizeCanvas } from './renderer.js?v=17';
+import { PLAYER_CLASS, PRESTIGE } from './constants.js?v=17';
 import { initI18n, setLanguage, applyStaticTranslations, t } from './i18n.js';
 
 // ── Initialize i18n ─────────────────────────
 initI18n(gameSettings.language);
+
+// ── Login / Register ────────────────────────
+
+const loginOverlay = document.getElementById('login-overlay');
+const loginError = document.getElementById('login-error');
+const loginUsernameInput = document.getElementById('login-username');
+const loginPasswordInput = document.getElementById('login-password');
+const btnLogin = document.getElementById('btn-login');
+const btnRegister = document.getElementById('btn-register');
+const btnPlayOffline = document.getElementById('btn-play-offline');
+
+function showLoginError(msg) {
+  loginError.textContent = msg;
+  loginError.style.display = '';
+}
+
+function hideLoginError() {
+  loginError.style.display = 'none';
+}
+
+function showLoginOverlay() {
+  loginOverlay.classList.remove('hidden');
+}
+
+function hideLoginOverlay() {
+  loginOverlay.classList.add('hidden');
+}
+
+function updateUserBadge() {
+  const el = document.getElementById('game-version');
+  if (el && isLoggedIn()) {
+    el.textContent = `v17 | ${getAuthUsername()}`;
+  }
+}
+
+async function handleLogin() {
+  hideLoginError();
+  const username = loginUsernameInput.value.trim();
+  const password = loginPasswordInput.value;
+  if (!username || !password) { showLoginError('Enter username and password'); return; }
+
+  btnLogin.disabled = true;
+  btnLogin.textContent = '...';
+  try {
+    const res = await apiLogin(username, password);
+    if (res.error) { showLoginError(res.error); return; }
+    setAuth(res.token, res.username);
+    startCloudSync();
+    hideLoginOverlay();
+    updateUserBadge();
+
+    // Try to load cloud save
+    const cloudLoaded = await loadGameFromCloud();
+    if (cloudLoaded) {
+      classSelectEl.classList.add('hidden');
+      if (state.playerClass === PLAYER_CLASS.MAGE) addManaLevelUpBtn();
+      render();
+    } else if (hasSaveGame()) {
+      continueSaveBtn.style.display = '';
+    }
+  } catch (e) {
+    showLoginError('Connection failed');
+  } finally {
+    btnLogin.disabled = false;
+    btnLogin.textContent = 'Login';
+  }
+}
+
+async function handleRegister() {
+  hideLoginError();
+  const username = loginUsernameInput.value.trim();
+  const password = loginPasswordInput.value;
+  if (!username || !password) { showLoginError('Enter username and password'); return; }
+
+  btnRegister.disabled = true;
+  btnRegister.textContent = '...';
+  try {
+    const res = await apiRegister(username, password);
+    if (res.error) { showLoginError(res.error); return; }
+    setAuth(res.token, res.username);
+    startCloudSync();
+    hideLoginOverlay();
+    updateUserBadge();
+  } catch (e) {
+    showLoginError('Connection failed');
+  } finally {
+    btnRegister.disabled = false;
+    btnRegister.textContent = 'Register';
+  }
+}
+
+btnLogin.addEventListener('click', handleLogin);
+btnRegister.addEventListener('click', handleRegister);
+btnPlayOffline.addEventListener('click', () => {
+  hideLoginOverlay();
+});
+
+// Allow Enter key in login form
+loginPasswordInput.addEventListener('keydown', (e) => {
+  e.stopPropagation();
+  if (e.key === 'Enter') handleLogin();
+});
+loginUsernameInput.addEventListener('keydown', (e) => {
+  e.stopPropagation();
+  if (e.key === 'Enter') loginPasswordInput.focus();
+});
+
+// On load: check if DB is available and show login, or skip
+(async () => {
+  const dbReady = await checkDbStatus();
+  if (dbReady) {
+    if (isLoggedIn()) {
+      // Already have a session token (page refresh)
+      startCloudSync();
+      updateUserBadge();
+      // Try cloud load
+      const cloudLoaded = await loadGameFromCloud();
+      if (cloudLoaded) {
+        classSelectEl.classList.add('hidden');
+        if (state.playerClass === PLAYER_CLASS.MAGE) addManaLevelUpBtn();
+        render();
+      }
+    } else {
+      showLoginOverlay();
+    }
+  }
+  // If no DB, just proceed with localStorage (offline mode)
+})();
 
 // ── Class Selection ──────────────────────────
 

@@ -44,7 +44,7 @@
     <div id="ui-panel">
       <!-- Player Stats -->
       <div id="stats-panel" class="panel">
-        <h2>Cave Diver <span id="game-version" style="font-size:10px;color:#555;font-weight:normal;">v16</span></h2>
+        <h2>Cave Diver <span id="game-version" style="font-size:10px;color:#555;font-weight:normal;">v17</span></h2>
         <div id="class-display" class="class-badge">Warrior</div>
         <div id="prestige-badge" style="display: none;"></div>
         <div id="floor-display" class="stat-row">Village</div>
@@ -118,6 +118,25 @@
         <h3 data-i18n="ui.boss_skills">Boss Skills</h3>
         <div id="boss-skills-grid"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- Login/Register Overlay -->
+  <div id="login-overlay" class="overlay hidden">
+    <div class="overlay-content login-panel">
+      <h1 class="title-login">Cave Diver</h1>
+      <p class="login-subtitle">Cloud Save</p>
+      <div id="login-error" class="login-error" style="display:none"></div>
+      <div class="login-form">
+        <input type="text" id="login-username" class="login-input" placeholder="Username" autocomplete="username" maxlength="30">
+        <input type="password" id="login-password" class="login-input" placeholder="Password" autocomplete="current-password">
+        <div class="login-buttons">
+          <button id="btn-login" class="login-btn login-btn-primary">Login</button>
+          <button id="btn-register" class="login-btn login-btn-secondary">Register</button>
+        </div>
+      </div>
+      <button id="btn-play-offline" class="login-btn login-btn-offline">Play Offline</button>
+      <p class="login-hint">Offline saves use browser storage only</p>
     </div>
   </div>
 
@@ -496,9 +515,9 @@
       document.body.appendChild(d);
     };
   </script>
-  <script type="module" src="js/main.js?v=16"></script>
+  <script type="module" src="js/main.js?v=17"></script>
   <script type="module">
-    import('./js/main.js?v=16').catch(function(e) {
+    import('./js/main.js?v=17').catch(function(e) {
       var d = document.createElement('div');
       d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:red;color:white;padding:10px;z-index:9999;font-size:14px';
       d.textContent = 'MODULE LOAD ERROR: ' + e.message;

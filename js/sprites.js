@@ -1,5 +1,5 @@
-import { TILE, TILE_SIZE, ENTITY } from './constants.js?v=18';
-import { gameSettings } from './engine.js?v=18';
+import { TILE, TILE_SIZE, ENTITY } from './constants.js?v=19';
+import { gameSettings } from './engine.js?v=19';
 
 const cache = {};
 const tileSeedCache = {};
@@ -47,7 +47,7 @@ housesSheet.onload = () => {
   // Invalidate village tile caches
   for (const key of Object.keys(tileSeedCache)) {
     if (key.startsWith(TILE.HUT + '_') || key.startsWith(TILE.HEALER + '_') ||
-        key.startsWith(TILE.MERCHANT + '_')) {
+        key.startsWith(TILE.MERCHANT + '_') || key.startsWith(TILE.BLACKSMITH + '_')) {
       delete tileSeedCache[key];
     }
   }
@@ -560,6 +560,52 @@ function buildTileSprite(tileType, variant) {
         ], { '0': '#1a1a1a', 'c': '#e8c8a0', 'e': '#2a2a2a', 'B': '#8a6a2a' });
         fillRect(g, 22, 18, 4, 4, '#e0c040');
         fillRect(g, 23, 19, 2, 2, '#f0d860');
+      }
+      break;
+
+    case TILE.BLACKSMITH:
+      fillRect(g, 0, 0, 32, 32, '#2d5a1e');
+      if (housesReady) {
+        const crop = HOUSE_CROPS.healer;
+        g.save();
+        g.setTransform(1, 0, 0, 1, 0, 0);
+        g.imageSmoothingEnabled = false;
+        const scale = Math.min(S / crop.w, S / crop.h);
+        const dw = crop.w * scale, dh = crop.h * scale;
+        const dx = (S - dw) / 2, dy = S - dh;
+        g.drawImage(housesSheet, crop.x, crop.y, crop.w, crop.h, dx, dy, dw, dh);
+        g.restore();
+        // Anvil icon overlay
+        g.save();
+        g.setTransform(1, 0, 0, 1, 0, 0);
+        g.fillStyle = '#808090';
+        g.fillRect(S - 16, 1, 12, 4);
+        g.fillRect(S - 14, 5, 8, 3);
+        g.fillStyle = '#6a4a2a';
+        g.fillRect(S - 11, 8, 2, 4);
+        g.restore();
+      } else {
+        drawPixels(g, [
+          '................',
+          '......0000......',
+          '.....0cccc0.....',
+          '.....0ceec0.....',
+          '.....0cccc0.....',
+          '......0000......',
+          '.....0AAAA0.....',
+          '....0AAAAAA0....',
+          '....0AA00AA0....',
+          '....0AAAAAA0....',
+          '.....0AAAA0.....',
+          '.....0A00A0.....',
+          '......0..0......',
+          '......0..0......',
+          '.....00..00.....',
+          '................',
+        ], { '0': '#1a1a1a', 'c': '#e8c8a0', 'e': '#2a2a2a', 'A': '#808090' });
+        // Anvil on the side
+        fillRect(g, 20, 14, 6, 3, '#808090');
+        fillRect(g, 21, 17, 4, 2, '#6a6a7a');
       }
       break;
 

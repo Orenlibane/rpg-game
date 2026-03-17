@@ -245,6 +245,13 @@ Object.assign(translations.en, {
   'arena.next_wave': 'Next Wave',
   'arena.leave_arena': 'Leave Arena',
 
+  // Blacksmith
+  'blacksmith.title': 'Blacksmith',
+  'blacksmith.craft': 'Craft',
+  'blacksmith.leave': 'Leave',
+  'log.crafted_item': 'Crafted {name}!',
+  'log.not_enough_materials': 'Not enough materials!',
+
   // Item popup
   'item.use': 'Use',
   'item.equip': 'Equip',
@@ -726,6 +733,13 @@ Object.assign(translations.he, {
   'arena.total_gold': 'סה"כ זהב: {n}ז',
   'arena.next_wave': 'הגל הבא',
   'arena.leave_arena': 'עזוב את הזירה',
+
+  // Blacksmith
+  'blacksmith.title': 'נפח',
+  'blacksmith.craft': 'צור',
+  'blacksmith.leave': 'עזוב',
+  'log.crafted_item': 'יצרת {name}!',
+  'log.not_enough_materials': 'אין מספיק חומרים!',
 
   // Item popup
   'item.use': 'השתמש',

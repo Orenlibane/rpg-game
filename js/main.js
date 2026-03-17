@@ -12,12 +12,13 @@ import {
   activatePrestige, declinePrestige,
   closeFishing, castLine, reelIn,
   closeArena, enterArena, nextArenaWave, leaveArena,
+  closeBlacksmith, craftItem,
   gameSettings, updateSetting, pickupItem,
   apiRegister, apiLogin, setAuth, isLoggedIn, getAuthUsername,
   startCloudSync, checkDbStatus,
-} from './engine.js?v=18';
-import { render, resizeCanvas } from './renderer.js?v=18';
-import { PLAYER_CLASS, PRESTIGE } from './constants.js?v=18';
+} from './engine.js?v=19';
+import { render, resizeCanvas } from './renderer.js?v=19';
+import { PLAYER_CLASS, PRESTIGE } from './constants.js?v=19';
 import { initI18n, setLanguage, applyStaticTranslations, t } from './i18n.js';
 
 // ── Initialize i18n ─────────────────────────
@@ -53,7 +54,7 @@ function hideLoginOverlay() {
 function updateUserBadge() {
   const el = document.getElementById('game-version');
   if (el && isLoggedIn()) {
-    el.textContent = `v18 | ${getAuthUsername()}`;
+    el.textContent = `v19 | ${getAuthUsername()}`;
   }
 }
 
@@ -291,6 +292,7 @@ document.addEventListener('keydown', (e) => {
     if (state.showChest) { closeChest(); render(); return; }
     if (state.showHealer) { closeHealer(); render(); return; }
     if (state.showShop) { closeShop(); render(); return; }
+    if (state.showBlacksmith) { closeBlacksmith(); render(); return; }
     if (state.showQuestBoard) { closeQuestBoard(); render(); return; }
     if (state.showSettings) { closeSettings(); render(); return; }
     if (state.showCharSheet) { closeCharSheet(); render(); return; }
@@ -317,6 +319,7 @@ document.addEventListener('keydown', (e) => {
   if (state.showMinimap) return;
   if (state.showHealer) return;
   if (state.showShop) return;
+  if (state.showBlacksmith) return;
   if (state.showQuestBoard) return;
   if (state.showSettings) return;
   if (state.showCharSheet) return;
@@ -541,6 +544,12 @@ document.getElementById('close-quest').addEventListener('click', () => {
 // Shop
 document.getElementById('close-shop').addEventListener('click', () => {
   closeShop();
+  render();
+});
+
+// Blacksmith
+document.getElementById('close-blacksmith').addEventListener('click', () => {
+  closeBlacksmith();
   render();
 });
 

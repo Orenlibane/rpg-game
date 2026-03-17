@@ -3,7 +3,7 @@ import {
   DUNGEON_W, DUNGEON_H,
   MIN_ROOM_SIZE, MAX_ROOM_SIZE, MAX_ROOMS,
   FLOOR_THEMES, ROOM_TYPE,
-} from './constants.js?v=18';
+} from './constants.js?v=19';
 
 // ── Village (fixed layout) ───────────────────────
 
@@ -59,6 +59,9 @@ export function generateVillage() {
 
   // Arena (south-center)
   map[13][12] = TILE.ARENA;
+
+  // Blacksmith (north-east area, near huts)
+  map[5][20] = TILE.BLACKSMITH;
 
   // Player start position
   const playerStart = { x: 11, y: 9 };

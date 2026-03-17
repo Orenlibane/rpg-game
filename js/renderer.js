@@ -1,11 +1,11 @@
-import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE } from './constants.js?v=18';
+import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE, CRAFTING_RECIPES } from './constants.js?v=19';
 import { t } from './i18n.js';
 
 // Lookups for bestiary
 const BASE_STATS_LOOKUP = BASE_STATS;
 const GOLD_LOOKUP = GOLD_REWARDS;
-import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js?v=18';
-import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers } from './engine.js?v=18';
+import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js?v=19';
+import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith } from './engine.js?v=19';
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
@@ -476,6 +476,9 @@ function updateUI() {
 
   // Shop overlay
   updateShopOverlay();
+
+  // Blacksmith overlay
+  updateBlacksmithOverlay();
 
   // Chest overlay
   updateChestOverlay();
@@ -1797,6 +1800,63 @@ document.getElementById('shop-tab-sell').addEventListener('click', () => {
   shopTab = 'sell';
   render();
 });
+
+// ── Blacksmith Overlay ──────────────────────
+
+function updateBlacksmithOverlay() {
+  const overlay = document.getElementById('blacksmith-overlay');
+  if (!state.showBlacksmith) {
+    overlay.classList.add('hidden');
+    return;
+  }
+  overlay.classList.remove('hidden');
+
+  const p = state.player;
+  const goldEl = document.getElementById('blacksmith-gold');
+  goldEl.innerHTML = `${t('ui.gold')}: <strong>${p.gold}</strong>`;
+
+  const list = document.getElementById('blacksmith-recipes');
+  list.innerHTML = '';
+
+  for (let i = 0; i < CRAFTING_RECIPES.length; i++) {
+    const recipe = CRAFTING_RECIPES[i];
+    const outputItem = ITEMS[recipe.output];
+    if (!outputItem) continue;
+
+    // Check if player can craft
+    let canCraft = p.gold >= recipe.gold && p.inventory.length < BACKPACK_SIZE;
+    const matParts = [];
+    for (const [matId, qty] of Object.entries(recipe.materials)) {
+      const mat = ITEMS[matId];
+      const matName = mat ? mat.name : matId;
+      const count = p.inventory.filter(it => it.id === matId).reduce((sum, it) => sum + (it.qty || 1), 0);
+      const has = count >= qty;
+      if (!has) canCraft = false;
+      matParts.push(`<span class="${has ? 'bs-has' : 'bs-lack'}">${matName} ${count}/${qty}</span>`);
+    }
+
+    const div = document.createElement('div');
+    div.className = 'bs-recipe' + (canCraft ? '' : ' bs-unavailable');
+    div.innerHTML = `
+      <div class="bs-recipe-info">
+        <div class="bs-recipe-name">${recipe.name}</div>
+        <div class="bs-recipe-mats">${matParts.join(' + ')}</div>
+      </div>
+      <div class="bs-recipe-cost">${recipe.gold}g</div>
+      <button class="bs-craft-btn" data-idx="${i}" ${canCraft ? '' : 'disabled'}>${t('blacksmith.craft')}</button>
+    `;
+    list.appendChild(div);
+  }
+
+  // Bind craft buttons
+  list.querySelectorAll('.bs-craft-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const idx = parseInt(e.target.dataset.idx);
+      craftItem(idx);
+      render();
+    });
+  });
+}
 
 // ── Chest Overlay ───────────────────────────
 

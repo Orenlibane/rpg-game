@@ -35,6 +35,7 @@ export const TILE = {
   DUNGEON_MERCHANT: 30,
   FISHING_SPOT:     31,
   ARENA:            32,
+  BLACKSMITH:       33,
 };
 
 
@@ -72,6 +73,7 @@ export const TILE_PROPS = {
   [TILE.DUNGEON_MERCHANT]: { name: 'Wandering Trader', walkable: true,  transparent: true  },
   [TILE.FISHING_SPOT]:     { name: 'Fishing Spot',     walkable: true,  transparent: true  },
   [TILE.ARENA]:            { name: 'Arena',            walkable: true,  transparent: true  },
+  [TILE.BLACKSMITH]:       { name: 'Blacksmith',       walkable: true,  transparent: true  },
 };
 
 // ── Item Features ────────────────────────────────
@@ -393,7 +395,34 @@ export const ITEMS = {
   shield_potion:    { id: 'shield_potion',    name: 'Shield Potion',  type: ITEM_TYPE.CONSUMABLE, effect: { name: 'Shield',   stat: 'armor',  amount: 3, turns: 15 }, icon: 'PD', desc: '+3 Armor for 15 turns', stackable: true, maxStack: 20 },
   haste_potion:     { id: 'haste_potion',     name: 'Haste Potion',   type: ITEM_TYPE.CONSUMABLE, effect: { name: 'Haste',    stat: 'haste',  amount: 1, turns: 10 }, icon: 'PF', desc: 'Double attack for 10 turns', stackable: true, maxStack: 20 },
   regen_potion:     { id: 'regen_potion',     name: 'Regen Potion',   type: ITEM_TYPE.CONSUMABLE, effect: { name: 'Regen',    stat: 'regen',  amount: 2, turns: 20 }, icon: 'PR', desc: 'Regen 2 HP/turn for 20 turns', stackable: true, maxStack: 20 },
+
+  // ── Crafting Materials ────────────────────────
+  bone_fragment:    { id: 'bone_fragment',    name: 'Bone Fragment',    type: 'material', icon: 'MB', desc: 'A shard of bone. Used in crafting.', stackable: true, maxStack: 50 },
+  spider_silk:      { id: 'spider_silk',      name: 'Spider Silk',      type: 'material', icon: 'MS', desc: 'Strong silk thread. Used in crafting.', stackable: true, maxStack: 50 },
+  iron_ore:         { id: 'iron_ore',         name: 'Iron Ore',         type: 'material', icon: 'MI', desc: 'Raw iron ore. Used in crafting.', stackable: true, maxStack: 50 },
+  dark_essence:     { id: 'dark_essence',     name: 'Dark Essence',     type: 'material', icon: 'MD', desc: 'A wisp of dark energy. Used in crafting.', stackable: true, maxStack: 50 },
+  dragon_scale:     { id: 'dragon_scale',     name: 'Dragon Scale',     type: 'material', icon: 'MR', desc: 'A shimmering scale. Used in crafting.', stackable: true, maxStack: 50 },
+  crystal_shard:    { id: 'crystal_shard',    name: 'Crystal Shard',    type: 'material', icon: 'MC', desc: 'A glowing crystal. Used in crafting.', stackable: true, maxStack: 50 },
 };
+
+// ── Crafting Recipes ─────────────────────────────
+export const CRAFTING_RECIPES = [
+  // Tier 2
+  { name: 'Reinforced Sword', output: 'iron_sword',     gold: 30,  materials: { iron_ore: 3 } },
+  { name: 'Silk Armor',       output: 'chain_mail',      gold: 25,  materials: { spider_silk: 4 } },
+  { name: 'Bone Cape',        output: 'worn_cloak',      gold: 20,  materials: { bone_fragment: 3 } },
+  { name: 'Venom Blade',      output: 'venom_fang',      gold: 35,  materials: { spider_silk: 2, iron_ore: 2 } },
+  { name: 'Frost Wand',       output: 'frost_wand',      gold: 40,  materials: { iron_ore: 2, dark_essence: 1 } },
+  // Tier 3
+  { name: 'Dark Blade',       output: 'shadow_dagger',   gold: 60,  materials: { dark_essence: 3, iron_ore: 2 } },
+  { name: 'Dragonfire Axe',   output: 'inferno_axe',     gold: 80,  materials: { dragon_scale: 2, iron_ore: 3 } },
+  { name: 'Crystal Staff',    output: 'seer_orb',        gold: 70,  materials: { crystal_shard: 2, dark_essence: 2 } },
+  { name: 'Vampiric Edge',    output: 'vampiric_blade',  gold: 75,  materials: { dark_essence: 3, crystal_shard: 1 } },
+  { name: 'Dragon Plate',     output: 'plate_armor',     gold: 100, materials: { dragon_scale: 4, iron_ore: 3 } },
+  { name: 'Oracle Crown',     output: 'oracle_helm',     gold: 90,  materials: { crystal_shard: 2, dark_essence: 2 } },
+  { name: 'Lucky Mantle',     output: 'lucky_cloak',     gold: 85,  materials: { crystal_shard: 2, spider_silk: 3 } },
+  { name: 'Thornmail Vest',   output: 'thornmail',       gold: 65,  materials: { iron_ore: 3, bone_fragment: 2, crystal_shard: 1 } },
+];
 
 // ── Floor Themes ─────────────────────────────────
 export const FLOOR_THEME = {
@@ -488,6 +517,7 @@ export const LOOT_TABLES = {
     { itemId: 'iron_gauntlets',   chance: 0.08 },
     { itemId: 'iron_greaves',     chance: 0.08 },
     { itemId: 'mana_potion',      chance: 0.10 },
+    { itemId: 'iron_ore',         chance: 0.30 },
   ],
   [ENTITY.SKELETON]: [
     { itemId: 'minor_health_pot', chance: 0.25 },
@@ -496,12 +526,14 @@ export const LOOT_TABLES = {
     { itemId: 'leather_boots',    chance: 0.10 },
     { itemId: 'worn_cloak',       chance: 0.08 },
     { itemId: 'skull_helm',       chance: 0.04 },
+    { itemId: 'bone_fragment',    chance: 0.35 },
   ],
   [ENTITY.SPIDER]: [
     { itemId: 'antidote',         chance: 0.40 },
     { itemId: 'minor_health_pot', chance: 0.25 },
     { itemId: 'leather_gloves',   chance: 0.06 },
     { itemId: 'leather_boots',    chance: 0.06 },
+    { itemId: 'spider_silk',      chance: 0.35 },
   ],
   [ENTITY.TROLL]: [
     { itemId: 'major_health_pot', chance: 0.35 },
@@ -514,6 +546,7 @@ export const LOOT_TABLES = {
     { itemId: 'regen_potion',     chance: 0.08 },
     { itemId: 'thornmail',        chance: 0.04 },
     { itemId: 'inferno_axe',      chance: 0.03 },
+    { itemId: 'iron_ore',         chance: 0.25 },
   ],
   [ENTITY.DARK_MAGE]: [
     { itemId: 'mana_potion',      chance: 0.40 },
@@ -526,6 +559,7 @@ export const LOOT_TABLES = {
     { itemId: 'shield_potion',    chance: 0.08 },
     { itemId: 'haste_potion',     chance: 0.06 },
     { itemId: 'seer_orb',         chance: 0.03 },
+    { itemId: 'dark_essence',     chance: 0.20 },
   ],
   [ENTITY.BAT]: [
     { itemId: 'minor_health_pot', chance: 0.20 },
@@ -547,6 +581,7 @@ export const LOOT_TABLES = {
     { itemId: 'shield_potion',    chance: 0.08 },
     { itemId: 'vampiric_blade',   chance: 0.04 },
     { itemId: 'lucky_cloak',      chance: 0.03 },
+    { itemId: 'dark_essence',     chance: 0.20 },
   ],
   [ENTITY.GOBLIN_SHAMAN]: [
     { itemId: 'mana_potion',      chance: 0.35 },
@@ -579,6 +614,8 @@ export const LOOT_TABLES = {
     { itemId: 'haste_potion',     chance: 0.30 },
     { itemId: 'inferno_axe',      chance: 0.15 },
     { itemId: 'holy_crown',       chance: 0.05 },
+    { itemId: 'crystal_shard',    chance: 0.25 },
+    { itemId: 'iron_ore',         chance: 0.50 },
   ],
   [ENTITY.SPIDER_QUEEN]: [
     { itemId: 'shadow_dagger',    chance: 0.35 },
@@ -589,6 +626,8 @@ export const LOOT_TABLES = {
     { itemId: 'venom_fang',       chance: 0.20 },
     { itemId: 'shadow_gloves',    chance: 0.06 },
     { itemId: 'shadow_boots',     chance: 0.06 },
+    { itemId: 'crystal_shard',    chance: 0.25 },
+    { itemId: 'spider_silk',      chance: 0.50 },
   ],
   [ENTITY.LICH]: [
     { itemId: 'fire_staff',       chance: 0.35 },
@@ -602,6 +641,8 @@ export const LOOT_TABLES = {
     { itemId: 'arcane_circlet',   chance: 0.07 },
     { itemId: 'arcane_robe',      chance: 0.06 },
     { itemId: 'arcane_wraps',     chance: 0.06 },
+    { itemId: 'crystal_shard',    chance: 0.30 },
+    { itemId: 'dark_essence',     chance: 0.50 },
   ],
   [ENTITY.MYCELIUM_LORD]: [
     { itemId: 'plate_armor',      chance: 0.30 },
@@ -609,6 +650,8 @@ export const LOOT_TABLES = {
     { itemId: 'major_health_pot', chance: 0.60 },
     { itemId: 'antidote',         chance: 0.50 },
     { itemId: 'spiked_gloves',    chance: 0.25 },
+    { itemId: 'crystal_shard',    chance: 0.20 },
+    { itemId: 'bone_fragment',    chance: 0.50 },
   ],
   [ENTITY.FIRE_ELEMENTAL]: [
     { itemId: 'fire_staff',       chance: 0.35 },
@@ -620,6 +663,8 @@ export const LOOT_TABLES = {
     { itemId: 'vampiric_blade',   chance: 0.10 },
     { itemId: 'dragon_helm',      chance: 0.06 },
     { itemId: 'dragon_plate',     chance: 0.05 },
+    { itemId: 'crystal_shard',    chance: 0.30 },
+    { itemId: 'dragon_scale',     chance: 0.40 },
   ],
   [ENTITY.FROST_GIANT]: [
     { itemId: 'frost_wand',       chance: 0.35 },
@@ -837,6 +882,8 @@ export const LOOT_TABLES = {
     { itemId: 'lucky_cloak',      chance: 0.10 },
     { itemId: 'dragon_gauntlets', chance: 0.07 },
     { itemId: 'dragon_greaves',   chance: 0.07 },
+    { itemId: 'dragon_scale',     chance: 0.30 },
+    { itemId: 'crystal_shard',    chance: 0.25 },
   ],
   [ENTITY.ANCIENT_WYRM]: [
     { itemId: 'steel_blade',      chance: 0.40 },
@@ -851,6 +898,8 @@ export const LOOT_TABLES = {
     { itemId: 'shadow_vest',      chance: 0.08 },
     { itemId: 'dragon_helm',      chance: 0.08 },
     { itemId: 'dragon_plate',     chance: 0.08 },
+    { itemId: 'crystal_shard',    chance: 0.40 },
+    { itemId: 'dragon_scale',     chance: 0.50 },
   ],
 };
 

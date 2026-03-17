@@ -9,11 +9,11 @@ import {
   GOLD_REWARDS, HEALER_COST, SHOP_INVENTORY, DUNGEON_SHOP_INVENTORY,
   ATTR_BONUSES, FEATURE_INFO, QUEST_POOL, SKILL_TREES, ACHIEVEMENTS,
   BOSS_SKILLS, ITEM_SETS, PRESTIGE,
-  FISH_LOOT, ARENA_CONFIG,
-} from './constants.js?v=18';
+  FISH_LOOT, ARENA_CONFIG, CRAFTING_RECIPES,
+} from './constants.js?v=19';
 import { t } from './i18n.js';
-import { generateVillage, generateDungeon, generateArenaMap } from './mapgen.js?v=18';
-import { computeFOV } from './fov.js?v=18';
+import { generateVillage, generateDungeon, generateArenaMap } from './mapgen.js?v=19';
+import { computeFOV } from './fov.js?v=19';
 
 function randInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -53,6 +53,7 @@ export const state = {
   showMinimap: false,
   showHealer: false,
   showShop: false,
+  showBlacksmith: false,
   isDungeonShop: false,
   floorTheme: null,       // current floor theme key
   throwMode: false,       // true when player is aiming a throw
@@ -1473,6 +1474,75 @@ export function closeShop() {
   state.isDungeonShop = false;
 }
 
+// ── Blacksmith / Crafting ────────────────────────
+
+export function closeBlacksmith() {
+  state.showBlacksmith = false;
+}
+
+export function craftItem(recipeIndex) {
+  const recipe = CRAFTING_RECIPES[recipeIndex];
+  if (!recipe) return;
+
+  const p = state.player;
+
+  // Check gold
+  if (p.gold < recipe.gold) {
+    log(t('log.not_enough_gold'), 'info');
+    return;
+  }
+
+  // Check materials
+  for (const [matId, qty] of Object.entries(recipe.materials)) {
+    const count = p.inventory.filter(it => it.id === matId).reduce((sum, it) => sum + (it.qty || 1), 0);
+    if (count < qty) {
+      log(t('log.not_enough_materials'), 'info');
+      return;
+    }
+  }
+
+  // Check backpack space
+  if (p.inventory.length >= BACKPACK_SIZE) {
+    log(t('log.backpack_full'), 'info');
+    return;
+  }
+
+  // Deduct gold
+  p.gold -= recipe.gold;
+
+  // Deduct materials
+  for (const [matId, qty] of Object.entries(recipe.materials)) {
+    let remaining = qty;
+    for (let i = p.inventory.length - 1; i >= 0 && remaining > 0; i--) {
+      if (p.inventory[i].id === matId) {
+        const stack = p.inventory[i].qty || 1;
+        if (stack <= remaining) {
+          remaining -= stack;
+          p.inventory.splice(i, 1);
+        } else {
+          p.inventory[i].qty = stack - remaining;
+          remaining = 0;
+        }
+      }
+    }
+  }
+
+  // Create crafted item
+  const itemDef = ITEMS[recipe.output];
+  if (!itemDef) return;
+  const crafted = { ...itemDef };
+  if (crafted.stackable) crafted.qty = 1;
+  p.inventory.push(crafted);
+
+  // Track in armory
+  if (!state.armory[recipe.output]) {
+    state.armory[recipe.output] = { count: 0 };
+  }
+  state.armory[recipe.output].count++;
+
+  log(t('log.crafted_item', { name: crafted.name }), 'item');
+}
+
 // ── Chest System ─────────────────────────────
 
 export function closeChest() {
@@ -2636,6 +2706,12 @@ export function playerMove(dx, dy) {
   // Merchant
   if (state.mode === 'village' && state.map[ny][nx] === TILE.MERCHANT) {
     state.showShop = true;
+    return;
+  }
+
+  // Blacksmith
+  if (state.mode === 'village' && state.map[ny][nx] === TILE.BLACKSMITH) {
+    state.showBlacksmith = true;
     return;
   }
 

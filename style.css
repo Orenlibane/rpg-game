@@ -932,6 +932,56 @@ button:hover, .choice-btn:hover {
 }
 .cheat-submit-btn:hover { color: #c0c0c0; border-color: #5a5a6a; }
 
+/* Settings toggle controls */
+.settings-labeled-row {
+  justify-content: space-between;
+}
+.settings-label {
+  color: #aaa;
+  font-size: 12px;
+}
+.settings-toggle-group {
+  display: flex;
+  gap: 2px;
+}
+.settings-opt {
+  background: #1a1a2a;
+  border: 1px solid #2a2a3a;
+  color: #666;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.settings-opt:first-child { border-radius: 4px 0 0 4px; }
+.settings-opt:last-child { border-radius: 0 4px 4px 0; }
+.settings-opt.active {
+  background: #2a2a4a;
+  color: #c0c0ff;
+  border-color: #4a4a7a;
+}
+.settings-opt:hover { border-color: #4a4a6a; }
+
+.settings-toggle {
+  background: #1a1a2a;
+  border: 1px solid #2a2a3a;
+  color: #666;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 4px 14px;
+  cursor: pointer;
+  border-radius: 4px;
+  min-width: 40px;
+  transition: all 0.15s;
+}
+.settings-toggle.active {
+  background: #1a3a1a;
+  color: #60e060;
+  border-color: #2a5a2a;
+}
+.settings-toggle:hover { border-color: #4a4a6a; }
+
 /* ── Quest Board ─────────────────────────────── */
 
 .quest-panel {
@@ -2178,4 +2228,503 @@ button:hover, .choice-btn:hover {
 @keyframes toast-slide-in {
   from { transform: translateX(-50%) translateY(-40px); opacity: 0; }
   to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+/* ── Boss Skills Panel ─────────────────────── */
+#boss-skills-panel h3 {
+  color: #e0c040;
+  margin-bottom: 6px;
+}
+.boss-skill-slot {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  border: 1px solid #2a2a3a;
+  border-radius: 4px;
+  margin-bottom: 3px;
+  background: rgba(224, 192, 64, 0.05);
+  gap: 6px;
+}
+.boss-skill-slot:hover { border-color: #e0c040; }
+.boss-skill-icon { font-size: 14px; }
+.boss-skill-name { color: #e0c040; flex: 1; font-size: 11px; }
+.boss-skill-tag {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-weight: bold;
+}
+.boss-skill-tag.active-tag {
+  background: #2a3a2a;
+  color: #60e060;
+  border: 1px solid #3a5a3a;
+}
+.boss-skill-tag.passive-tag {
+  background: #1a1a2e;
+  color: #8888cc;
+  border: 1px solid #2a2a4a;
+}
+.boss-skill-tag.consumed-tag {
+  background: #2e1a1a;
+  color: #cc6666;
+  border: 1px solid #4a2a2a;
+}
+
+/* ── Set Items ───────────────────────────── */
+
+.set-item {
+  box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.1);
+}
+
+.set-bonus-summary {
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: #0e0e1a;
+  border: 1px solid #2a2a3a;
+  border-radius: 4px;
+}
+
+.set-bonus-entry {
+  margin-bottom: 4px;
+}
+
+.set-bonus-entry:last-child {
+  margin-bottom: 0;
+}
+
+.set-bonus-name {
+  font-size: 11px;
+  font-weight: bold;
+  margin-bottom: 2px;
+}
+
+.set-bonus-row {
+  font-size: 10px;
+  padding: 1px 0 1px 8px;
+}
+
+.set-active {
+  color: #80e080;
+}
+
+.set-inactive {
+  color: #555;
+}
+
+/* ── Prestige Badge ──────────────────────── */
+
+.prestige-badge {
+  text-align: center;
+  font-size: 10px;
+  padding: 2px 8px;
+  margin-bottom: 4px;
+  border: 1px solid;
+  border-radius: 3px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* ── Prestige Overlay ────────────────────── */
+
+.prestige-content {
+  max-width: 480px;
+}
+
+.prestige-content h1 {
+  color: #e0c040 !important;
+  font-size: 28px !important;
+}
+
+.prestige-level-display {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  font-size: 18px;
+  font-weight: bold;
+  margin: 16px 0;
+}
+
+.prestige-arrow {
+  color: #e0c040;
+  font-size: 24px;
+}
+
+.prestige-rewards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin: 12px 0;
+}
+
+.prestige-reward {
+  background: #1a2a1a;
+  border: 1px solid #3a5a3a;
+  color: #80e080;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.prestige-warning-text {
+  background: #2a1a1a !important;
+  border-color: #5a3a3a !important;
+  color: #e08080 !important;
+}
+
+.prestige-warning {
+  color: #888;
+  font-size: 11px;
+  margin: 8px 0 16px;
+}
+
+.prestige-accept {
+  background: linear-gradient(135deg, #2a5a20, #3a7a30) !important;
+  border: 2px solid #5aaa40 !important;
+  color: #a0ff80 !important;
+  font-size: 16px !important;
+  padding: 10px 28px !important;
+  letter-spacing: 1px;
+}
+.prestige-accept:hover {
+  background: linear-gradient(135deg, #3a7a30, #4a9a40) !important;
+  border-color: #80c060 !important;
+}
+
+.prestige-decline {
+  background: #2a2a3a !important;
+  border: 1px solid #4a4a6a !important;
+  color: #aaa !important;
+  font-size: 14px !important;
+}
+.prestige-decline:hover {
+  color: #ccc !important;
+  border-color: #6a6a8a !important;
+}
+
+/* ── Class Select Prestige Info ──────────── */
+
+.class-select-prestige {
+  text-align: center;
+  padding: 8px 16px;
+  margin-top: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid #3a3a4a;
+  border-radius: 6px;
+  font-size: 12px;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  align-items: center;
+}
+
+.prestige-bonuses {
+  color: #80c080;
+  font-size: 11px;
+}
+
+/* ── Fishing Overlay ──────────────────────── */
+
+.title-fishing {
+  color: #4a9eff;
+  text-shadow: 0 0 12px rgba(74, 158, 255, 0.5);
+}
+
+.fishing-panel {
+  min-width: 340px;
+  text-align: center;
+}
+
+.fishing-status {
+  font-size: 16px;
+  padding: 16px;
+  margin: 12px 0;
+  background: rgba(74, 158, 255, 0.1);
+  border: 1px solid #2a4a6a;
+  border-radius: 6px;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fishing-status.bite {
+  color: #ffcc00;
+  font-size: 22px;
+  font-weight: bold;
+  animation: fishing-pulse 0.3s ease-in-out infinite alternate;
+  background: rgba(255, 204, 0, 0.15);
+  border-color: #ffcc00;
+}
+
+.fishing-catch {
+  font-size: 14px;
+  padding: 10px;
+  margin: 8px 0;
+  background: rgba(100, 200, 100, 0.1);
+  border: 1px solid #3a6a3a;
+  border-radius: 6px;
+}
+
+.fishing-catch.legendary {
+  background: rgba(255, 165, 0, 0.15);
+  border-color: #ff8c00;
+  color: #ffa500;
+}
+
+.fishing-catch.rare {
+  background: rgba(100, 100, 255, 0.1);
+  border-color: #6a6aff;
+  color: #8080ff;
+}
+
+.fishing-buttons {
+  gap: 8px;
+}
+
+.fishing-cast-btn {
+  background: #1a4a7a !important;
+  border-color: #4a9eff !important;
+}
+.fishing-cast-btn:hover {
+  background: #2a5a8a !important;
+}
+
+.fishing-reel-btn {
+  background: #7a4a1a !important;
+  border-color: #ffcc00 !important;
+  color: #ffcc00 !important;
+  font-size: 18px !important;
+  animation: reel-pulse 0.4s ease-in-out infinite alternate;
+}
+
+@keyframes fishing-pulse {
+  from { text-shadow: 0 0 8px rgba(255, 204, 0, 0.5); }
+  to { text-shadow: 0 0 20px rgba(255, 204, 0, 0.9); }
+}
+
+@keyframes reel-pulse {
+  from { transform: scale(1); box-shadow: 0 0 8px rgba(255, 204, 0, 0.3); }
+  to { transform: scale(1.08); box-shadow: 0 0 20px rgba(255, 204, 0, 0.7); }
+}
+
+/* ── Arena Overlay ────────────────────────── */
+
+.title-arena {
+  color: #ff6a4a;
+  text-shadow: 0 0 12px rgba(255, 106, 74, 0.5);
+}
+
+.arena-panel {
+  min-width: 360px;
+  text-align: center;
+}
+
+.arena-desc {
+  color: #a0a0b0;
+  margin: 8px 0;
+}
+
+.arena-best-wave {
+  font-size: 14px;
+  color: #ffcc00;
+  margin: 8px 0;
+}
+
+.arena-rewards-info {
+  margin: 12px 0;
+  padding: 10px;
+  background: rgba(255, 106, 74, 0.08);
+  border: 1px solid #4a2a1a;
+  border-radius: 6px;
+}
+
+.arena-reward-row {
+  font-size: 12px;
+  color: #b0b0c0;
+  padding: 3px 0;
+}
+
+.arena-warning {
+  font-size: 11px;
+  color: #8a6a5a;
+  margin: 8px 0;
+  font-style: italic;
+}
+
+.arena-enter-btn {
+  background: #6a1a1a !important;
+  border-color: #ff6a4a !important;
+  color: #ff6a4a !important;
+}
+.arena-enter-btn:hover {
+  background: #8a2a2a !important;
+}
+
+/* Arena Wave Cleared */
+
+.arena-wave-panel {
+  min-width: 340px;
+  text-align: center;
+}
+
+.arena-wave-rewards {
+  font-size: 14px;
+  padding: 12px;
+  margin: 12px 0;
+  background: rgba(255, 204, 0, 0.08);
+  border: 1px solid #4a4a1a;
+  border-radius: 6px;
+}
+
+.arena-wave-rewards .reward-line {
+  padding: 3px 0;
+  color: #c0c0d0;
+}
+
+.arena-wave-rewards .reward-gold {
+  color: #ffcc00;
+  font-weight: bold;
+}
+
+.arena-wave-rewards .reward-item {
+  color: #80c0ff;
+}
+
+/* ── RTL / Hebrew Language Support ────────────── */
+
+body.rtl {
+  font-family: 'Rubik', 'Courier New', monospace;
+  direction: rtl;
+}
+
+body.rtl #ui-panel {
+  text-align: right;
+}
+
+body.rtl #message-log {
+  text-align: right;
+  direction: rtl;
+}
+
+body.rtl .control-row {
+  direction: rtl;
+  text-align: right;
+}
+
+body.rtl .control-row kbd {
+  direction: ltr;
+}
+
+body.rtl .stat-row,
+body.rtl #combat-stats {
+  direction: rtl;
+}
+
+body.rtl .equip-slot {
+  text-align: right;
+}
+
+body.rtl .settings-labeled-row {
+  direction: rtl;
+}
+
+body.rtl .settings-label {
+  text-align: right;
+}
+
+body.rtl .bestiary-body,
+body.rtl .armory-body {
+  direction: rtl;
+}
+
+body.rtl .bst-slot.bst-selected {
+  border-left: none;
+  border-right: 3px solid #80c0ff;
+}
+
+body.rtl .arm-slot.arm-selected {
+  border-left: none;
+  border-right: 3px solid #80c0ff;
+}
+
+body.rtl .bestiary-detail-panel,
+body.rtl .armory-detail-panel {
+  text-align: right;
+}
+
+body.rtl .bestiary-list-panel,
+body.rtl .armory-list-panel {
+  border-right: none;
+  border-left: 1px solid #333;
+}
+
+body.rtl .charsheet-body {
+  direction: rtl;
+}
+
+body.rtl .cs-equip-slot {
+  direction: rtl;
+  text-align: right;
+}
+
+body.rtl .cs-attr-row {
+  direction: rtl;
+}
+
+body.rtl .quest-list {
+  text-align: right;
+}
+
+body.rtl .healer-panel,
+body.rtl .shop-panel,
+body.rtl .chest-panel {
+  text-align: right;
+}
+
+body.rtl .fishing-panel,
+body.rtl .arena-panel {
+  text-align: right;
+}
+
+body.rtl .prestige-content {
+  text-align: right;
+}
+
+body.rtl .overlay-content {
+  direction: rtl;
+}
+
+body.rtl .class-card p,
+body.rtl .class-card h2 {
+  direction: rtl;
+  text-align: center;
+}
+
+body.rtl .achievement-list {
+  direction: rtl;
+}
+
+body.rtl .ach-entry {
+  direction: rtl;
+  text-align: right;
+}
+
+body.rtl .st-skill {
+  direction: rtl;
+  text-align: right;
+}
+
+body.rtl .set-bonus-summary {
+  text-align: right;
+}
+
+body.rtl .effect-badge {
+  direction: rtl;
+}
+
+body.rtl .side-minimap-legend {
+  direction: rtl;
 }

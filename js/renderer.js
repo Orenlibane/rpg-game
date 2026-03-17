@@ -1,13 +1,27 @@
-import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS } from './constants.js?v=11';
+import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE } from './constants.js?v=16';
+import { t } from './i18n.js';
 
 // Lookups for bestiary
 const BASE_STATS_LOOKUP = BASE_STATS;
 const GOLD_LOOKUP = GOLD_REWARDS;
-import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js?v=11';
-import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements } from './engine.js?v=11';
+import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js?v=16';
+import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers } from './engine.js?v=16';
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
+
+function getTS() { return gameSettings.tileSize; }
+function getViewW() { return Math.floor((VIEW_W * TILE_SIZE) / getTS()); }
+function getViewH() { return Math.floor((VIEW_H * TILE_SIZE) / getTS()); }
+
+export function resizeCanvas() {
+  const ts = getTS();
+  const vw = getViewW();
+  const vh = getViewH();
+  canvas.width = vw * ts;
+  canvas.height = vh * ts;
+  ctx.imageSmoothingEnabled = false;
+}
 
 canvas.width = VIEW_W * TILE_SIZE;
 canvas.height = VIEW_H * TILE_SIZE;
@@ -17,11 +31,13 @@ ctx.imageSmoothingEnabled = false;  // crisp pixel-art scaling
 
 function getCamera() {
   const p = state.player;
-  let camX = p.x - Math.floor(VIEW_W / 2);
-  let camY = p.y - Math.floor(VIEW_H / 2);
+  const vw = getViewW();
+  const vh = getViewH();
+  let camX = p.x - Math.floor(vw / 2);
+  let camY = p.y - Math.floor(vh / 2);
 
-  camX = Math.max(0, Math.min(camX, state.mapW - VIEW_W));
-  camY = Math.max(0, Math.min(camY, state.mapH - VIEW_H));
+  camX = Math.max(0, Math.min(camX, state.mapW - vw));
+  camY = Math.max(0, Math.min(camY, state.mapH - vh));
 
   return { camX, camY };
 }
@@ -30,14 +46,24 @@ function getCamera() {
 export function render() {
   if (state.phase === 'class_select') return;
 
+  const ts = getTS();
+  const vw = getViewW();
+  const vh = getViewH();
+  const S = TILE_SIZE; // sprite source size (always 48)
+
+  // Resize canvas if tile size changed
+  if (canvas.width !== vw * ts || canvas.height !== vh * ts) {
+    resizeCanvas();
+  }
+
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   const { camX, camY } = getCamera();
 
   // Draw tiles
-  for (let vy = 0; vy < VIEW_H; vy++) {
-    for (let vx = 0; vx < VIEW_W; vx++) {
+  for (let vy = 0; vy < vh; vy++) {
+    for (let vx = 0; vx < vw; vx++) {
       const mx = camX + vx;
       const my = camY + vy;
 
@@ -50,23 +76,23 @@ export function render() {
 
       const tile = state.map[my][mx];
       const sprite = getTileSprite(tile, mx, my);
-      const sx = vx * TILE_SIZE;
-      const sy = vy * TILE_SIZE;
+      const sx = vx * ts;
+      const sy = vy * ts;
 
-      ctx.drawImage(sprite, sx, sy);
+      ctx.drawImage(sprite, 0, 0, S, S, sx, sy, ts, ts);
 
       if (!visible) {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-        ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+        ctx.fillRect(sx, sy, ts, ts);
       }
     }
   }
 
   // Draw torches on dungeon walls (walls adjacent to floor on their south side)
-  if (state.mode === 'dungeon') {
+  if (state.mode === 'dungeon' || state.mode === 'arena') {
     const torchSprite = getTorchSprite();
-    for (let vy = 0; vy < VIEW_H; vy++) {
-      for (let vx = 0; vx < VIEW_W; vx++) {
+    for (let vy = 0; vy < vh; vy++) {
+      for (let vx = 0; vx < vw; vx++) {
         const mx = camX + vx;
         const my = camY + vy;
         if (mx < 0 || mx >= state.mapW || my < 0 || my >= state.mapH) continue;
@@ -76,25 +102,22 @@ export function render() {
         const props = TILE_PROPS[tile];
         if (!props || props.walkable) continue; // only walls
 
-        // Place torch if the tile below is a walkable floor
         const belowY = my + 1;
         if (belowY >= state.mapH) continue;
         const belowTile = state.map[belowY][mx];
         const belowProps = TILE_PROPS[belowTile];
         if (!belowProps || !belowProps.walkable) continue;
 
-        // Only place torches at regular intervals (every 3-4 tiles) for a natural look
         if ((mx + my * 7) % 4 !== 0) continue;
 
-        const sx = vx * TILE_SIZE;
-        const sy = vy * TILE_SIZE;
+        const sx = vx * ts;
+        const sy = vy * ts;
 
         if (state.visibility[my][mx]) {
-          ctx.drawImage(torchSprite, sx, sy);
+          ctx.drawImage(torchSprite, 0, 0, S, S, sx, sy, ts, ts);
         } else {
-          // Dimmed torch in fog
           ctx.globalAlpha = 0.4;
-          ctx.drawImage(torchSprite, sx, sy);
+          ctx.drawImage(torchSprite, 0, 0, S, S, sx, sy, ts, ts);
           ctx.globalAlpha = 1;
         }
       }
@@ -104,94 +127,123 @@ export function render() {
   // Draw ground items (only visible)
   for (const gi of state.items) {
     if (!state.visibility[gi.y] || !state.visibility[gi.y][gi.x]) continue;
-    const sx = (gi.x - camX) * TILE_SIZE;
-    const sy = (gi.y - camY) * TILE_SIZE;
+    const sx = (gi.x - camX) * ts;
+    const sy = (gi.y - camY) * ts;
     if (sx < 0 || sy < 0 || sx >= canvas.width || sy >= canvas.height) continue;
     const sprite = getItemSprite(gi.item.icon);
-    ctx.drawImage(sprite, sx, sy);
+    ctx.drawImage(sprite, 0, 0, S, S, sx, sy, ts, ts);
   }
 
   // Draw chests
   for (const chest of state.chests) {
     if (!state.visibility[chest.y] || !state.visibility[chest.y][chest.x]) continue;
-    const sx = (chest.x - camX) * TILE_SIZE;
-    const sy = (chest.y - camY) * TILE_SIZE;
+    const sx = (chest.x - camX) * ts;
+    const sy = (chest.y - camY) * ts;
     if (sx < 0 || sy < 0 || sx >= canvas.width || sy >= canvas.height) continue;
     const sprite = chest.opened ? getChestOpenSprite() : getChestClosedSprite();
-    ctx.drawImage(sprite, sx, sy);
+    ctx.drawImage(sprite, 0, 0, S, S, sx, sy, ts, ts);
   }
 
   // Draw enemies (only visible)
   for (const enemy of state.enemies) {
     if (enemy.hp <= 0) continue;
     if (!state.visibility[enemy.y] || !state.visibility[enemy.y][enemy.x]) continue;
-    const sx = (enemy.x - camX) * TILE_SIZE;
-    const sy = (enemy.y - camY) * TILE_SIZE;
+    const sx = (enemy.x - camX) * ts;
+    const sy = (enemy.y - camY) * ts;
     if (sx < 0 || sy < 0 || sx >= canvas.width || sy >= canvas.height) continue;
-    ctx.drawImage(getEnemySprite(enemy.type), sx, sy);
+    ctx.drawImage(getEnemySprite(enemy.type), 0, 0, S, S, sx, sy, ts, ts);
 
     // Boss gold border indicator
     if (enemy.isBoss) {
       ctx.strokeStyle = '#e0c040';
       ctx.lineWidth = 2;
-      ctx.strokeRect(sx + 1, sy + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+      ctx.strokeRect(sx + 1, sy + 1, ts - 2, ts - 2);
     }
     // Miniboss purple glow
     else if (enemy.isMiniboss) {
       ctx.strokeStyle = '#c060e0';
       ctx.lineWidth = 2;
-      ctx.strokeRect(sx + 1, sy + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+      ctx.strokeRect(sx + 1, sy + 1, ts - 2, ts - 2);
       ctx.fillStyle = 'rgba(180, 80, 220, 0.12)';
-      ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+      ctx.fillRect(sx, sy, ts, ts);
     }
     // Elite cyan glow
     else if (enemy.isElite) {
       ctx.strokeStyle = '#40c0e0';
       ctx.lineWidth = 2;
-      ctx.strokeRect(sx + 1, sy + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+      ctx.strokeRect(sx + 1, sy + 1, ts - 2, ts - 2);
       ctx.fillStyle = 'rgba(60, 180, 220, 0.10)';
-      ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+      ctx.fillRect(sx, sy, ts, ts);
     }
 
-    // HP bar above enemy
-    const hpPct = enemy.hp / enemy.maxHp;
     const barY = sy - 6;
-    ctx.fillStyle = '#300';
-    ctx.fillRect(sx + 4, barY, TILE_SIZE - 8, 4);
-    ctx.fillStyle = hpPct > 0.5 ? '#0c0' : hpPct > 0.25 ? '#cc0' : '#c00';
-    ctx.fillRect(sx + 4, barY, (TILE_SIZE - 8) * hpPct, 4);
+
+    // HP bar above enemy (conditional)
+    if (gameSettings.showEnemyHpBars) {
+      const hpPct = enemy.hp / enemy.maxHp;
+      ctx.fillStyle = '#300';
+      ctx.fillRect(sx + 4, barY, ts - 8, 4);
+      ctx.fillStyle = hpPct > 0.5 ? '#0c0' : hpPct > 0.25 ? '#cc0' : '#c00';
+      ctx.fillRect(sx + 4, barY, (ts - 8) * hpPct, 4);
+    }
 
     // Elite/Miniboss name label
     if (enemy.isElite || enemy.isMiniboss) {
       ctx.fillStyle = enemy.isMiniboss ? '#c060e0' : '#40c0e0';
       ctx.font = '9px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(enemy.elitePrefix || 'Elite', sx + TILE_SIZE / 2, barY - 2);
+      ctx.fillText(enemy.elitePrefix || 'Elite', sx + ts / 2, barY - 2);
       ctx.textAlign = 'start';
     }
   }
 
   // Draw projectiles
   for (const proj of state.projectiles) {
-    const sx = (proj.x - camX) * TILE_SIZE;
-    const sy = (proj.y - camY) * TILE_SIZE;
+    const sx = (proj.x - camX) * ts;
+    const sy = (proj.y - camY) * ts;
     if (sx < 0 || sy < 0 || sx >= canvas.width || sy >= canvas.height) continue;
     if (proj.type === 'fire') {
-      ctx.drawImage(getFireballSprite(), sx, sy);
+      ctx.drawImage(getFireballSprite(), 0, 0, S, S, sx, sy, ts, ts);
     } else if (proj.type === 'arrow') {
-      ctx.drawImage(getArrowSprite(), sx, sy);
+      ctx.drawImage(getArrowSprite(), 0, 0, S, S, sx, sy, ts, ts);
     } else if (proj.type === 'ice') {
-      ctx.drawImage(getIceShardSprite(), sx, sy);
+      ctx.drawImage(getIceShardSprite(), 0, 0, S, S, sx, sy, ts, ts);
     } else if (proj.type === 'lightning') {
-      ctx.drawImage(getLightningSprite(), sx, sy);
+      ctx.drawImage(getLightningSprite(), 0, 0, S, S, sx, sy, ts, ts);
     }
   }
 
   // Draw player
   {
-    const sx = (state.player.x - camX) * TILE_SIZE;
-    const sy = (state.player.y - camY) * TILE_SIZE;
-    ctx.drawImage(getPlayerSprite(state.playerClass), sx, sy);
+    const sx = (state.player.x - camX) * ts;
+    const sy = (state.player.y - camY) * ts;
+    ctx.drawImage(getPlayerSprite(state.playerClass), 0, 0, S, S, sx, sy, ts, ts);
+  }
+
+  // Draw damage numbers
+  if (damageNumbers.length > 0) {
+    for (let i = damageNumbers.length - 1; i >= 0; i--) {
+      const dn = damageNumbers[i];
+      dn.age++;
+      if (dn.age >= dn.maxAge) {
+        damageNumbers.splice(i, 1);
+        continue;
+      }
+      const progress = dn.age / dn.maxAge;
+      const alpha = 1 - progress;
+      const floatY = progress * 30;
+
+      const dnx = (dn.x - camX) * ts + ts / 2;
+      const dny = (dn.y - camY) * ts - floatY;
+
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = dn.color;
+      ctx.font = 'bold 14px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(dn.text, dnx, dny);
+      ctx.globalAlpha = 1;
+      ctx.textAlign = 'start';
+    }
   }
 
   updateUI();
@@ -199,14 +251,17 @@ export function render() {
 
 // ── Equipment Slot Labels ───────────────────
 
-const SLOT_LABELS = {
-  [EQUIP_SLOT.WEAPON]:  'Weapon',
-  [EQUIP_SLOT.HELMET]:  'Helmet',
-  [EQUIP_SLOT.CHEST]:   'Chest',
-  [EQUIP_SLOT.GLOVES]:  'Gloves',
-  [EQUIP_SLOT.BOOTS]:   'Boots',
-  [EQUIP_SLOT.CAPE]:    'Cape',
-};
+function getSlotLabel(slot) {
+  const map = {
+    [EQUIP_SLOT.WEAPON]:  'slot.weapon',
+    [EQUIP_SLOT.HELMET]:  'slot.helmet',
+    [EQUIP_SLOT.CHEST]:   'slot.chest',
+    [EQUIP_SLOT.GLOVES]:  'slot.gloves',
+    [EQUIP_SLOT.BOOTS]:   'slot.boots',
+    [EQUIP_SLOT.CAPE]:    'slot.cape',
+  };
+  return t(map[slot] || 'slot.weapon');
+}
 
 // ── UI Updates ───────────────────────────────
 
@@ -216,17 +271,19 @@ function updateUI() {
   // Class display
   const classEl = document.getElementById('class-display');
   if (classEl) {
-    const classNames = { warrior: 'Warrior', mage: 'Mage', archer: 'Archer' };
-    classEl.textContent = classNames[state.playerClass] || 'Adventurer';
+    const classKey = { warrior: 'class.warrior', mage: 'class.mage', archer: 'class.archer' };
+    classEl.textContent = t(classKey[state.playerClass] || 'class.adventurer');
   }
 
   // Floor display
   const floorEl = document.getElementById('floor-display');
-  if (state.floor === 0) {
-    floorEl.textContent = 'Village';
+  if (state.mode === 'arena') {
+    floorEl.textContent = t('ui.arena_wave', { wave: state.arenaWave, enemies: state.arenaEnemiesRemaining });
+  } else if (state.floor === 0) {
+    floorEl.textContent = t('ui.village');
   } else {
     const themeName = getFloorThemeName();
-    floorEl.textContent = themeName ? `${themeName} — Floor ${state.floor}` : `Dungeon Floor ${state.floor}`;
+    floorEl.textContent = themeName ? t('ui.theme_floor', { theme: themeName, floor: state.floor }) : t('ui.dungeon_floor', { floor: state.floor });
   }
 
   // HP bar (HUD overlay)
@@ -276,8 +333,12 @@ function updateUI() {
     div.className = 'equip-slot';
     const item = p.equipment[slot];
     if (item) {
+      if (item.setId && ITEM_SETS[item.setId]) {
+        div.classList.add('set-item');
+        div.style.borderColor = ITEM_SETS[item.setId].color;
+      }
       div.innerHTML = `
-        <span class="slot-label">${SLOT_LABELS[slot]}</span>
+        <span class="slot-label">${getSlotLabel(slot)}</span>
         <span class="slot-item">${item.icon} ${item.name}</span>
       `;
       div.style.cursor = 'pointer';
@@ -286,12 +347,15 @@ function updateUI() {
       });
     } else {
       div.innerHTML = `
-        <span class="slot-label">${SLOT_LABELS[slot]}</span>
-        <span class="slot-item empty">- empty -</span>
+        <span class="slot-label">${getSlotLabel(slot)}</span>
+        <span class="slot-item empty">${t('ui.empty')}</span>
       `;
     }
     equipGrid.appendChild(div);
   }
+
+  // Set bonus summary
+  updateSetBonusSummary();
 
   // Inventory grid (cube grid)
   const grid = document.getElementById('inventory-grid');
@@ -303,6 +367,10 @@ function updateUI() {
       const item = p.inventory[i];
       slot.classList.add('type-' + (item.type || 'consumable'));
       if (item.tier) slot.classList.add('tier-' + item.tier);
+      if (item.setId && ITEM_SETS[item.setId]) {
+        slot.classList.add('set-item');
+        slot.style.borderColor = ITEM_SETS[item.setId].color;
+      }
       const count = item.count || 1;
       // Draw item sprite as canvas
       const spriteCanvas = document.createElement('canvas');
@@ -349,6 +417,22 @@ function updateUI() {
   // Spells panel (mage only) — now shows abilities for all classes
   updateSpellsPanel();
 
+  // Boss skills panel
+  updateBossSkillsPanel();
+
+  // Prestige badge
+  updatePrestigeBadge();
+
+  // Prestige overlay
+  updatePrestigeOverlay();
+
+  // Fishing overlay
+  updateFishingOverlay();
+
+  // Arena overlays
+  updateArenaOverlay();
+  updateArenaWaveOverlay();
+
   // Active effects display
   updateEffectsDisplay();
 
@@ -394,7 +478,7 @@ function updateUI() {
     settingsOverlay.classList.remove('hidden');
     const gm = document.getElementById('godmode-status');
     if (gm) {
-      gm.textContent = state.godMode ? 'God Mode: ON' : 'God Mode: OFF';
+      gm.textContent = state.godMode ? t('settings.godmode_on') : t('settings.godmode_off');
       gm.style.color = state.godMode ? '#60e060' : '#888';
     }
   } else {
@@ -460,8 +544,8 @@ function updateStatsAllocPanel() {
   const dodge = getPlayerDodgeChance();
   const discount = getPlayerShopDiscount();
   derived.innerHTML = `
-    <div class="derived-row"><span>Dodge</span><span>${dodge}%</span></div>
-    <div class="derived-row"><span>Shop Discount</span><span>${discount}%</span></div>
+    <div class="derived-row"><span>${t('ui.dodge')}</span><span>${dodge}%</span></div>
+    <div class="derived-row"><span>${t('ui.shop_discount')}</span><span>${discount}%</span></div>
   `;
   grid.appendChild(derived);
 }
@@ -490,22 +574,22 @@ function updateCharacterSheet() {
   portraitEl.appendChild(pc);
 
   // Info
-  const classNames = { warrior: 'Warrior', mage: 'Mage', archer: 'Archer' };
+  const classKey = { warrior: 'class.warrior', mage: 'class.mage', archer: 'class.archer' };
   const infoEl = document.getElementById('charsheet-info');
   infoEl.innerHTML = `
-    <div class="cs-name">${classNames[state.playerClass] || 'Adventurer'}</div>
-    <div class="cs-class">Level ${p.level} | Floor ${state.floor}</div>
+    <div class="cs-name">${t(classKey[state.playerClass] || 'class.adventurer')}</div>
+    <div class="cs-class">${t('ui.level')} ${p.level} | ${t('ui.floor')} ${state.floor}</div>
     <div class="cs-stats">
-      <span>HP <strong>${p.hp}/${p.maxHp}</strong></span>
-      <span>Pow <strong>${getPlayerPower()}</strong></span>
-      <span>Arm <strong>${getPlayerArmor()}</strong></span>
-      <span>Gold <strong>${p.gold}</strong></span>
+      <span>${t('ui.hp')} <strong>${p.hp}/${p.maxHp}</strong></span>
+      <span>${t('ui.pow')} <strong>${getPlayerPower()}</strong></span>
+      <span>${t('ui.arm')} <strong>${getPlayerArmor()}</strong></span>
+      <span>${t('ui.gold')} <strong>${p.gold}</strong></span>
     </div>
   `;
 
   // Equipment
   const equipEl = document.getElementById('charsheet-equip');
-  equipEl.innerHTML = '<h4>Equipment</h4>';
+  equipEl.innerHTML = `<h4>${t('ui.equipment')}</h4>`;
   for (const slot of Object.values(EQUIP_SLOT)) {
     const item = p.equipment[slot];
     const row = document.createElement('div');
@@ -516,13 +600,13 @@ function updateCharacterSheet() {
       const sctx = sc.getContext('2d');
       sctx.drawImage(getItemSprite(item.icon), 0, 0);
       row.appendChild(sc);
-      row.innerHTML += `<span class="cs-equip-label">${SLOT_LABELS[slot]}</span><span class="cs-equip-name">${item.name}</span>`;
+      row.innerHTML += `<span class="cs-equip-label">${getSlotLabel(slot)}</span><span class="cs-equip-name">${item.name}</span>`;
       row.style.cursor = 'pointer';
       row.addEventListener('click', () => {
         showItemPopup(item, slot, 'equipment');
       });
     } else {
-      row.innerHTML = `<span class="cs-equip-label">${SLOT_LABELS[slot]}</span><span class="cs-equip-name empty">- empty -</span>`;
+      row.innerHTML = `<span class="cs-equip-label">${getSlotLabel(slot)}</span><span class="cs-equip-name empty">${t('ui.empty')}</span>`;
     }
     equipEl.appendChild(row);
   }
@@ -575,8 +659,8 @@ function updateCharacterSheet() {
   const dodge = getPlayerDodgeChance();
   const discount = getPlayerShopDiscount();
   derivedEl.innerHTML = `
-    <div class="cs-derived-row"><span>Dodge Chance</span><span>${dodge}%</span></div>
-    <div class="cs-derived-row"><span>Shop Discount</span><span>${discount}%</span></div>
+    <div class="cs-derived-row"><span>${t('ui.dodge_chance')}</span><span>${dodge}%</span></div>
+    <div class="cs-derived-row"><span>${t('ui.shop_discount')}</span><span>${discount}%</span></div>
   `;
 }
 
@@ -674,22 +758,22 @@ function updateSkillTreeOverlay() {
       if (skill.type === 'active') {
         const cdDiv = document.createElement('div');
         cdDiv.className = 'st-skill-meta';
-        cdDiv.textContent = `Active | CD: ${skill.cooldown} turns`;
+        cdDiv.textContent = `${t('skilltree.active')} | ${t('skilltree.cd', { n: skill.cooldown })}`;
         if (rank > 0 && p.skillCooldowns && p.skillCooldowns[skill.id] > 0) {
-          cdDiv.textContent += ` (${p.skillCooldowns[skill.id]} turns left)`;
+          cdDiv.textContent += ` ${t('skilltree.cd_left', { n: p.skillCooldowns[skill.id] })}`;
         }
         skillDiv.appendChild(cdDiv);
       } else {
         const typeDiv = document.createElement('div');
         typeDiv.className = 'st-skill-meta';
-        typeDiv.textContent = 'Passive';
+        typeDiv.textContent = t('skilltree.passive');
         skillDiv.appendChild(typeDiv);
       }
 
       if (canLearn) {
         const btn = document.createElement('button');
         btn.className = 'st-learn-btn';
-        btn.textContent = rank > 0 ? 'Upgrade' : 'Learn';
+        btn.textContent = rank > 0 ? t('skilltree.upgrade') : t('skilltree.learn');
         btn.addEventListener('click', () => {
           learnSkill(skill.id);
           updateSkillTreeOverlay();
@@ -748,7 +832,7 @@ function updateAchievementOverlay() {
       <span class="ach-icon">${ach.unlocked ? ach.icon : '?'}</span>
       <div class="ach-info">
         <div class="ach-name">${ach.unlocked ? ach.name : (ach.hidden ? '???' : ach.name)}</div>
-        <div class="ach-desc">${ach.unlocked ? ach.desc : (ach.hidden ? 'Hidden achievement' : ach.desc)}</div>
+        <div class="ach-desc">${ach.unlocked ? ach.desc : (ach.hidden ? t('ach.hidden') : ach.desc)}</div>
       </div>
       ${ach.unlocked ? '<span class="ach-check">✓</span>' : ''}
     `;
@@ -762,9 +846,9 @@ function updateAchievementToast() {
     toastEl.classList.add('hidden');
     return;
   }
-  const t = state.achievementToast;
+  const toast = state.achievementToast;
   toastEl.classList.remove('hidden');
-  toastEl.innerHTML = `<span class="toast-icon">${t.icon}</span> Achievement: ${t.name}`;
+  toastEl.innerHTML = `<span class="toast-icon">${toast.icon}</span> ${t('ach.toast', { name: toast.name })}`;
 }
 
 // ── Spells Panel Rendering ──────────────────
@@ -779,7 +863,7 @@ function updateSpellsPanel() {
 
   if (state.playerClass === PLAYER_CLASS.MAGE) {
     panel.style.display = '';
-    if (h3) h3.textContent = 'Spells';
+    if (h3) h3.textContent = t('ui.spells');
     for (const spell of Object.values(SPELLS)) {
       const amRank = getSkillRank('arcane_mastery');
       const cost = Math.max(1, spell.manaCost - (amRank > 0 ? amRank : 0));
@@ -807,7 +891,7 @@ function updateSpellsPanel() {
     }
     if (activeSkills.length === 0) { panel.style.display = 'none'; return; }
     panel.style.display = '';
-    if (h3) h3.textContent = 'Abilities';
+    if (h3) h3.textContent = t('ui.abilities');
     for (const skill of activeSkills) {
       const cd = (state.player.skillCooldowns && state.player.skillCooldowns[skill.id]) || 0;
       const div = document.createElement('div');
@@ -815,10 +899,251 @@ function updateSpellsPanel() {
       div.innerHTML = `
         <span class="spell-key">${skill.key}</span>
         <span class="spell-name">${skill.name}</span>
-        <span class="spell-cost">${cd > 0 ? cd + ' CD' : 'Ready'}</span>
+        <span class="spell-cost">${cd > 0 ? cd + ' CD' : t('tag.ready')}</span>
       `;
       grid.appendChild(div);
     }
+  }
+}
+
+// ── Boss Skills Panel ───────────────────────
+
+function updateBossSkillsPanel() {
+  const panel = document.getElementById('boss-skills-panel');
+  if (!panel) return;
+
+  const grid = document.getElementById('boss-skills-grid');
+  grid.innerHTML = '';
+
+  if (!state.bossSkills || Object.keys(state.bossSkills).length === 0) {
+    panel.style.display = 'none';
+    return;
+  }
+
+  panel.style.display = '';
+  for (const skill of Object.values(BOSS_SKILLS)) {
+    if (!state.bossSkills[skill.id] && state.bossSkills[skill.id] !== false) continue;
+    const consumed = state.bossSkills[skill.id] === false;
+    const div = document.createElement('div');
+    div.className = 'boss-skill-slot';
+    let tagClass, tagText;
+    if (consumed) {
+      tagClass = 'consumed-tag';
+      tagText = t('tag.used');
+    } else if (skill.type === 'active') {
+      tagClass = 'active-tag';
+      tagText = skill.key;
+    } else {
+      tagClass = 'passive-tag';
+      tagText = t('tag.passive');
+    }
+    div.innerHTML = `
+      <span class="boss-skill-name">${skill.name}</span>
+      <span class="boss-skill-tag ${tagClass}">${tagText}</span>
+    `;
+    div.title = skill.desc;
+    grid.appendChild(div);
+  }
+}
+
+// ── Set Bonus Summary ──────────────────────
+
+function updateSetBonusSummary() {
+  // Remove existing summary if present
+  const existing = document.getElementById('set-bonus-summary');
+  if (existing) existing.remove();
+
+  const setBonuses = getActiveSetBonuses(state.player);
+  if (setBonuses.length === 0) return;
+
+  const container = document.createElement('div');
+  container.id = 'set-bonus-summary';
+  container.className = 'set-bonus-summary';
+
+  for (const sb of setBonuses) {
+    const setDiv = document.createElement('div');
+    setDiv.className = 'set-bonus-entry';
+
+    const header = document.createElement('div');
+    header.className = 'set-bonus-name';
+    header.style.color = sb.setDef.color;
+    header.textContent = `${sb.setDef.name} (${sb.piecesEquipped}/${sb.piecesTotal})`;
+    setDiv.appendChild(header);
+
+    for (const [threshold, bonus] of Object.entries(sb.setDef.bonuses)) {
+      const bonusRow = document.createElement('div');
+      const isActive = sb.piecesEquipped >= parseInt(threshold);
+      bonusRow.className = isActive ? 'set-bonus-row set-active' : 'set-bonus-row set-inactive';
+      bonusRow.textContent = bonus.label;
+      setDiv.appendChild(bonusRow);
+    }
+
+    container.appendChild(setDiv);
+  }
+
+  const equipPanel = document.getElementById('equip-panel');
+  equipPanel.appendChild(container);
+}
+
+// ── Prestige Badge ─────────────────────────
+
+function updatePrestigeBadge() {
+  const badge = document.getElementById('prestige-badge');
+  if (!badge) return;
+
+  if (state.prestigeLevel > 0) {
+    const title = PRESTIGE.TITLES[state.prestigeLevel] || '';
+    const color = PRESTIGE.TITLE_COLORS[state.prestigeLevel] || '#ccc';
+    badge.style.display = '';
+    badge.style.color = color;
+    badge.style.borderColor = color;
+    badge.textContent = `NG+${state.prestigeLevel} ${title}`;
+    badge.className = 'prestige-badge';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// ── Prestige Overlay ───────────────────────
+
+function updatePrestigeOverlay() {
+  const overlay = document.getElementById('prestige-overlay');
+  if (!overlay) return;
+
+  if (state.showPrestige) {
+    overlay.classList.remove('hidden');
+
+    const currentLevel = state.prestigeLevel;
+    const nextLevel = currentLevel + 1;
+    const currentTitle = PRESTIGE.TITLES[currentLevel] || 'None';
+    const nextTitle = PRESTIGE.TITLES[nextLevel] || '???';
+    const currentColor = PRESTIGE.TITLE_COLORS[currentLevel] || '#888';
+    const nextColor = PRESTIGE.TITLE_COLORS[nextLevel] || '#ccc';
+
+    const currentEl = document.getElementById('prestige-current');
+    currentEl.textContent = currentLevel > 0 ? `NG+${currentLevel} ${currentTitle}` : t('prestige.no_prestige');
+    currentEl.style.color = currentColor;
+
+    const nextEl = document.getElementById('prestige-next');
+    nextEl.textContent = `NG+${nextLevel} ${nextTitle}`;
+    nextEl.style.color = nextColor;
+
+    const rewards = document.getElementById('prestige-rewards');
+    const pl = PRESTIGE.PER_LEVEL;
+    rewards.innerHTML = `
+      <div class="prestige-reward">${t('prestige.power', { n: pl.powerBonus * nextLevel })}</div>
+      <div class="prestige-reward">${t('prestige.hp', { n: pl.hpBonus * nextLevel })}</div>
+      <div class="prestige-reward">${t('prestige.xp', { n: pl.xpBoostPercent * nextLevel })}</div>
+      <div class="prestige-reward prestige-warning-text">${t('prestige.enemy_scaling', { n: Math.round(PRESTIGE.ENEMY_SCALING.hpMultiplier * 100 * nextLevel) })}</div>
+    `;
+  } else {
+    overlay.classList.add('hidden');
+  }
+}
+
+// ── Fishing Overlay ──────────────────────────
+
+function updateFishingOverlay() {
+  const overlay = document.getElementById('fishing-overlay');
+  if (!overlay) return;
+
+  if (state.showFishing) {
+    overlay.classList.remove('hidden');
+    const statusEl = document.getElementById('fishing-status');
+    const catchEl = document.getElementById('fishing-catch');
+    const castBtn = document.getElementById('cast-line-btn');
+    const reelBtn = document.getElementById('reel-in-btn');
+
+    switch (state.fishingPhase) {
+      case 'idle':
+        statusEl.textContent = t('fishing.idle');
+        statusEl.className = 'fishing-status';
+        castBtn.style.display = '';
+        reelBtn.style.display = 'none';
+        catchEl.style.display = 'none';
+        break;
+      case 'waiting':
+        statusEl.textContent = t('fishing.waiting');
+        statusEl.className = 'fishing-status';
+        castBtn.style.display = 'none';
+        reelBtn.style.display = 'none';
+        catchEl.style.display = 'none';
+        break;
+      case 'bite':
+        statusEl.textContent = t('fishing.bite');
+        statusEl.className = 'fishing-status bite';
+        castBtn.style.display = 'none';
+        reelBtn.style.display = '';
+        catchEl.style.display = 'none';
+        break;
+      case 'caught':
+        statusEl.textContent = t('fishing.caught');
+        statusEl.className = 'fishing-status';
+        castBtn.style.display = '';
+        castBtn.textContent = t('fishing.cast_again');
+        reelBtn.style.display = 'none';
+        if (state.fishingCatch) {
+          catchEl.style.display = '';
+          const c = state.fishingCatch;
+          catchEl.className = 'fishing-catch' + (c.rarity === 'legendary' ? ' legendary' : c.rarity === 'rare' ? ' rare' : '');
+          catchEl.innerHTML = `<strong>${c.name}</strong><br><span style="font-size:11px;color:#888">${c.desc}</span>`;
+        }
+        break;
+      case 'missed':
+        statusEl.textContent = t('fishing.missed');
+        statusEl.className = 'fishing-status';
+        castBtn.style.display = '';
+        castBtn.textContent = t('fishing.cast_again');
+        reelBtn.style.display = 'none';
+        catchEl.style.display = 'none';
+        break;
+    }
+  } else {
+    overlay.classList.add('hidden');
+    // Reset cast button text
+    const castBtn = document.getElementById('cast-line-btn');
+    if (castBtn) castBtn.textContent = t('fishing.cast');
+  }
+}
+
+// ── Arena Overlay ────────────────────────────
+
+function updateArenaOverlay() {
+  const overlay = document.getElementById('arena-overlay');
+  if (!overlay) return;
+
+  if (state.showArena) {
+    overlay.classList.remove('hidden');
+    const bestWaveEl = document.getElementById('arena-best-wave');
+    if (state.arenaBestWave > 0) {
+      bestWaveEl.textContent = t('arena.best_wave', { n: state.arenaBestWave });
+      bestWaveEl.style.display = '';
+    } else {
+      bestWaveEl.style.display = 'none';
+    }
+  } else {
+    overlay.classList.add('hidden');
+  }
+}
+
+function updateArenaWaveOverlay() {
+  const overlay = document.getElementById('arena-wave-overlay');
+  if (!overlay) return;
+
+  if (state.arenaWaveCleared) {
+    overlay.classList.remove('hidden');
+    const titleEl = document.getElementById('arena-wave-title');
+    titleEl.textContent = t('arena.wave_cleared', { n: state.arenaWave });
+    const rewardsEl = document.getElementById('arena-wave-rewards');
+    let html = `<div class="reward-line reward-gold">${t('arena.total_gold', { n: state.arenaRewards.gold })}</div>`;
+    if (state.arenaRewards.items.length > 0) {
+      for (const item of state.arenaRewards.items) {
+        html += `<div class="reward-line reward-item">${item}</div>`;
+      }
+    }
+    rewardsEl.innerHTML = html;
+  } else {
+    overlay.classList.add('hidden');
   }
 }
 
@@ -949,10 +1274,10 @@ function updateSideMinimap() {
   // Compact legend
   const legendEl = document.getElementById('side-minimap-legend');
   legendEl.innerHTML = `
-    <span class="sml-item"><span class="sml-dot" style="background:#4080ff"></span>You</span>
-    <span class="sml-item"><span class="sml-dot" style="background:#e04040"></span>Foe</span>
-    <span class="sml-item"><span class="sml-dot" style="background:#40c040"></span>Item</span>
-    <span class="sml-item"><span class="sml-dot" style="background:#e0c040"></span>Exit</span>
+    <span class="sml-item"><span class="sml-dot" style="background:#4080ff"></span>${t('legend.you')}</span>
+    <span class="sml-item"><span class="sml-dot" style="background:#e04040"></span>${t('legend.foe')}</span>
+    <span class="sml-item"><span class="sml-dot" style="background:#40c040"></span>${t('legend.item')}</span>
+    <span class="sml-item"><span class="sml-dot" style="background:#e0c040"></span>${t('legend.exit')}</span>
   `;
 }
 
@@ -1966,8 +2291,11 @@ function updateMinimap() {
 let lastTorchFrame = -1;
 function torchAnimLoop() {
   requestAnimationFrame(torchAnimLoop);
+  if (state.phase === 'class_select') return;
   const frame = getTorchFrame();
-  if (frame !== lastTorchFrame && state.phase !== 'class_select' && state.mode === 'dungeon') {
+  const torchChanged = gameSettings.torchFlicker && frame !== lastTorchFrame && (state.mode === 'dungeon' || state.mode === 'arena');
+  const hasDamageNums = damageNumbers.length > 0;
+  if (torchChanged || hasDamageNums) {
     lastTorchFrame = frame;
     renderCanvas();
   }
@@ -1978,14 +2306,23 @@ torchAnimLoop();
 function renderCanvas() {
   if (state.phase === 'class_select') return;
 
+  const ts = getTS();
+  const vw = getViewW();
+  const vh = getViewH();
+  const S = TILE_SIZE; // sprite source size (always 48)
+
+  if (canvas.width !== vw * ts || canvas.height !== vh * ts) {
+    resizeCanvas();
+  }
+
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   const { camX, camY } = getCamera();
 
   // Draw tiles
-  for (let vy = 0; vy < VIEW_H; vy++) {
-    for (let vx = 0; vx < VIEW_W; vx++) {
+  for (let vy = 0; vy < vh; vy++) {
+    for (let vx = 0; vx < vw; vx++) {
       const mx = camX + vx;
       const my = camY + vy;
       if (mx < 0 || mx >= state.mapW || my < 0 || my >= state.mapH) continue;
@@ -1994,21 +2331,21 @@ function renderCanvas() {
       if (!revealed) continue;
       const tile = state.map[my][mx];
       const sprite = getTileSprite(tile, mx, my);
-      const sx = vx * TILE_SIZE;
-      const sy = vy * TILE_SIZE;
-      ctx.drawImage(sprite, sx, sy);
+      const sx = vx * ts;
+      const sy = vy * ts;
+      ctx.drawImage(sprite, 0, 0, S, S, sx, sy, ts, ts);
       if (!visible) {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-        ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+        ctx.fillRect(sx, sy, ts, ts);
       }
     }
   }
 
   // Draw torches
-  if (state.mode === 'dungeon') {
+  if (state.mode === 'dungeon' || state.mode === 'arena') {
     const torchSprite = getTorchSprite();
-    for (let vy = 0; vy < VIEW_H; vy++) {
-      for (let vx = 0; vx < VIEW_W; vx++) {
+    for (let vy = 0; vy < vh; vy++) {
+      for (let vx = 0; vx < vw; vx++) {
         const mx = camX + vx;
         const my = camY + vy;
         if (mx < 0 || mx >= state.mapW || my < 0 || my >= state.mapH) continue;
@@ -2022,13 +2359,13 @@ function renderCanvas() {
         const belowProps = TILE_PROPS[belowTile];
         if (!belowProps || !belowProps.walkable) continue;
         if ((mx + my * 7) % 4 !== 0) continue;
-        const sx = vx * TILE_SIZE;
-        const sy = vy * TILE_SIZE;
+        const sx = vx * ts;
+        const sy = vy * ts;
         if (state.visibility[my][mx]) {
-          ctx.drawImage(torchSprite, sx, sy);
+          ctx.drawImage(torchSprite, 0, 0, S, S, sx, sy, ts, ts);
         } else {
           ctx.globalAlpha = 0.4;
-          ctx.drawImage(torchSprite, sx, sy);
+          ctx.drawImage(torchSprite, 0, 0, S, S, sx, sy, ts, ts);
           ctx.globalAlpha = 1;
         }
       }
@@ -2038,54 +2375,75 @@ function renderCanvas() {
   // Draw ground items
   for (const gi of state.items) {
     if (!state.visibility[gi.y] || !state.visibility[gi.y][gi.x]) continue;
-    const sx = (gi.x - camX) * TILE_SIZE;
-    const sy = (gi.y - camY) * TILE_SIZE;
+    const sx = (gi.x - camX) * ts;
+    const sy = (gi.y - camY) * ts;
     if (sx < 0 || sy < 0 || sx >= canvas.width || sy >= canvas.height) continue;
-    ctx.drawImage(getItemSprite(gi.item.icon), sx, sy);
+    ctx.drawImage(getItemSprite(gi.item.icon), 0, 0, S, S, sx, sy, ts, ts);
   }
 
   // Draw chests
   for (const chest of state.chests) {
     if (!state.visibility[chest.y] || !state.visibility[chest.y][chest.x]) continue;
-    const sx = (chest.x - camX) * TILE_SIZE;
-    const sy = (chest.y - camY) * TILE_SIZE;
+    const sx = (chest.x - camX) * ts;
+    const sy = (chest.y - camY) * ts;
     if (sx < 0 || sy < 0 || sx >= canvas.width || sy >= canvas.height) continue;
-    ctx.drawImage(chest.opened ? getChestOpenSprite() : getChestClosedSprite(), sx, sy);
+    const chestSprite = chest.opened ? getChestOpenSprite() : getChestClosedSprite();
+    ctx.drawImage(chestSprite, 0, 0, S, S, sx, sy, ts, ts);
   }
 
   // Draw enemies
   for (const enemy of state.enemies) {
     if (enemy.hp <= 0) continue;
     if (!state.visibility[enemy.y] || !state.visibility[enemy.y][enemy.x]) continue;
-    const sx = (enemy.x - camX) * TILE_SIZE;
-    const sy = (enemy.y - camY) * TILE_SIZE;
+    const sx = (enemy.x - camX) * ts;
+    const sy = (enemy.y - camY) * ts;
     if (sx < 0 || sy < 0 || sx >= canvas.width || sy >= canvas.height) continue;
-    ctx.drawImage(getEnemySprite(enemy.type), sx, sy);
+    ctx.drawImage(getEnemySprite(enemy.type), 0, 0, S, S, sx, sy, ts, ts);
     if (enemy.isBoss) {
       ctx.strokeStyle = '#e0c040';
       ctx.lineWidth = 2;
-      ctx.strokeRect(sx + 1, sy + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+      ctx.strokeRect(sx + 1, sy + 1, ts - 2, ts - 2);
     }
-    const hpPct = enemy.hp / enemy.maxHp;
-    ctx.fillStyle = '#300';
-    ctx.fillRect(sx + 4, sy - 4, TILE_SIZE - 8, 3);
-    ctx.fillStyle = hpPct > 0.5 ? '#0c0' : hpPct > 0.25 ? '#cc0' : '#c00';
-    ctx.fillRect(sx + 4, sy - 4, (TILE_SIZE - 8) * hpPct, 3);
+    if (gameSettings.showEnemyHpBars) {
+      const hpPct = enemy.hp / enemy.maxHp;
+      ctx.fillStyle = '#300';
+      ctx.fillRect(sx + 4, sy - 4, ts - 8, 3);
+      ctx.fillStyle = hpPct > 0.5 ? '#0c0' : hpPct > 0.25 ? '#cc0' : '#c00';
+      ctx.fillRect(sx + 4, sy - 4, (ts - 8) * hpPct, 3);
+    }
   }
 
   // Draw projectiles
   for (const proj of state.projectiles) {
-    const sx = (proj.x - camX) * TILE_SIZE;
-    const sy = (proj.y - camY) * TILE_SIZE;
+    const sx = (proj.x - camX) * ts;
+    const sy = (proj.y - camY) * ts;
     if (sx < 0 || sy < 0 || sx >= canvas.width || sy >= canvas.height) continue;
-    if (proj.type === 'fire') ctx.drawImage(getFireballSprite(), sx, sy);
-    else if (proj.type === 'arrow') ctx.drawImage(getArrowSprite(), sx, sy);
-    else if (proj.type === 'ice') ctx.drawImage(getIceShardSprite(), sx, sy);
-    else if (proj.type === 'lightning') ctx.drawImage(getLightningSprite(), sx, sy);
+    const pSprite = proj.type === 'fire' ? getFireballSprite()
+      : proj.type === 'arrow' ? getArrowSprite()
+      : proj.type === 'ice' ? getIceShardSprite()
+      : getLightningSprite();
+    ctx.drawImage(pSprite, 0, 0, S, S, sx, sy, ts, ts);
   }
 
   // Draw player
-  const psx = (state.player.x - camX) * TILE_SIZE;
-  const psy = (state.player.y - camY) * TILE_SIZE;
-  ctx.drawImage(getPlayerSprite(state.playerClass), psx, psy);
+  const psx = (state.player.x - camX) * ts;
+  const psy = (state.player.y - camY) * ts;
+  ctx.drawImage(getPlayerSprite(state.playerClass), 0, 0, S, S, psx, psy, ts, ts);
+
+  // Draw damage numbers
+  for (let i = damageNumbers.length - 1; i >= 0; i--) {
+    const dn = damageNumbers[i];
+    dn.age++;
+    if (dn.age >= dn.maxAge) { damageNumbers.splice(i, 1); continue; }
+    const alpha = 1 - (dn.age / dn.maxAge);
+    const floatY = dn.age * 0.5;
+    const dx = (dn.x - camX) * ts + ts / 2;
+    const dy = (dn.y - camY) * ts - floatY;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = dn.color;
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(dn.text, dx, dy);
+    ctx.globalAlpha = 1;
+  }
 }

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head><title>Module Test</title></head>
+<body>
+<h1 id="status">Loading modules...</h1>
+<pre id="log" style="background:#111;color:#0f0;padding:20px;font-size:14px"></pre>
+<script type="module">
+  const log = document.getElementById('log');
+  const status = document.getElementById('status');
+  function addLog(msg) { log.textContent += msg + '\n'; }
+
+  try {
+    addLog('1. Loading constants.js...');
+    const c = await import('./js/constants.js?v=3');
+    addLog('   OK - ' + Object.keys(c).length + ' exports');
+    addLog('   Has ATTR_BONUSES: ' + ('ATTR_BONUSES' in c));
+
+    addLog('2. Loading sprites.js...');
+    const s = await import('./js/sprites.js?v=3');
+    addLog('   OK - ' + Object.keys(s).length + ' exports');
+
+    addLog('3. Loading engine.js...');
+    const e = await import('./js/engine.js?v=3');
+    addLog('   OK - ' + Object.keys(e).length + ' exports');
+
+    addLog('4. Loading renderer.js...');
+    const r = await import('./js/renderer.js?v=3');
+    addLog('   OK - ' + Object.keys(r).length + ' exports');
+
+    addLog('5. Loading main.js...');
+    const m = await import('./js/main.js?v=3');
+    addLog('   OK');
+
+    status.textContent = 'ALL MODULES LOADED OK';
+    status.style.color = 'green';
+  } catch(err) {
+    addLog('ERROR: ' + err.message);
+    addLog('Stack: ' + err.stack);
+    status.textContent = 'LOAD FAILED: ' + err.message;
+    status.style.color = 'red';
+  }
+</script>
+</body>
+</html>

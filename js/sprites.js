@@ -1,4 +1,5 @@
-import { TILE, TILE_SIZE, ENTITY } from './constants.js?v=11';
+import { TILE, TILE_SIZE, ENTITY } from './constants.js?v=16';
+import { gameSettings } from './engine.js?v=16';
 
 const cache = {};
 const tileSeedCache = {};
@@ -130,6 +131,7 @@ function drawFromSheet(sheet, sx, sy, sw, sh) {
 
 let torchFrame = 0;
 setInterval(() => {
+  if (!gameSettings.torchFlicker) return;
   torchFrame = (torchFrame + 1) % 4;
   // Invalidate torch tile caches so they redraw
   for (const key of Object.keys(tileSeedCache)) {
@@ -712,6 +714,55 @@ function buildTileSprite(tileType, variant) {
       ], { '0': '#1a1a1a', '3': '#3a3050', '4': '#4a4060', 'e': '#aaaa40' });
       fillRect(g, 22, 18, 4, 4, '#e0c040');
       fillRect(g, 23, 19, 2, 2, '#f0d860');
+      break;
+
+    case TILE.FISHING_SPOT:
+      fillRect(g, 0, 0, 32, 32, '#1a3050');
+      // Water ripples
+      g.fillStyle = '#2a4a6a';
+      g.fillRect(2, 8, 6, 2);
+      g.fillRect(14, 4, 8, 2);
+      g.fillRect(24, 10, 5, 2);
+      // Wooden dock
+      fillRect(g, 10, 20, 12, 12, '#6a4a1a');
+      fillRect(g, 11, 21, 10, 10, '#8a6a2a');
+      // Fishing pole
+      g.strokeStyle = '#5a3a0a';
+      g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(14, 22);
+      g.lineTo(8, 6);
+      g.stroke();
+      // Line + bobber
+      g.strokeStyle = '#ccc';
+      g.beginPath();
+      g.moveTo(8, 6);
+      g.lineTo(6, 12);
+      g.stroke();
+      g.fillStyle = '#e04040';
+      g.beginPath();
+      g.arc(6, 12, 2, 0, Math.PI * 2);
+      g.fill();
+      break;
+
+    case TILE.ARENA:
+      fillRect(g, 0, 0, 32, 32, '#2d5a1e');
+      // Stone arena base
+      fillRect(g, 6, 4, 20, 18, '#5a5a6a');
+      fillRect(g, 7, 5, 18, 16, '#3a3a4a');
+      // Crossed swords
+      g.strokeStyle = '#c0c0d0';
+      g.lineWidth = 2;
+      g.beginPath();
+      g.moveTo(10, 16); g.lineTo(22, 6);
+      g.moveTo(22, 16); g.lineTo(10, 6);
+      g.stroke();
+      // Hilts
+      g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(9, 14); g.lineTo(12, 17);
+      g.moveTo(21, 14); g.lineTo(18, 17);
+      g.stroke();
       break;
 
     default:
@@ -2518,9 +2569,10 @@ export function getChestOpenSprite() {
 }
 
 export function getTorchSprite() {
-  const key = 'torch_' + torchFrame;
+  const frame = gameSettings.torchFlicker ? torchFrame : 0;
+  const key = 'torch_' + frame;
   if (!tileSeedCache[key]) {
-    tileSeedCache[key] = buildTorchSprite(torchFrame);
+    tileSeedCache[key] = buildTorchSprite(frame);
   }
   return tileSeedCache[key];
 }

@@ -3,7 +3,7 @@ import {
   DUNGEON_W, DUNGEON_H,
   MIN_ROOM_SIZE, MAX_ROOM_SIZE, MAX_ROOMS,
   FLOOR_THEMES, ROOM_TYPE,
-} from './constants.js?v=11';
+} from './constants.js?v=16';
 
 // ── Village (fixed layout) ───────────────────────
 
@@ -53,6 +53,12 @@ export function generateVillage() {
   const questX = 8;
   const questY = 5;
   map[questY][questX] = TILE.QUEST_BOARD;
+
+  // Fishing Spot (south-east, near water)
+  map[13][20] = TILE.FISHING_SPOT;
+
+  // Arena (south-center)
+  map[13][12] = TILE.ARENA;
 
   // Player start position
   const playerStart = { x: 11, y: 9 };
@@ -514,4 +520,21 @@ function decorateCorridors(map, floorTile) {
       }
     }
   }
+}
+
+// ── Arena Map (simple room) ─────────────────────
+
+export function generateArenaMap() {
+  const SIZE = 12;
+  const map = Array.from({ length: SIZE }, () =>
+    new Uint8Array(SIZE).fill(TILE.CAVE_WALL)
+  );
+  // Carve interior floor
+  for (let y = 1; y < SIZE - 1; y++) {
+    for (let x = 1; x < SIZE - 1; x++) {
+      map[y][x] = TILE.CAVE_FLOOR;
+    }
+  }
+  const playerStart = { x: Math.floor(SIZE / 2), y: Math.floor(SIZE / 2) };
+  return { map, playerStart };
 }

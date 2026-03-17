@@ -33,6 +33,8 @@ export const TILE = {
   SARCOPHAGUS:      28,
   FOUNTAIN:         29,
   DUNGEON_MERCHANT: 30,
+  FISHING_SPOT:     31,
+  ARENA:            32,
 };
 
 
@@ -68,6 +70,8 @@ export const TILE_PROPS = {
   [TILE.SARCOPHAGUS]:      { name: 'Sarcophagus',      walkable: false, transparent: true  },
   [TILE.FOUNTAIN]:         { name: 'Fountain',         walkable: false, transparent: true  },
   [TILE.DUNGEON_MERCHANT]: { name: 'Wandering Trader', walkable: true,  transparent: true  },
+  [TILE.FISHING_SPOT]:     { name: 'Fishing Spot',     walkable: true,  transparent: true  },
+  [TILE.ARENA]:            { name: 'Arena',            walkable: true,  transparent: true  },
 };
 
 // ── Item Features ────────────────────────────────
@@ -146,6 +150,27 @@ export const ENTITY = {
   DEMON_LORD:       'demon_lord',
   DRAGON_WHELP:     'dragon_whelp',
   ANCIENT_WYRM:     'ancient_wyrm',
+  // Wave 2 new monsters
+  BLOOD_BAT:        'blood_bat',
+  PLAGUE_RAT:       'plague_rat',
+  SAND_SCORPION:    'sand_scorpion',
+  BONE_SENTINEL:    'bone_sentinel',
+  DARK_ACOLYTE:     'dark_acolyte',
+  SWAMP_HAG:        'swamp_hag',
+  THUNDER_LIZARD:   'thunder_lizard',
+  STONE_GARGOYLE:   'stone_gargoyle',
+  CORPSE_EATER:     'corpse_eater',
+  VOID_TOUCHED:     'void_touched',
+  FLAME_DANCER:     'flame_dancer',
+  GLACIAL_BEETLE:   'glacial_beetle',
+  IRON_REVENANT:    'iron_revenant',
+  MYCONID_SPROUT:   'myconid_sprout',
+  WAILING_BANSHEE:  'wailing_banshee',
+  OBSIDIAN_DRAKE:   'obsidian_drake',
+  VILE_SHAMAN:      'vile_shaman',
+  BLOOD_GOLEM:      'blood_golem',
+  FROST_ARCHER:     'frost_archer',
+  ABYSSAL_WATCHER:  'abyssal_watcher',
 };
 
 // ── Player Classes ────────────────────────────────
@@ -333,6 +358,30 @@ export const ITEMS = {
   lucky_cloak:    { id: 'lucky_cloak',    name: 'Lucky Cloak',    type: ITEM_TYPE.CAPE,   slot: EQUIP_SLOT.CAPE,   armor: 1, icon: 'K2', desc: '+1 Armor, Crit + XP Boost', tier: 3, features: [{ type: 'crit_chance', value: 10 }, { type: 'xp_boost', value: 15 }] },
   frost_greaves:  { id: 'frost_greaves',  name: 'Frost Greaves',  type: ITEM_TYPE.BOOTS,  slot: EQUIP_SLOT.BOOTS,  armor: 2, icon: 'B3', desc: '+2 Armor, Ice Dmg', tier: 2, features: [{ type: 'ice_dmg', value: 2 }] },
   seer_orb:       { id: 'seer_orb',       name: "Seer's Orb",     type: ITEM_TYPE.WEAPON, slot: EQUIP_SLOT.WEAPON, power: 2, icon: 'WF', desc: '+2 Power, +3 Spell, All-Seeing Eye', spellBonus: 3, tier: 3, features: [{ type: 'all_seeing_eye', value: 1 }] },
+
+  // ── Set Items ──────────────────────────────
+  // Shadow Assassin Set (4 pieces)
+  shadow_hood:      { id: 'shadow_hood',      name: 'Shadow Hood',      type: ITEM_TYPE.HELMET, slot: EQUIP_SLOT.HELMET, armor: 2, icon: 'HS', desc: '+2 Armor, 5% Crit [Shadow Assassin]', tier: 3, setId: 'shadow_set', features: [{ type: 'crit_chance', value: 5 }] },
+  shadow_vest:      { id: 'shadow_vest',      name: 'Shadow Vest',      type: ITEM_TYPE.CHEST,  slot: EQUIP_SLOT.CHEST,  armor: 3, icon: 'CS', desc: '+3 Armor [Shadow Assassin]', tier: 3, setId: 'shadow_set' },
+  shadow_gloves:    { id: 'shadow_gloves',    name: 'Shadow Gloves',    type: ITEM_TYPE.GLOVES, slot: EQUIP_SLOT.GLOVES, armor: 1, powerBonus: 2, icon: 'GS', desc: '+1 Armor, +2 Power [Shadow Assassin]', tier: 3, setId: 'shadow_set' },
+  shadow_boots:     { id: 'shadow_boots',     name: 'Shadow Boots',     type: ITEM_TYPE.BOOTS,  slot: EQUIP_SLOT.BOOTS,  armor: 2, icon: 'BS', desc: '+2 Armor [Shadow Assassin]', tier: 3, setId: 'shadow_set' },
+  // Dragonscale Set (4 pieces)
+  dragon_helm:      { id: 'dragon_helm',      name: 'Dragonscale Helm',      type: ITEM_TYPE.HELMET, slot: EQUIP_SLOT.HELMET, armor: 3, icon: 'HD', desc: '+3 Armor, Fire Dmg 2 [Dragonscale]', tier: 3, setId: 'dragon_set', features: [{ type: 'fire_dmg', value: 2 }] },
+  dragon_plate:     { id: 'dragon_plate',     name: 'Dragonscale Plate',     type: ITEM_TYPE.CHEST,  slot: EQUIP_SLOT.CHEST,  armor: 5, icon: 'CD', desc: '+5 Armor [Dragonscale]', tier: 3, setId: 'dragon_set' },
+  dragon_gauntlets: { id: 'dragon_gauntlets', name: 'Dragonscale Gauntlets', type: ITEM_TYPE.GLOVES, slot: EQUIP_SLOT.GLOVES, armor: 2, powerBonus: 1, icon: 'GD', desc: '+2 Armor, +1 Power [Dragonscale]', tier: 3, setId: 'dragon_set' },
+  dragon_greaves:   { id: 'dragon_greaves',   name: 'Dragonscale Greaves',   type: ITEM_TYPE.BOOTS,  slot: EQUIP_SLOT.BOOTS,  armor: 3, icon: 'BD', desc: '+3 Armor [Dragonscale]', tier: 3, setId: 'dragon_set' },
+  // Arcane Sage Set (3 pieces)
+  arcane_circlet:   { id: 'arcane_circlet',   name: 'Arcane Circlet',   type: ITEM_TYPE.HELMET, slot: EQUIP_SLOT.HELMET, armor: 1, spellBonus: 3, icon: 'HA', desc: '+1 Armor, +3 Spell Dmg [Arcane Sage]', tier: 3, setId: 'arcane_set' },
+  arcane_robe:      { id: 'arcane_robe',      name: 'Arcane Robe',      type: ITEM_TYPE.CHEST,  slot: EQUIP_SLOT.CHEST,  armor: 2, manaBonus: 8, icon: 'CA', desc: '+2 Armor, +8 Max Mana [Arcane Sage]', tier: 3, setId: 'arcane_set' },
+  arcane_wraps:     { id: 'arcane_wraps',     name: 'Arcane Wraps',     type: ITEM_TYPE.GLOVES, slot: EQUIP_SLOT.GLOVES, armor: 1, spellBonus: 2, icon: 'GA', desc: '+1 Armor, +2 Spell Dmg [Arcane Sage]', tier: 3, setId: 'arcane_set' },
+  // Holy Crusader Set (4 pieces)
+  holy_crown:       { id: 'holy_crown',       name: 'Holy Crown',       type: ITEM_TYPE.HELMET, slot: EQUIP_SLOT.HELMET, armor: 3, icon: 'HH', desc: '+3 Armor [Holy Crusader]', tier: 3, setId: 'holy_set' },
+  holy_mail:        { id: 'holy_mail',        name: 'Holy Chainmail',   type: ITEM_TYPE.CHEST,  slot: EQUIP_SLOT.CHEST,  armor: 4, icon: 'CH', desc: '+4 Armor, Life Steal 1 [Holy Crusader]', tier: 3, setId: 'holy_set', features: [{ type: 'life_steal', value: 1 }] },
+  holy_shield_cape: { id: 'holy_shield_cape', name: 'Holy Shield Cape', type: ITEM_TYPE.CAPE,   slot: EQUIP_SLOT.CAPE,   armor: 2, icon: 'KH', desc: '+2 Armor, Thorns 2 [Holy Crusader]', tier: 3, setId: 'holy_set', features: [{ type: 'thorns', value: 2 }] },
+  holy_sabatons:    { id: 'holy_sabatons',    name: 'Holy Sabatons',    type: ITEM_TYPE.BOOTS,  slot: EQUIP_SLOT.BOOTS,  armor: 3, icon: 'BH', desc: '+3 Armor [Holy Crusader]', tier: 3, setId: 'holy_set' },
+
+  // Fishing
+  trident_deep:     { id: 'trident_deep',     name: 'Trident of the Deep', type: ITEM_TYPE.WEAPON, slot: EQUIP_SLOT.WEAPON, power: 5, icon: 'WT', desc: '+5 Power, Life Steal 2', tier: 3, features: [{ type: 'life_steal', value: 2 }] },
 
   // Consumables (stackable)
   minor_health_pot: { id: 'minor_health_pot', name: 'Health Potion',   type: ITEM_TYPE.CONSUMABLE, healAmount: 15, icon: 'PH', desc: 'Restore 15 HP',   stackable: true, maxStack: 5 },
@@ -529,6 +578,7 @@ export const LOOT_TABLES = {
     { itemId: 'strength_potion',  chance: 0.40 },
     { itemId: 'haste_potion',     chance: 0.30 },
     { itemId: 'inferno_axe',      chance: 0.15 },
+    { itemId: 'holy_crown',       chance: 0.05 },
   ],
   [ENTITY.SPIDER_QUEEN]: [
     { itemId: 'shadow_dagger',    chance: 0.35 },
@@ -537,6 +587,8 @@ export const LOOT_TABLES = {
     { itemId: 'antidote',         chance: 0.50 },
     { itemId: 'spiked_gloves',    chance: 0.25 },
     { itemId: 'venom_fang',       chance: 0.20 },
+    { itemId: 'shadow_gloves',    chance: 0.06 },
+    { itemId: 'shadow_boots',     chance: 0.06 },
   ],
   [ENTITY.LICH]: [
     { itemId: 'fire_staff',       chance: 0.35 },
@@ -547,6 +599,9 @@ export const LOOT_TABLES = {
     { itemId: 'major_health_pot', chance: 0.40 },
     { itemId: 'seer_orb',         chance: 0.20 },
     { itemId: 'oracle_helm',      chance: 0.15 },
+    { itemId: 'arcane_circlet',   chance: 0.07 },
+    { itemId: 'arcane_robe',      chance: 0.06 },
+    { itemId: 'arcane_wraps',     chance: 0.06 },
   ],
   [ENTITY.MYCELIUM_LORD]: [
     { itemId: 'plate_armor',      chance: 0.30 },
@@ -563,6 +618,8 @@ export const LOOT_TABLES = {
     { itemId: 'plate_armor',      chance: 0.20 },
     { itemId: 'inferno_axe',      chance: 0.20 },
     { itemId: 'vampiric_blade',   chance: 0.10 },
+    { itemId: 'dragon_helm',      chance: 0.06 },
+    { itemId: 'dragon_plate',     chance: 0.05 },
   ],
   [ENTITY.FROST_GIANT]: [
     { itemId: 'frost_wand',       chance: 0.35 },
@@ -573,6 +630,9 @@ export const LOOT_TABLES = {
     { itemId: 'shadow_cape',      chance: 0.25 },
     { itemId: 'frost_greaves',    chance: 0.20 },
     { itemId: 'lucky_cloak',      chance: 0.10 },
+    { itemId: 'holy_mail',        chance: 0.06 },
+    { itemId: 'holy_sabatons',    chance: 0.06 },
+    { itemId: 'holy_shield_cape', chance: 0.05 },
   ],
   // New monster loot - Early
   [ENTITY.GOBLIN_SCOUT]: [
@@ -685,6 +745,8 @@ export const LOOT_TABLES = {
     { itemId: 'shadow_dagger',    chance: 0.10 },
     { itemId: 'shadow_cape',      chance: 0.10 },
     { itemId: 'haste_potion',     chance: 0.08 },
+    { itemId: 'shadow_hood',      chance: 0.04 },
+    { itemId: 'shadow_vest',      chance: 0.03 },
   ],
   // New monster loot - Late
   [ENTITY.DEATH_KNIGHT]: [
@@ -693,6 +755,8 @@ export const LOOT_TABLES = {
     { itemId: 'plate_armor',      chance: 0.10 },
     { itemId: 'skull_helm',       chance: 0.10 },
     { itemId: 'iron_greaves',     chance: 0.10 },
+    { itemId: 'holy_crown',       chance: 0.04 },
+    { itemId: 'shadow_gloves',    chance: 0.03 },
   ],
   [ENTITY.NECROMANCER]: [
     { itemId: 'major_health_pot', chance: 0.25 },
@@ -700,6 +764,7 @@ export const LOOT_TABLES = {
     { itemId: 'fire_staff',       chance: 0.10 },
     { itemId: 'mage_robe',        chance: 0.10 },
     { itemId: 'seer_orb',         chance: 0.05 },
+    { itemId: 'arcane_wraps',     chance: 0.04 },
   ],
   [ENTITY.MOSS_GOLEM]: [
     { itemId: 'major_health_pot', chance: 0.30 },
@@ -720,6 +785,7 @@ export const LOOT_TABLES = {
     { itemId: 'inferno_axe',      chance: 0.08 },
     { itemId: 'iron_greaves',     chance: 0.10 },
     { itemId: 'strength_potion',  chance: 0.12 },
+    { itemId: 'dragon_gauntlets', chance: 0.04 },
   ],
   [ENTITY.INFERNAL_MAGE]: [
     { itemId: 'major_health_pot', chance: 0.25 },
@@ -747,6 +813,8 @@ export const LOOT_TABLES = {
     { itemId: 'oracle_helm',      chance: 0.06 },
     { itemId: 'seer_orb',         chance: 0.05 },
     { itemId: 'iron_greaves',     chance: 0.12 },
+    { itemId: 'holy_mail',        chance: 0.04 },
+    { itemId: 'holy_sabatons',    chance: 0.04 },
   ],
   // New boss loot
   [ENTITY.GOBLIN_CHIEF]: [
@@ -767,6 +835,8 @@ export const LOOT_TABLES = {
     { itemId: 'fire_cloak',       chance: 0.30 },
     { itemId: 'vampiric_blade',   chance: 0.15 },
     { itemId: 'lucky_cloak',      chance: 0.10 },
+    { itemId: 'dragon_gauntlets', chance: 0.07 },
+    { itemId: 'dragon_greaves',   chance: 0.07 },
   ],
   [ENTITY.ANCIENT_WYRM]: [
     { itemId: 'steel_blade',      chance: 0.40 },
@@ -777,6 +847,10 @@ export const LOOT_TABLES = {
     { itemId: 'inferno_axe',      chance: 0.25 },
     { itemId: 'vampiric_blade',   chance: 0.20 },
     { itemId: 'lucky_cloak',      chance: 0.15 },
+    { itemId: 'shadow_hood',      chance: 0.08 },
+    { itemId: 'shadow_vest',      chance: 0.08 },
+    { itemId: 'dragon_helm',      chance: 0.08 },
+    { itemId: 'dragon_plate',     chance: 0.08 },
   ],
 };
 
@@ -887,6 +961,89 @@ export const BOSS_FOR_THEME = {
 };
 
 export const ELITE_PREFIXES = ['Savage', 'Frenzied', 'Ancient', 'Corrupted', 'Enraged', 'Cursed', 'Venomous', 'Spectral', 'Blazing', 'Frozen'];
+
+// ── Boss QoL Skills ────────────────────────────
+export const BOSS_SKILLS = {
+  town_portal:  { id: 'town_portal',  name: 'Town Portal',  floor: 5,  type: 'active',  key: 'Q', desc: 'Open a portal to the village. A return portal lets you come back.' },
+  gold_magnet:  { id: 'gold_magnet',  name: 'Gold Magnet',  floor: 10, type: 'passive', desc: 'Loot from kills is collected automatically.' },
+  cartographer: { id: 'cartographer', name: 'Cartographer', floor: 15, type: 'passive', desc: 'Dungeon maps are fully revealed on entry.' },
+  second_life:  { id: 'second_life',  name: 'Second Life',  floor: 20, type: 'passive', desc: 'Revive once on death with 50% HP.' },
+};
+
+// ── Set Items ───────────────────────────────────
+export const ITEM_SETS = {
+  shadow_set: {
+    id: 'shadow_set', name: 'Shadow Assassin', color: '#8a4aaa',
+    items: ['shadow_hood', 'shadow_vest', 'shadow_gloves', 'shadow_boots'],
+    bonuses: {
+      2: { label: '(2) +15% Crit Chance', effects: [{ type: 'crit_chance', value: 15 }] },
+      4: { label: '(4) +5 Power, Life Steal 4', effects: [{ type: 'life_steal', value: 4 }], powerBonus: 5 },
+    },
+  },
+  dragon_set: {
+    id: 'dragon_set', name: 'Dragonscale', color: '#e06030',
+    items: ['dragon_helm', 'dragon_plate', 'dragon_gauntlets', 'dragon_greaves'],
+    bonuses: {
+      2: { label: '(2) +4 Armor, Thorns 3', effects: [{ type: 'thorns', value: 3 }], armorBonus: 4 },
+      4: { label: '(4) +6 Fire Dmg, +15 Max HP', effects: [{ type: 'fire_dmg', value: 6 }], hpBonus: 15 },
+    },
+  },
+  arcane_set: {
+    id: 'arcane_set', name: 'Arcane Sage', color: '#6060c0',
+    items: ['arcane_circlet', 'arcane_robe', 'arcane_wraps'],
+    bonuses: {
+      2: { label: '(2) +4 Spell Dmg, +10 Max Mana', spellBonus: 4, manaBonus: 10 },
+      3: { label: '(3) +20% XP, All-Seeing Eye', effects: [{ type: 'xp_boost', value: 20 }, { type: 'all_seeing_eye', value: 1 }] },
+    },
+  },
+  holy_set: {
+    id: 'holy_set', name: 'Holy Crusader', color: '#e0c040',
+    items: ['holy_crown', 'holy_mail', 'holy_shield_cape', 'holy_sabatons'],
+    bonuses: {
+      2: { label: '(2) +3 Armor, Regen 2 HP/turn', armorBonus: 3, regenBonus: 2 },
+      4: { label: '(4) +8 Max HP, Life Steal 3, +3 Power', effects: [{ type: 'life_steal', value: 3 }], hpBonus: 8, powerBonus: 3 },
+    },
+  },
+};
+
+// ── Prestige / New Game+ ────────────────────────
+export const PRESTIGE = {
+  MAX_LEVEL: 5,
+  TRIGGER_FLOOR: 20,
+  PER_LEVEL: { powerBonus: 2, hpBonus: 5, xpBoostPercent: 10 },
+  ENEMY_SCALING: { hpMultiplier: 0.20, powerMultiplier: 0.20 },
+  TITLES: { 0: '', 1: 'Veteran', 2: 'Champion', 3: 'Legend', 4: 'Mythic', 5: 'Ascendant' },
+  TITLE_COLORS: { 1: '#60c060', 2: '#4488ee', 3: '#a060e0', 4: '#e0a040', 5: '#e04040' },
+};
+
+// ── Fish Loot Table ─────────────────────────────
+export const FISH_LOOT = [
+  { id: 'small_fish',      name: 'Small Fish',          rarity: 'common',    weight: 35, type: 'consumable', healAmount: 5,  icon: 'FC', desc: 'A small catch. Heals 5 HP.' },
+  { id: 'muddy_boot',      name: 'Muddy Boot',          rarity: 'common',    weight: 25, type: 'junk',       sellValue: 2,   icon: 'FB', desc: 'An old boot. Sell for 2g.' },
+  { id: 'large_fish',      name: 'Large Fish',          rarity: 'uncommon',  weight: 10, type: 'consumable', healAmount: 12, icon: 'FL', desc: 'A hearty catch. Heals 12 HP.' },
+  { id: 'river_crab',      name: 'River Crab',          rarity: 'uncommon',  weight: 8,  type: 'consumable', healAmount: 8,  icon: 'FR', desc: 'Heals 8 HP, +1 armor 3 turns.', effect: { name: 'Crab Shell', stat: 'armor', amount: 1, turns: 3 } },
+  { id: 'old_coin',        name: 'Old Coin',            rarity: 'uncommon',  weight: 7,  type: 'gold',       goldValue: 5,   icon: 'FG', desc: 'Worth 5 gold.' },
+  { id: 'golden_fish',     name: 'Golden Fish',         rarity: 'rare',      weight: 7,  type: 'consumable', healAmount: 20, icon: 'FX', desc: 'Heals 20 HP, +2 power 10 turns.', effect: { name: 'Golden Vigor', stat: 'power', amount: 2, turns: 10 } },
+  { id: 'enchanted_scale', name: 'Enchanted Scale',     rarity: 'rare',      weight: 5,  type: 'consumable', healAmount: 0,  icon: 'FS', desc: '+2 armor for 10 turns.', effect: { name: 'Scale Armor', stat: 'armor', amount: 2, turns: 10 } },
+  { id: 'trident_deep',    name: 'Trident of the Deep', rarity: 'legendary', weight: 3,  type: 'equipment' },
+];
+
+// ── Arena Configuration ─────────────────────────
+export const ARENA_CONFIG = {
+  MAP_SIZE: 12,
+  WAVE_HEAL_PERCENT: 10,
+  ARENA_SPAWN_POOLS: {
+    weak:   [ENTITY.GOBLIN, ENTITY.BAT, ENTITY.SLIME, ENTITY.SPIDER, ENTITY.GOBLIN_SCOUT],
+    medium: [ENTITY.ORC, ENTITY.SKELETON, ENTITY.GOBLIN_SHAMAN, ENTITY.ZOMBIE, ENTITY.COCOON_HORROR],
+    strong: [ENTITY.TROLL, ENTITY.DARK_MAGE, ENTITY.WRAITH, ENTITY.DEATH_KNIGHT, ENTITY.NECROMANCER],
+  },
+  REWARDS: {
+    goldPerWave: (wave) => 10 + wave * 5,
+    wave5Bonus: 50,
+    wave10Bonus: 100,
+    wave15PlusBonus: 50,
+  },
+};
 
 // ── Room Types ──────────────────────────────────
 export const ROOM_TYPE = {
@@ -1174,4 +1331,9 @@ export const ACHIEVEMENTS = {
   survivor:       { name: 'Survivor',        desc: 'Die and restart the game',      icon: '💔', category: 'special' },
   godlike:        { name: 'Godlike',         desc: 'Activate god mode',             icon: '😇', category: 'special', hidden: true },
   speed_runner:   { name: 'Speed Runner',    desc: 'Reach floor 5 in under 150 turns', icon: '⚡', category: 'special' },
+  prestige_1:     { name: 'New Game+',       desc: 'Reach Prestige 1',             icon: '⭐', category: 'special' },
+  prestige_5:     { name: 'Ascendant',       desc: 'Reach maximum Prestige',        icon: '👑', category: 'special' },
+  master_angler:  { name: 'Master Angler',   desc: 'Catch 20 fish',                 icon: '🐟', category: 'special' },
+  gladiator:      { name: 'Gladiator',       desc: 'Clear wave 5 in the arena',     icon: '⚔', category: 'combat' },
+  arena_champion: { name: 'Arena Champion',  desc: 'Clear wave 10 in the arena',    icon: '🏆', category: 'combat' },
 };

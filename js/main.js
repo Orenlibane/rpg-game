@@ -8,9 +8,18 @@ import {
   toggleSkillTree, closeSkillTree, useActiveSkill, getSkillRank,
   toggleAchievements, closeAchievements,
   loadGame, hasSaveGame, deleteSave,
-} from './engine.js?v=11';
-import { render } from './renderer.js?v=11';
-import { PLAYER_CLASS } from './constants.js?v=11';
+  useTownPortal,
+  activatePrestige, declinePrestige,
+  closeFishing, castLine, reelIn,
+  closeArena, enterArena, nextArenaWave, leaveArena,
+  gameSettings, updateSetting, pickupItem,
+} from './engine.js?v=16';
+import { render, resizeCanvas } from './renderer.js?v=16';
+import { PLAYER_CLASS, PRESTIGE } from './constants.js?v=16';
+import { initI18n, setLanguage, applyStaticTranslations, t } from './i18n.js';
+
+// ── Initialize i18n ─────────────────────────
+initI18n(gameSettings.language);
 
 // ── Class Selection ──────────────────────────
 
@@ -55,7 +64,7 @@ function addManaLevelUpBtn() {
     const btn = document.createElement('button');
     btn.id = 'choose-mana';
     btn.className = 'choice-btn';
-    btn.textContent = '+8 Max Mana';
+    btn.textContent = t('levelup.mana');
     btn.addEventListener('click', () => {
       levelUpEl.classList.add('hidden');
       chooseLevelUp('mana');
@@ -138,13 +147,17 @@ document.addEventListener('keydown', (e) => {
     }
   }
 
-  // Escape closes overlays
+  // Escape closes overlays (but not prestige overlay or arena wave cleared)
   if (e.key === 'Escape') {
+    if (state.showPrestige) return; // Cannot dismiss prestige with Escape
+    if (state.arenaWaveCleared) return; // Must choose next wave or leave
     const itemPopup = document.getElementById('item-popup');
     if (!itemPopup.classList.contains('hidden')) {
       itemPopup.classList.add('hidden');
       return;
     }
+    if (state.showFishing) { closeFishing(); render(); return; }
+    if (state.showArena) { closeArena(); render(); return; }
     if (state.showChest) { closeChest(); render(); return; }
     if (state.showHealer) { closeHealer(); render(); return; }
     if (state.showShop) { closeShop(); render(); return; }
@@ -153,11 +166,22 @@ document.addEventListener('keydown', (e) => {
     if (state.showCharSheet) { closeCharSheet(); render(); return; }
     if (state.showSkillTree) { closeSkillTree(); render(); return; }
     if (state.showAchievements) { closeAchievements(); render(); return; }
+    if (state.showBestiary) { toggleBestiary(); render(); return; }
+    if (state.showArmory) { toggleArmory(); render(); return; }
+    if (state.showMinimap) { toggleMinimap(); render(); return; }
+    // No overlay open — open Settings
+    if (state.phase !== 'class_select' && !state.gameOver) {
+      toggleSettings(); render(); return;
+    }
   }
 
   if (state.phase === 'class_select') return;
   if (state.gameOver) return;
   if (state.pendingLevelUp) return;
+  if (state.showPrestige) return;
+  if (state.showFishing) return;
+  if (state.showArena) return;
+  if (state.arenaWaveCleared) return;
   if (state.showBestiary) return;
   if (state.showArmory) return;
   if (state.showMinimap) return;
@@ -183,6 +207,16 @@ document.addEventListener('keydown', (e) => {
     render();
     checkOverlays();
     return;
+  }
+
+  // Town Portal (Boss Skill)
+  if (e.key === 'q' || e.key === 'Q') {
+    if (state.bossSkills?.town_portal && state.mode === 'dungeon') {
+      e.preventDefault();
+      useTownPortal();
+      render();
+      return;
+    }
   }
 
   switch (e.key) {
@@ -229,6 +263,10 @@ document.addEventListener('keydown', (e) => {
       e.preventDefault();
       castSpell('heal');
       break;
+    case 'e': case 'E':
+      e.preventDefault();
+      pickupItem();
+      break;
     case 'r': case 'R':
       e.preventDefault();
       shootBow();
@@ -269,8 +307,8 @@ const closeBestiaryBtn = document.getElementById('close-bestiary');
 
 function checkOverlays() {
   if (state.gameOver) {
-    const classNames = { warrior: 'Warrior', mage: 'Mage', archer: 'Archer' };
-    deathStatsEl.textContent = `${classNames[state.playerClass]} | Floor ${state.floor} | Level ${state.player.level} | ${state.turnCount} turns`;
+    const classKey = { warrior: 'class.warrior', mage: 'class.mage', archer: 'class.archer' };
+    deathStatsEl.textContent = t('gameover.stats', { class: t(classKey[state.playerClass] || 'class.adventurer'), floor: state.floor, level: state.player.level, turns: state.turnCount });
     gameOverEl.classList.remove('hidden');
   }
 
@@ -350,7 +388,7 @@ document.getElementById('cheat-submit').addEventListener('click', () => {
   if (code) {
     const result = applyCheatCode(code);
     if (result) {
-      document.getElementById('godmode-status').textContent = state.godMode ? 'God Mode: ON' : 'God Mode: OFF';
+      document.getElementById('godmode-status').textContent = state.godMode ? t('settings.godmode_on') : t('settings.godmode_off');
       document.getElementById('godmode-status').style.color = state.godMode ? '#60e060' : '#888';
     }
     input.value = '';
@@ -391,3 +429,162 @@ document.getElementById('close-achievements').addEventListener('click', () => {
   closeAchievements();
   render();
 });
+
+// Prestige
+document.getElementById('prestige-accept').addEventListener('click', () => {
+  activatePrestige();
+  classSelectEl.classList.remove('hidden');
+  continueSaveBtn.style.display = 'none';
+  // Remove mana button if it exists
+  const manaBtn = document.getElementById('choose-mana');
+  if (manaBtn) manaBtn.remove();
+  // Show prestige info on class select
+  updateClassSelectPrestige();
+  render();
+});
+
+document.getElementById('prestige-decline').addEventListener('click', () => {
+  declinePrestige();
+  render();
+});
+
+function updateClassSelectPrestige() {
+  const el = document.getElementById('class-select-prestige');
+  if (!el) return;
+  if (state.prestigeLevel > 0) {
+    const title = PRESTIGE.TITLES[state.prestigeLevel] || '';
+    const color = PRESTIGE.TITLE_COLORS[state.prestigeLevel] || '#ccc';
+    const pl = PRESTIGE.PER_LEVEL;
+    el.style.display = '';
+    el.innerHTML = `
+      <span style="color: ${color}; font-weight: bold;">NG+${state.prestigeLevel} ${title}</span>
+      <span class="prestige-bonuses">+${pl.powerBonus * state.prestigeLevel} Pow | +${pl.hpBonus * state.prestigeLevel} HP | +${pl.xpBoostPercent * state.prestigeLevel}% XP</span>
+    `;
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+// Show prestige info on initial load if prestige > 0
+if (state.prestigeLevel > 0) {
+  updateClassSelectPrestige();
+}
+
+// Fishing
+document.getElementById('cast-line-btn').addEventListener('click', () => {
+  castLine();
+  render();
+  // Poll for phase changes during fishing
+  if (!window._fishingInterval) {
+    window._fishingInterval = setInterval(() => {
+      if (!state.showFishing || state.fishingPhase === 'idle') {
+        clearInterval(window._fishingInterval);
+        window._fishingInterval = null;
+        return;
+      }
+      render();
+    }, 200);
+  }
+});
+
+document.getElementById('reel-in-btn').addEventListener('click', () => {
+  reelIn();
+  render();
+});
+
+document.getElementById('close-fishing').addEventListener('click', () => {
+  closeFishing();
+  if (window._fishingInterval) {
+    clearInterval(window._fishingInterval);
+    window._fishingInterval = null;
+  }
+  render();
+});
+
+// Arena
+document.getElementById('enter-arena-btn').addEventListener('click', () => {
+  enterArena();
+  render();
+});
+
+document.getElementById('close-arena').addEventListener('click', () => {
+  closeArena();
+  render();
+});
+
+document.getElementById('next-wave-btn').addEventListener('click', () => {
+  nextArenaWave();
+  render();
+});
+
+document.getElementById('leave-arena-btn').addEventListener('click', () => {
+  leaveArena();
+  render();
+});
+
+// ── Settings Controls ────────────────────────
+
+// Tile Size toggle group
+document.getElementById('setting-tile-size').addEventListener('click', (e) => {
+  const btn = e.target.closest('.settings-opt');
+  if (!btn) return;
+  const value = parseInt(btn.dataset.value);
+  updateSetting('tileSize', value);
+  document.querySelectorAll('#setting-tile-size .settings-opt').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  resizeCanvas();
+  render();
+});
+
+// Toggle settings (ON/OFF buttons)
+function setupToggle(elementId, settingKey) {
+  document.getElementById(elementId).addEventListener('click', () => {
+    const newValue = !gameSettings[settingKey];
+    updateSetting(settingKey, newValue);
+    const btn = document.getElementById(elementId);
+    btn.textContent = newValue ? t('ui.on') : t('ui.off');
+    btn.classList.toggle('active', newValue);
+    render();
+  });
+}
+
+setupToggle('setting-damage-numbers', 'showDamageNumbers');
+setupToggle('setting-torch-flicker', 'torchFlicker');
+setupToggle('setting-enemy-hp', 'showEnemyHpBars');
+setupToggle('setting-auto-pickup', 'autoPickup');
+
+// Language toggle
+document.getElementById('setting-language').addEventListener('click', (e) => {
+  const btn = e.target.closest('.settings-opt');
+  if (!btn) return;
+  const lang = btn.dataset.value;
+  updateSetting('language', lang);
+  setLanguage(lang);
+  document.querySelectorAll('#setting-language .settings-opt').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+});
+
+// Sync settings UI when settings overlay opens
+function syncSettingsUI() {
+  // Sync language toggle
+  document.querySelectorAll('#setting-language .settings-opt').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.value === gameSettings.language);
+  });
+  document.querySelectorAll('#setting-tile-size .settings-opt').forEach(btn => {
+    btn.classList.toggle('active', parseInt(btn.dataset.value) === gameSettings.tileSize);
+  });
+  const toggles = [
+    ['setting-damage-numbers', 'showDamageNumbers'],
+    ['setting-torch-flicker', 'torchFlicker'],
+    ['setting-enemy-hp', 'showEnemyHpBars'],
+    ['setting-auto-pickup', 'autoPickup'],
+  ];
+  for (const [id, key] of toggles) {
+    const btn = document.getElementById(id);
+    btn.textContent = gameSettings[key] ? t('ui.on') : t('ui.off');
+    btn.classList.toggle('active', gameSettings[key]);
+  }
+}
+
+window.addEventListener('settingsOpened', syncSettingsUI);

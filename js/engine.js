@@ -10,10 +10,10 @@ import {
   ATTR_BONUSES, FEATURE_INFO, QUEST_POOL, SKILL_TREES, ACHIEVEMENTS,
   BOSS_SKILLS, ITEM_SETS, PRESTIGE,
   FISH_LOOT, ARENA_CONFIG,
-} from './constants.js?v=17';
+} from './constants.js?v=18';
 import { t } from './i18n.js';
-import { generateVillage, generateDungeon, generateArenaMap } from './mapgen.js?v=17';
-import { computeFOV } from './fov.js?v=17';
+import { generateVillage, generateDungeon, generateArenaMap } from './mapgen.js?v=18';
+import { computeFOV } from './fov.js?v=18';
 
 function randInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -2341,6 +2341,32 @@ export function destroyItem(slotIndex) {
     inv.splice(slotIndex, 1);
   }
   log(t('log.destroyed', { name: item.name }), 'item');
+}
+
+export function throwTrash() {
+  const inv = state.player.inventory;
+  let count = 0;
+  // Iterate backwards to safely splice
+  for (let i = inv.length - 1; i >= 0; i--) {
+    const item = inv[i];
+    // Skip consumables — only target equippable items
+    if (item.type === ITEM_TYPE.CONSUMABLE) continue;
+    // Skip items with magical features
+    if (item.features && item.features.length > 0) continue;
+    // Skip set items
+    if (item.setId) continue;
+    // Skip items with special bonuses (spellBonus, manaBonus, rangeBonus, powerBonus)
+    if (item.spellBonus || item.manaBonus || item.rangeBonus || item.powerBonus) continue;
+    // This is a plain non-magical wearable — destroy it
+    inv.splice(i, 1);
+    count++;
+  }
+  if (count > 0) {
+    log(t('log.trash_thrown', { count }), 'item');
+  } else {
+    log(t('log.no_trash'), 'info');
+  }
+  return count;
 }
 
 export function unequipItem(slot) {

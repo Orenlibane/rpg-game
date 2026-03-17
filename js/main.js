@@ -7,7 +7,7 @@ import {
   toggleCharSheet, closeCharSheet,
   toggleSkillTree, closeSkillTree, useActiveSkill, getSkillRank,
   toggleAchievements, closeAchievements,
-  loadGame, hasSaveGame, deleteSave, loadGameFromCloud,
+  loadGame, hasSaveGame, deleteSave, loadGameFromCloud, throwTrash,
   useTownPortal,
   activatePrestige, declinePrestige,
   closeFishing, castLine, reelIn,
@@ -15,9 +15,9 @@ import {
   gameSettings, updateSetting, pickupItem,
   apiRegister, apiLogin, setAuth, isLoggedIn, getAuthUsername,
   startCloudSync, checkDbStatus,
-} from './engine.js?v=17';
-import { render, resizeCanvas } from './renderer.js?v=17';
-import { PLAYER_CLASS, PRESTIGE } from './constants.js?v=17';
+} from './engine.js?v=18';
+import { render, resizeCanvas } from './renderer.js?v=18';
+import { PLAYER_CLASS, PRESTIGE } from './constants.js?v=18';
 import { initI18n, setLanguage, applyStaticTranslations, t } from './i18n.js';
 
 // ── Initialize i18n ─────────────────────────
@@ -53,7 +53,7 @@ function hideLoginOverlay() {
 function updateUserBadge() {
   const el = document.getElementById('game-version');
   if (el && isLoggedIn()) {
-    el.textContent = `v17 | ${getAuthUsername()}`;
+    el.textContent = `v18 | ${getAuthUsername()}`;
   }
 }
 
@@ -652,6 +652,12 @@ document.getElementById('leave-arena-btn').addEventListener('click', () => {
   render();
 });
 
+// ── Throw Trash ─────────────────────────────
+document.getElementById('btn-throw-trash').addEventListener('click', () => {
+  throwTrash();
+  render();
+});
+
 // ── Settings Controls ────────────────────────
 
 // Tile Size toggle group
@@ -718,3 +724,11 @@ function syncSettingsUI() {
 }
 
 window.addEventListener('settingsOpened', syncSettingsUI);
+
+// ── Responsive Canvas ───────────────────────
+resizeCanvas();
+render();
+window.addEventListener('resize', () => {
+  resizeCanvas();
+  render();
+});

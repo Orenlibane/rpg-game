@@ -384,15 +384,15 @@ export const ITEMS = {
   trident_deep:     { id: 'trident_deep',     name: 'Trident of the Deep', type: ITEM_TYPE.WEAPON, slot: EQUIP_SLOT.WEAPON, power: 5, icon: 'WT', desc: '+5 Power, Life Steal 2', tier: 3, features: [{ type: 'life_steal', value: 2 }] },
 
   // Consumables (stackable)
-  minor_health_pot: { id: 'minor_health_pot', name: 'Health Potion',   type: ITEM_TYPE.CONSUMABLE, healAmount: 15, icon: 'PH', desc: 'Restore 15 HP',   stackable: true, maxStack: 5 },
-  major_health_pot: { id: 'major_health_pot', name: 'Greater Health',  type: ITEM_TYPE.CONSUMABLE, healAmount: 30, icon: 'PH+', desc: 'Restore 30 HP',  stackable: true, maxStack: 5 },
-  mana_potion:      { id: 'mana_potion',      name: 'Mana Potion',     type: ITEM_TYPE.CONSUMABLE, manaAmount: 10, icon: 'PM', desc: 'Restore 10 Mana', stackable: true, maxStack: 5 },
-  antidote:         { id: 'antidote',          name: 'Antidote',        type: ITEM_TYPE.CONSUMABLE, curePoison: true, icon: 'PA', desc: 'Cure poison',   stackable: true, maxStack: 5 },
+  minor_health_pot: { id: 'minor_health_pot', name: 'Health Potion',   type: ITEM_TYPE.CONSUMABLE, healAmount: 15, icon: 'PH', desc: 'Restore 15 HP',   stackable: true, maxStack: 20 },
+  major_health_pot: { id: 'major_health_pot', name: 'Greater Health',  type: ITEM_TYPE.CONSUMABLE, healAmount: 30, icon: 'PH+', desc: 'Restore 30 HP',  stackable: true, maxStack: 20 },
+  mana_potion:      { id: 'mana_potion',      name: 'Mana Potion',     type: ITEM_TYPE.CONSUMABLE, manaAmount: 10, icon: 'PM', desc: 'Restore 10 Mana', stackable: true, maxStack: 20 },
+  antidote:         { id: 'antidote',          name: 'Antidote',        type: ITEM_TYPE.CONSUMABLE, curePoison: true, icon: 'PA', desc: 'Cure poison',   stackable: true, maxStack: 20 },
   // Effect potions
-  strength_potion:  { id: 'strength_potion',  name: 'Str Potion',     type: ITEM_TYPE.CONSUMABLE, effect: { name: 'Strength', stat: 'power',  amount: 3, turns: 15 }, icon: 'PS', desc: '+3 Power for 15 turns', stackable: true, maxStack: 5 },
-  shield_potion:    { id: 'shield_potion',    name: 'Shield Potion',  type: ITEM_TYPE.CONSUMABLE, effect: { name: 'Shield',   stat: 'armor',  amount: 3, turns: 15 }, icon: 'PD', desc: '+3 Armor for 15 turns', stackable: true, maxStack: 5 },
-  haste_potion:     { id: 'haste_potion',     name: 'Haste Potion',   type: ITEM_TYPE.CONSUMABLE, effect: { name: 'Haste',    stat: 'haste',  amount: 1, turns: 10 }, icon: 'PF', desc: 'Double attack for 10 turns', stackable: true, maxStack: 5 },
-  regen_potion:     { id: 'regen_potion',     name: 'Regen Potion',   type: ITEM_TYPE.CONSUMABLE, effect: { name: 'Regen',    stat: 'regen',  amount: 2, turns: 20 }, icon: 'PR', desc: 'Regen 2 HP/turn for 20 turns', stackable: true, maxStack: 5 },
+  strength_potion:  { id: 'strength_potion',  name: 'Str Potion',     type: ITEM_TYPE.CONSUMABLE, effect: { name: 'Strength', stat: 'power',  amount: 3, turns: 15 }, icon: 'PS', desc: '+3 Power for 15 turns', stackable: true, maxStack: 20 },
+  shield_potion:    { id: 'shield_potion',    name: 'Shield Potion',  type: ITEM_TYPE.CONSUMABLE, effect: { name: 'Shield',   stat: 'armor',  amount: 3, turns: 15 }, icon: 'PD', desc: '+3 Armor for 15 turns', stackable: true, maxStack: 20 },
+  haste_potion:     { id: 'haste_potion',     name: 'Haste Potion',   type: ITEM_TYPE.CONSUMABLE, effect: { name: 'Haste',    stat: 'haste',  amount: 1, turns: 10 }, icon: 'PF', desc: 'Double attack for 10 turns', stackable: true, maxStack: 20 },
+  regen_potion:     { id: 'regen_potion',     name: 'Regen Potion',   type: ITEM_TYPE.CONSUMABLE, effect: { name: 'Regen',    stat: 'regen',  amount: 2, turns: 20 }, icon: 'PR', desc: 'Regen 2 HP/turn for 20 turns', stackable: true, maxStack: 20 },
 };
 
 // ── Floor Themes ─────────────────────────────────

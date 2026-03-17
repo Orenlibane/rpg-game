@@ -1,26 +1,37 @@
-import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE } from './constants.js?v=17';
+import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE } from './constants.js?v=18';
 import { t } from './i18n.js';
 
 // Lookups for bestiary
 const BASE_STATS_LOOKUP = BASE_STATS;
 const GOLD_LOOKUP = GOLD_REWARDS;
-import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js?v=17';
-import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers } from './engine.js?v=17';
+import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js?v=18';
+import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers } from './engine.js?v=18';
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
 
 function getTS() { return gameSettings.tileSize; }
-function getViewW() { return Math.floor((VIEW_W * TILE_SIZE) / getTS()); }
-function getViewH() { return Math.floor((VIEW_H * TILE_SIZE) / getTS()); }
+function getViewW() { return window._dynamicViewW || Math.floor((VIEW_W * TILE_SIZE) / getTS()); }
+function getViewH() { return window._dynamicViewH || Math.floor((VIEW_H * TILE_SIZE) / getTS()); }
 
 export function resizeCanvas() {
   const ts = getTS();
-  const vw = getViewW();
-  const vh = getViewH();
-  canvas.width = vw * ts;
-  canvas.height = vh * ts;
+  // Calculate available space
+  const wrapper = document.getElementById('canvas-container');
+  const uiPanel = document.getElementById('ui-panel');
+  const msgLog = document.getElementById('message-log');
+  const availW = wrapper ? wrapper.clientWidth : VIEW_W * TILE_SIZE;
+  const msgH = msgLog ? msgLog.offsetHeight + 4 : 84;
+  const availH = (window.innerHeight - 24 - msgH); // padding + message log
+  // Fit as many tiles as possible
+  const tilesW = Math.max(10, Math.floor(availW / ts));
+  const tilesH = Math.max(8, Math.floor(availH / ts));
+  canvas.width = tilesW * ts;
+  canvas.height = tilesH * ts;
   ctx.imageSmoothingEnabled = false;
+  // Store dynamic view size
+  window._dynamicViewW = tilesW;
+  window._dynamicViewH = tilesH;
 }
 
 canvas.width = VIEW_W * TILE_SIZE;

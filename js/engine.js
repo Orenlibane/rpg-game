@@ -10,10 +10,10 @@ import {
   ATTR_BONUSES, FEATURE_INFO, QUEST_POOL, SKILL_TREES, ACHIEVEMENTS,
   BOSS_SKILLS, ITEM_SETS, PRESTIGE,
   FISH_LOOT, ARENA_CONFIG, CRAFTING_RECIPES,
-} from './constants.js?v=19';
+} from './constants.js?v=20';
 import { t } from './i18n.js';
-import { generateVillage, generateDungeon, generateArenaMap } from './mapgen.js?v=19';
-import { computeFOV } from './fov.js?v=19';
+import { generateVillage, generateDungeon, generateArenaMap } from './mapgen.js?v=20';
+import { computeFOV } from './fov.js?v=20';
 
 function randInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));

@@ -10,10 +10,10 @@ import {
   ATTR_BONUSES, FEATURE_INFO, QUEST_POOL, SKILL_TREES, ACHIEVEMENTS,
   BOSS_SKILLS, ITEM_SETS, PRESTIGE,
   FISH_LOOT, ARENA_CONFIG, CRAFTING_RECIPES,
-} from './constants.js?v=22';
+} from './constants.js?v=23';
 import { t } from './i18n.js';
-import { generateVillage, generateDungeon, generateArenaMap } from './mapgen.js?v=22';
-import { computeFOV } from './fov.js?v=22';
+import { generateVillage, generateDungeon, generateArenaMap } from './mapgen.js?v=23';
+import { computeFOV } from './fov.js?v=23';
 
 function randInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -3237,7 +3237,13 @@ function serializeState() {
   return snap;
 }
 
+function isValidSave(snap) {
+  return snap && snap.map && snap.player && snap.mapW > 0 && snap.mapH > 0
+    && snap.phase && snap.phase !== 'class_select';
+}
+
 function deserializeState(snap) {
+  if (!isValidSave(snap)) throw new Error('Invalid save data');
   for (const key of Object.keys(snap)) {
     if (key === 'visibility' || key === 'achievementToast') continue;
     const val = snap[key];
@@ -3285,6 +3291,8 @@ export function loadGame() {
     log(t('log.game_loaded'), 'info');
     return true;
   } catch (_) {
+    // Corrupted save — delete it
+    localStorage.removeItem('rpg_save');
     log(t('log.load_failed'), 'combat');
     return false;
   }
@@ -3306,7 +3314,14 @@ export async function loadGameFromCloud() {
 }
 
 export function hasSaveGame() {
-  return localStorage.getItem('rpg_save') !== null;
+  const raw = localStorage.getItem('rpg_save');
+  if (!raw) return false;
+  try {
+    return isValidSave(JSON.parse(raw));
+  } catch (_) {
+    localStorage.removeItem('rpg_save');
+    return false;
+  }
 }
 
 export function deleteSave() {

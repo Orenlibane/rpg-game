@@ -3189,7 +3189,10 @@ export async function cloudLoad() {
     const res = await fetch('/api/load', {
       headers: { 'Authorization': 'Bearer ' + authToken }
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      if (res.status === 401) setAuth(null, null);
+      return null;
+    }
     const data = await res.json();
     return data.save || null;
   } catch (_) {

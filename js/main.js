@@ -144,6 +144,11 @@ loginUsernameInput?.addEventListener('keydown', (e) => {
         classSelectEl.classList.add('hidden');
         if (state.playerClass === PLAYER_CLASS.MAGE) addManaLevelUpBtn();
         render();
+      } else if (!isLoggedIn()) {
+        // Token was invalidated (expired/401) — show login again
+        showLoginOverlay();
+      } else if (hasSaveGame()) {
+        continueSaveBtn.style.display = '';
       }
     } else {
       showLoginOverlay();

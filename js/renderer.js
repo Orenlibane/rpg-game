@@ -1,11 +1,11 @@
-import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE, CRAFTING_RECIPES } from './constants.js?v=21';
+import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE, CRAFTING_RECIPES } from './constants.js?v=22';
 import { t } from './i18n.js';
 
 // Lookups for bestiary
 const BASE_STATS_LOOKUP = BASE_STATS;
 const GOLD_LOOKUP = GOLD_REWARDS;
-import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js?v=21';
-import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith } from './engine.js?v=21';
+import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js?v=22';
+import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith } from './engine.js?v=22';
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');

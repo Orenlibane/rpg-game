@@ -1792,11 +1792,11 @@ function updateShopOverlay() {
 }
 
 // Shop tab switching
-document.getElementById('shop-tab-buy').addEventListener('click', () => {
+document.getElementById('shop-tab-buy')?.addEventListener('click', () => {
   shopTab = 'buy';
   render();
 });
-document.getElementById('shop-tab-sell').addEventListener('click', () => {
+document.getElementById('shop-tab-sell')?.addEventListener('click', () => {
   shopTab = 'sell';
   render();
 });
@@ -2140,7 +2140,7 @@ function closeItemPopup() {
   itemPopup.classList.add('hidden');
 }
 
-document.getElementById('item-popup-close').addEventListener('click', closeItemPopup);
+document.getElementById('item-popup-close')?.addEventListener('click', closeItemPopup);
 
 window.addEventListener('showItemPopup', (e) => {
   const idx = e.detail;

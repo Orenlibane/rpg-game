@@ -114,20 +114,20 @@ async function handleRegister() {
   }
 }
 
-btnLogin.addEventListener('click', handleLogin);
-btnRegister.addEventListener('click', handleRegister);
-btnPlayOffline.addEventListener('click', () => {
+btnLogin?.addEventListener('click', handleLogin);
+btnRegister?.addEventListener('click', handleRegister);
+btnPlayOffline?.addEventListener('click', () => {
   hideLoginOverlay();
 });
 
 // Allow Enter key in login form
-loginPasswordInput.addEventListener('keydown', (e) => {
+loginPasswordInput?.addEventListener('keydown', (e) => {
   e.stopPropagation();
   if (e.key === 'Enter') handleLogin();
 });
-loginUsernameInput.addEventListener('keydown', (e) => {
+loginUsernameInput?.addEventListener('keydown', (e) => {
   e.stopPropagation();
-  if (e.key === 'Enter') loginPasswordInput.focus();
+  if (e.key === 'Enter') loginPasswordInput?.focus();
 });
 
 // On load: check if DB is available and show login, or skip
@@ -156,13 +156,13 @@ loginUsernameInput.addEventListener('keydown', (e) => {
 
 const classSelectEl = document.getElementById('class-select');
 
-document.getElementById('pick-warrior').addEventListener('click', () => {
+document.getElementById('pick-warrior')?.addEventListener('click', () => {
   selectClass(PLAYER_CLASS.WARRIOR);
   classSelectEl.classList.add('hidden');
   render();
 });
 
-document.getElementById('pick-mage').addEventListener('click', () => {
+document.getElementById('pick-mage')?.addEventListener('click', () => {
   selectClass(PLAYER_CLASS.MAGE);
   classSelectEl.classList.add('hidden');
   // Add mana level-up option for mage
@@ -170,7 +170,7 @@ document.getElementById('pick-mage').addEventListener('click', () => {
   render();
 });
 
-document.getElementById('pick-archer').addEventListener('click', () => {
+document.getElementById('pick-archer')?.addEventListener('click', () => {
   selectClass(PLAYER_CLASS.ARCHER);
   classSelectEl.classList.add('hidden');
   render();
@@ -178,10 +178,10 @@ document.getElementById('pick-archer').addEventListener('click', () => {
 
 // ── Continue (Load Save) ────────────────────
 const continueSaveBtn = document.getElementById('continue-save');
-if (hasSaveGame()) {
+if (hasSaveGame() && continueSaveBtn) {
   continueSaveBtn.style.display = '';
 }
-continueSaveBtn.addEventListener('click', () => {
+continueSaveBtn?.addEventListener('click', () => {
   if (loadGame()) {
     classSelectEl.classList.add('hidden');
     if (state.playerClass === PLAYER_CLASS.MAGE) addManaLevelUpBtn();
@@ -450,7 +450,7 @@ function checkOverlays() {
   }
 }
 
-restartBtn.addEventListener('click', () => {
+restartBtn?.addEventListener('click', () => {
   gameOverEl.classList.add('hidden');
   restartGame();
   classSelectEl.classList.remove('hidden');
@@ -460,62 +460,62 @@ restartBtn.addEventListener('click', () => {
   if (manaBtn) manaBtn.remove();
 });
 
-chooseHpBtn.addEventListener('click', () => {
+chooseHpBtn?.addEventListener('click', () => {
   levelUpEl.classList.add('hidden');
   chooseLevelUp('hp');
   render();
 });
 
-choosePowerBtn.addEventListener('click', () => {
+choosePowerBtn?.addEventListener('click', () => {
   levelUpEl.classList.add('hidden');
   chooseLevelUp('power');
   render();
 });
 
-closeBestiaryBtn.addEventListener('click', () => {
+closeBestiaryBtn?.addEventListener('click', () => {
   toggleBestiary();
   render();
 });
 
-document.getElementById('close-armory').addEventListener('click', () => {
+document.getElementById('close-armory')?.addEventListener('click', () => {
   toggleArmory();
   render();
 });
 
 const closeMinimapBtn = document.getElementById('close-minimap');
-closeMinimapBtn.addEventListener('click', () => {
+closeMinimapBtn?.addEventListener('click', () => {
   toggleMinimap();
   render();
 });
 
 // Healer
-document.getElementById('heal-btn').addEventListener('click', () => {
+document.getElementById('heal-btn')?.addEventListener('click', () => {
   healPlayer();
   render();
 });
-document.getElementById('close-healer').addEventListener('click', () => {
+document.getElementById('close-healer')?.addEventListener('click', () => {
   closeHealer();
   render();
 });
 
 // Settings
-document.getElementById('close-settings').addEventListener('click', () => {
+document.getElementById('close-settings')?.addEventListener('click', () => {
   closeSettings();
   render();
 });
 
 // Skill Tree
-document.getElementById('close-skilltree').addEventListener('click', () => {
+document.getElementById('close-skilltree')?.addEventListener('click', () => {
   closeSkillTree();
   render();
 });
 
 // Character Sheet
-document.getElementById('close-charsheet').addEventListener('click', () => {
+document.getElementById('close-charsheet')?.addEventListener('click', () => {
   closeCharSheet();
   render();
 });
-document.getElementById('cheat-submit').addEventListener('click', () => {
+document.getElementById('cheat-submit')?.addEventListener('click', () => {
   const input = document.getElementById('cheat-input');
   const code = input.value.trim();
   if (code) {
@@ -528,7 +528,7 @@ document.getElementById('cheat-submit').addEventListener('click', () => {
     render();
   }
 });
-document.getElementById('cheat-input').addEventListener('keydown', (e) => {
+document.getElementById('cheat-input')?.addEventListener('keydown', (e) => {
   e.stopPropagation(); // prevent game key handling
   if (e.key === 'Enter') {
     document.getElementById('cheat-submit').click();
@@ -536,13 +536,13 @@ document.getElementById('cheat-input').addEventListener('keydown', (e) => {
 });
 
 // Quest Board
-document.getElementById('close-quest').addEventListener('click', () => {
+document.getElementById('close-quest')?.addEventListener('click', () => {
   closeQuestBoard();
   render();
 });
 
 // Shop
-document.getElementById('close-shop').addEventListener('click', () => {
+document.getElementById('close-shop')?.addEventListener('click', () => {
   closeShop();
   render();
 });
@@ -554,23 +554,23 @@ document.getElementById('close-blacksmith')?.addEventListener('click', () => {
 });
 
 // Chest
-document.getElementById('close-chest').addEventListener('click', () => {
+document.getElementById('close-chest')?.addEventListener('click', () => {
   closeChest();
   render();
 });
-document.getElementById('take-all-chest').addEventListener('click', () => {
+document.getElementById('take-all-chest')?.addEventListener('click', () => {
   takeAllFromChest();
   render();
 });
 
 // Achievements
-document.getElementById('close-achievements').addEventListener('click', () => {
+document.getElementById('close-achievements')?.addEventListener('click', () => {
   closeAchievements();
   render();
 });
 
 // Prestige
-document.getElementById('prestige-accept').addEventListener('click', () => {
+document.getElementById('prestige-accept')?.addEventListener('click', () => {
   activatePrestige();
   classSelectEl.classList.remove('hidden');
   continueSaveBtn.style.display = 'none';
@@ -582,7 +582,7 @@ document.getElementById('prestige-accept').addEventListener('click', () => {
   render();
 });
 
-document.getElementById('prestige-decline').addEventListener('click', () => {
+document.getElementById('prestige-decline')?.addEventListener('click', () => {
   declinePrestige();
   render();
 });
@@ -610,7 +610,7 @@ if (state.prestigeLevel > 0) {
 }
 
 // Fishing
-document.getElementById('cast-line-btn').addEventListener('click', () => {
+document.getElementById('cast-line-btn')?.addEventListener('click', () => {
   castLine();
   render();
   // Poll for phase changes during fishing
@@ -626,12 +626,12 @@ document.getElementById('cast-line-btn').addEventListener('click', () => {
   }
 });
 
-document.getElementById('reel-in-btn').addEventListener('click', () => {
+document.getElementById('reel-in-btn')?.addEventListener('click', () => {
   reelIn();
   render();
 });
 
-document.getElementById('close-fishing').addEventListener('click', () => {
+document.getElementById('close-fishing')?.addEventListener('click', () => {
   closeFishing();
   if (window._fishingInterval) {
     clearInterval(window._fishingInterval);
@@ -641,28 +641,28 @@ document.getElementById('close-fishing').addEventListener('click', () => {
 });
 
 // Arena
-document.getElementById('enter-arena-btn').addEventListener('click', () => {
+document.getElementById('enter-arena-btn')?.addEventListener('click', () => {
   enterArena();
   render();
 });
 
-document.getElementById('close-arena').addEventListener('click', () => {
+document.getElementById('close-arena')?.addEventListener('click', () => {
   closeArena();
   render();
 });
 
-document.getElementById('next-wave-btn').addEventListener('click', () => {
+document.getElementById('next-wave-btn')?.addEventListener('click', () => {
   nextArenaWave();
   render();
 });
 
-document.getElementById('leave-arena-btn').addEventListener('click', () => {
+document.getElementById('leave-arena-btn')?.addEventListener('click', () => {
   leaveArena();
   render();
 });
 
 // ── Throw Trash ─────────────────────────────
-document.getElementById('btn-throw-trash').addEventListener('click', () => {
+document.getElementById('btn-throw-trash')?.addEventListener('click', () => {
   throwTrash();
   render();
 });
@@ -670,7 +670,7 @@ document.getElementById('btn-throw-trash').addEventListener('click', () => {
 // ── Settings Controls ────────────────────────
 
 // Tile Size toggle group
-document.getElementById('setting-tile-size').addEventListener('click', (e) => {
+document.getElementById('setting-tile-size')?.addEventListener('click', (e) => {
   const btn = e.target.closest('.settings-opt');
   if (!btn) return;
   const value = parseInt(btn.dataset.value);
@@ -683,7 +683,7 @@ document.getElementById('setting-tile-size').addEventListener('click', (e) => {
 
 // Toggle settings (ON/OFF buttons)
 function setupToggle(elementId, settingKey) {
-  document.getElementById(elementId).addEventListener('click', () => {
+  document.getElementById(elementId)?.addEventListener('click', () => {
     const newValue = !gameSettings[settingKey];
     updateSetting(settingKey, newValue);
     const btn = document.getElementById(elementId);
@@ -699,7 +699,7 @@ setupToggle('setting-enemy-hp', 'showEnemyHpBars');
 setupToggle('setting-auto-pickup', 'autoPickup');
 
 // Language toggle
-document.getElementById('setting-language').addEventListener('click', (e) => {
+document.getElementById('setting-language')?.addEventListener('click', (e) => {
   const btn = e.target.closest('.settings-opt');
   if (!btn) return;
   const lang = btn.dataset.value;

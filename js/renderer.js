@@ -1,11 +1,11 @@
-import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE, CRAFTING_RECIPES, MONSTER_CATEGORIES, BESTIARY_INFO, SUBCLASS, SUBCLASS_INFO, TOWN_UPGRADES, PHASE_BOSSES } from './constants.js?v=26';
+import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE, CRAFTING_RECIPES, MONSTER_CATEGORIES, BESTIARY_INFO, SUBCLASS, SUBCLASS_INFO, TOWN_UPGRADES, PHASE_BOSSES } from './constants.js?v=27';
 import { t } from './i18n.js';
 
 // Lookups for bestiary
 const BASE_STATS_LOOKUP = BASE_STATS;
 const GOLD_LOOKUP = GOLD_REWARDS;
-import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js?v=26';
-import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith, selectSubclass, isSubclassBranchUnlocked, getTownUpgradeLevel, upgradeTownBuilding, getAvailableCraftingRecipes, getRunHistory, closeRunHistory } from './engine.js?v=26';
+import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js?v=27';
+import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith, selectSubclass, isSubclassBranchUnlocked, getTownUpgradeLevel, upgradeTownBuilding, getAvailableCraftingRecipes, getRunHistory, closeRunHistory } from './engine.js?v=27';
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
@@ -145,6 +145,54 @@ export function render() {
     ctx.drawImage(sprite, 0, 0, S, S, sx, sy, ts, ts);
   }
 
+  // Draw dens (monster breeding dens)
+  if (state.dens) {
+    for (const den of state.dens) {
+      if (den.destroyed) continue;
+      if (!state.visibility[den.y] || !state.visibility[den.y][den.x]) continue;
+      const sx = (den.x - camX) * ts;
+      const sy = (den.y - camY) * ts;
+      if (sx < 0 || sy < 0 || sx >= canvas.width || sy >= canvas.height) continue;
+
+      // Pulsing glow when about to spawn
+      if (den.spawnTimer <= 1) {
+        ctx.fillStyle = 'rgba(255, 100, 50, 0.3)';
+        ctx.fillRect(sx - 2, sy - 2, ts + 4, ts + 4);
+      }
+
+      // Den body (nest/mound shape) colored by theme
+      const denColors = {
+        den_goblin: '#8a6030', den_spider: '#604a60', den_crypt: '#a0a0b0',
+        den_mushroom: '#408040', den_fire: '#c04020', den_ice: '#4080c0',
+      };
+      const baseColor = denColors[den.type] || '#806040';
+      ctx.fillStyle = baseColor;
+      ctx.beginPath();
+      ctx.ellipse(sx + ts / 2, sy + ts * 0.6, ts * 0.4, ts * 0.35, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#000';
+      ctx.beginPath();
+      ctx.ellipse(sx + ts / 2, sy + ts * 0.5, ts * 0.2, ts * 0.15, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // HP bar
+      const hpPct = den.hp / den.maxHp;
+      const barY = sy - 6;
+      ctx.fillStyle = '#300';
+      ctx.fillRect(sx + 4, barY, ts - 8, 4);
+      ctx.fillStyle = hpPct > 0.5 ? '#0c0' : hpPct > 0.25 ? '#cc0' : '#c00';
+      ctx.fillRect(sx + 4, barY, (ts - 8) * hpPct, 4);
+
+      // Den name label
+      ctx.font = '9px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#000';
+      ctx.fillText(den.name, sx + ts / 2 + 1, barY - 1);
+      ctx.fillStyle = '#f0c060';
+      ctx.fillText(den.name, sx + ts / 2, barY - 2);
+    }
+  }
+
   // Draw chests
   for (const chest of state.chests) {
     if (!state.visibility[chest.y] || !state.visibility[chest.y][chest.x]) continue;
@@ -164,8 +212,16 @@ export function render() {
     if (sx < 0 || sy < 0 || sx >= canvas.width || sy >= canvas.height) continue;
     ctx.drawImage(getEnemySprite(enemy.type), 0, 0, S, S, sx, sy, ts, ts);
 
+    // Guardian orange+gold border indicator
+    if (enemy.isGuardian) {
+      ctx.strokeStyle = '#e0a020';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(sx, sy, ts, ts);
+      ctx.fillStyle = 'rgba(220, 160, 30, 0.15)';
+      ctx.fillRect(sx, sy, ts, ts);
+    }
     // Boss gold border indicator
-    if (enemy.isBoss) {
+    else if (enemy.isBoss) {
       ctx.strokeStyle = '#e0c040';
       ctx.lineWidth = 2;
       ctx.strokeRect(sx + 1, sy + 1, ts - 2, ts - 2);
@@ -198,8 +254,18 @@ export function render() {
       ctx.fillRect(sx + 4, barY, (ts - 8) * hpPct, 4);
     }
 
+    // Guardian name label
+    if (enemy.isGuardian && enemy.guardianName) {
+      ctx.font = 'bold 9px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#000';
+      ctx.fillText(enemy.guardianName, sx + ts / 2 + 1, barY - 1);
+      ctx.fillStyle = '#e0a020';
+      ctx.fillText(enemy.guardianName, sx + ts / 2, barY - 2);
+      ctx.textAlign = 'start';
+    }
     // Elite/Miniboss name label
-    if (enemy.isElite || enemy.isMiniboss) {
+    else if (enemy.isElite || enemy.isMiniboss) {
       ctx.fillStyle = enemy.isMiniboss ? '#c060e0' : '#40c0e0';
       ctx.font = '9px monospace';
       ctx.textAlign = 'center';
@@ -1415,6 +1481,16 @@ function updateSideMinimap() {
     }
   }
 
+  // Draw dens on minimap
+  if (state.dens) {
+    for (const den of state.dens) {
+      if (den.destroyed) continue;
+      if (!state.revealed[den.y] || !state.revealed[den.y][den.x]) continue;
+      mctx.fillStyle = '#c06030';
+      mctx.fillRect(den.x * SCALE, den.y * SCALE, SCALE, SCALE);
+    }
+  }
+
   // Draw enemies — only visible ones unless All-Seeing Eye equipped
   const hasEye = playerHasAllSeeingEye();
   for (const enemy of state.enemies) {
@@ -1422,7 +1498,7 @@ function updateSideMinimap() {
     const inFOV = state.visibility[enemy.y] && state.visibility[enemy.y][enemy.x];
     if (!inFOV && !hasEye) continue;
     mctx.globalAlpha = inFOV ? 1 : 0.45;
-    mctx.fillStyle = enemy.isBoss ? '#e0c040' : '#e04040';
+    mctx.fillStyle = enemy.isGuardian ? '#e0a020' : enemy.isBoss ? '#e0c040' : '#e04040';
     mctx.fillRect(enemy.x * SCALE, enemy.y * SCALE, SCALE, SCALE);
   }
   mctx.globalAlpha = 1;

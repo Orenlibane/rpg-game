@@ -184,6 +184,14 @@ export const ENTITY = {
   FROST_ARCHER:     'frost_archer',
   ABYSSAL_WATCHER:  'abyssal_watcher',
   VOID_EMPEROR:     'void_emperor',
+  // Mimics
+  MIMIC:            'mimic',
+  GREATER_MIMIC:    'greater_mimic',
+  ANCIENT_MIMIC:    'ancient_mimic',
+  // Guardians
+  GUARDIAN_HOARDER:  'guardian_hoarder',
+  GUARDIAN_SENTINEL: 'guardian_sentinel',
+  GUARDIAN_KEEPER:   'guardian_keeper',
 };
 
 // ── Player Classes ────────────────────────────────
@@ -371,6 +379,14 @@ export const BASE_STATS = {
   [ENTITY.VOID_TOUCHED]:     { maxHp: 14, hp: 14, power: 7, armor: 1, xpReward: 25 },
   [ENTITY.ABYSSAL_WATCHER]:  { maxHp: 18, hp: 18, power: 8, armor: 2, xpReward: 28 },
   [ENTITY.OBSIDIAN_DRAKE]:   { maxHp: 24, hp: 24, power: 7, armor: 3, xpReward: 30 },
+  // Mimics
+  [ENTITY.MIMIC]:            { maxHp: 25, hp: 25, power: 5,  armor: 2, xpReward: 20 },
+  [ENTITY.GREATER_MIMIC]:    { maxHp: 45, hp: 45, power: 8,  armor: 3, xpReward: 40 },
+  [ENTITY.ANCIENT_MIMIC]:    { maxHp: 70, hp: 70, power: 12, armor: 5, xpReward: 70 },
+  // Guardians
+  [ENTITY.GUARDIAN_HOARDER]:  { maxHp: 60, hp: 60, power: 10, armor: 4, xpReward: 80 },
+  [ENTITY.GUARDIAN_SENTINEL]: { maxHp: 70, hp: 70, power: 8,  armor: 6, xpReward: 90 },
+  [ENTITY.GUARDIAN_KEEPER]:   { maxHp: 55, hp: 55, power: 12, armor: 3, xpReward: 85 },
 };
 
 // ── Equipment Slots ──────────────────────────────
@@ -506,6 +522,8 @@ export const ITEMS = {
   dark_essence:     { id: 'dark_essence',     name: 'Dark Essence',     type: 'material', icon: 'MD', desc: 'A wisp of dark energy. Used in crafting.', stackable: true, maxStack: 50 },
   dragon_scale:     { id: 'dragon_scale',     name: 'Dragon Scale',     type: 'material', icon: 'MR', desc: 'A shimmering scale. Used in crafting.', stackable: true, maxStack: 50 },
   crystal_shard:    { id: 'crystal_shard',    name: 'Crystal Shard',    type: 'material', icon: 'MC', desc: 'A glowing crystal. Used in crafting.', stackable: true, maxStack: 50 },
+  den_core:         { id: 'den_core',         name: 'Den Core',         type: 'material', icon: 'MD', desc: 'A pulsing core from a monster den. Radiates primal energy. Used in crafting.', stackable: true, maxStack: 50 },
+  guardian_relic:    { id: 'guardian_relic',    name: 'Guardian Relic',    type: 'material', icon: 'MG', desc: 'An ancient artifact taken from a treasure guardian. Extremely valuable.', stackable: true, maxStack: 50 },
 };
 
 // ── Crafting Recipes ─────────────────────────────
@@ -1199,6 +1217,65 @@ export const LOOT_TABLES = {
     { itemId: 'crystal_shard',   chance: 0.15 },
     { itemId: 'iron_ore',        chance: 0.20 },
   ],
+  // Mimics
+  [ENTITY.MIMIC]: [
+    { itemId: 'minor_health_pot', chance: 0.50 },
+    { itemId: 'iron_sword',       chance: 0.15 },
+    { itemId: 'iron_helm',        chance: 0.12 },
+    { itemId: 'crystal_shard',    chance: 0.20 },
+  ],
+  [ENTITY.GREATER_MIMIC]: [
+    { itemId: 'major_health_pot', chance: 0.50 },
+    { itemId: 'steel_blade',      chance: 0.15 },
+    { itemId: 'plate_armor',      chance: 0.12 },
+    { itemId: 'shadow_dagger',    chance: 0.10 },
+    { itemId: 'crystal_shard',    chance: 0.25 },
+    { itemId: 'iron_ore',         chance: 0.20 },
+  ],
+  [ENTITY.ANCIENT_MIMIC]: [
+    { itemId: 'major_health_pot',  chance: 0.60 },
+    { itemId: 'demon_slayer',      chance: 0.12 },
+    { itemId: 'frostfire_staff',   chance: 0.10 },
+    { itemId: 'windrunner_bow',    chance: 0.10 },
+    { itemId: 'titan_helm',        chance: 0.08 },
+    { itemId: 'dragonhide_plate',  chance: 0.08 },
+    { itemId: 'crystal_shard',     chance: 0.30 },
+    { itemId: 'guardian_relic',    chance: 0.15 },
+  ],
+  // Guardians
+  [ENTITY.GUARDIAN_HOARDER]: [
+    { itemId: 'major_health_pot',  chance: 0.80 },
+    { itemId: 'excalibur',         chance: 0.08 },
+    { itemId: 'demon_slayer',      chance: 0.25 },
+    { itemId: 'aegis_plate',       chance: 0.10 },
+    { itemId: 'titan_helm',        chance: 0.20 },
+    { itemId: 'dragonhide_plate',  chance: 0.15 },
+    { itemId: 'guardian_relic',    chance: 1.00 },
+    { itemId: 'crystal_shard',     chance: 0.40 },
+    { itemId: 'dragon_scale',      chance: 0.30 },
+  ],
+  [ENTITY.GUARDIAN_SENTINEL]: [
+    { itemId: 'major_health_pot',   chance: 0.80 },
+    { itemId: 'aegis_plate',        chance: 0.12 },
+    { itemId: 'crown_of_ages',      chance: 0.08 },
+    { itemId: 'boots_of_hermes',    chance: 0.10 },
+    { itemId: 'plate_armor',        chance: 0.25 },
+    { itemId: 'titan_helm',         chance: 0.20 },
+    { itemId: 'guardian_relic',     chance: 1.00 },
+    { itemId: 'iron_ore',           chance: 0.40 },
+    { itemId: 'crystal_shard',      chance: 0.35 },
+  ],
+  [ENTITY.GUARDIAN_KEEPER]: [
+    { itemId: 'major_health_pot',   chance: 0.80 },
+    { itemId: 'staff_of_eternity',  chance: 0.08 },
+    { itemId: 'artemis_longbow',    chance: 0.08 },
+    { itemId: 'frostfire_staff',    chance: 0.20 },
+    { itemId: 'windrunner_bow',     chance: 0.20 },
+    { itemId: 'phoenix_cloak',      chance: 0.15 },
+    { itemId: 'guardian_relic',     chance: 1.00 },
+    { itemId: 'crystal_shard',      chance: 0.40 },
+    { itemId: 'dark_essence',       chance: 0.30 },
+  ],
 };
 
 // ── Bestiary Data ────────────────────────────────
@@ -1223,6 +1300,8 @@ export const MONSTER_CATEGORIES = {
   CONSTRUCT:  'Construct',
   ARCANE:     'Arcane',
   DRAGON:     'Dragon',
+  ABERRATION: 'Aberration',
+  GUARDIAN:   'Guardian',
 };
 
 export const BESTIARY_INFO = {
@@ -1297,6 +1376,14 @@ export const BESTIARY_INFO = {
   [ENTITY.ABYSSAL_WATCHER]:  { name: 'Abyssal Watcher',   title: 'Deep Eye',          level: 14, element: 'SHADOW', category: 'Arcane', desc: 'A floating mass of darkness with a single burning eye. Observes intruders from the shadows before striking with devastating psychic attacks.', lore: 'Watchers drift up from the deepest abyss beneath the dungeon. What they watch for, no one knows.', habitat: 'Deep Caves', threat: 'Very High', moves: 'Abyssal Gaze, Mind Crush, Shadow Pulse', basePower: 8, baseHp: 18, isBoss: false },
   [ENTITY.OBSIDIAN_DRAKE]:   { name: 'Obsidian Drake',    title: 'Volcanic Wyrm',     level: 14, element: 'FIRE',   category: 'Dragon', desc: 'A drake with scales of volcanic glass that reflect firelight like black mirrors. Breathes superheated gas that ignites on contact with air.', lore: 'Obsidian drakes nest in lava tubes, incubating their eggs in pools of molten rock. They are fiercely territorial.', habitat: 'Scorched Depths', threat: 'Very High', moves: 'Obsidian Breath, Glass Shard, Volcanic Charge', basePower: 7, baseHp: 24, isBoss: false },
   [ENTITY.VOID_EMPEROR]:     { name: 'Void Emperor',      title: 'Lord of the Abyss',  level: 30, element: 'SHADOW', category: 'Arcane', desc: 'The supreme entity of the void, a being of pure darkness that bends reality itself. Its shadow bolts bypass armor, and it can create mirror images of itself.', lore: 'The Void Emperor ruled the space between dimensions until a crack in reality drew it into the dungeon. It seeks to merge both realms into eternal darkness.', habitat: 'Void Throne', threat: 'Catastrophic', moves: 'Shadow Bolt, Clone Self, Double Attack, Reality Fracture', basePower: 12, baseHp: 80, isBoss: true },
+  // Mimics
+  [ENTITY.MIMIC]:            { name: 'Mimic',             title: 'Living Chest',       level: 4,  element: 'ARCANE', category: 'Aberration', desc: 'A predatory creature that disguises itself as a treasure chest. When an unwary adventurer reaches for its lid, powerful jaws snap shut with bone-crushing force.', lore: 'Mimics are thought to be magical constructs that escaped their creators. They reproduce by splitting — a well-fed mimic divides into two smaller ones.', habitat: 'Dungeon Rooms', threat: 'Moderate', moves: 'Jaw Snap, Sticky Tongue, Chest Slam', basePower: 5, baseHp: 25, isBoss: false },
+  [ENTITY.GREATER_MIMIC]:    { name: 'Greater Mimic',     title: 'Gilded Maw',         level: 8,  element: 'ARCANE', category: 'Aberration', desc: 'A larger, more cunning mimic that has learned to coat itself in gold leaf and jewels to lure greedier prey. Its inner cavity is lined with razor-sharp teeth.', lore: 'Greater mimics are older specimens that have consumed enough treasure to grow a convincing gilded exterior. They are patient hunters, waiting months for the right victim.', habitat: 'Treasure Rooms', threat: 'High', moves: 'Golden Bite, Adhesive Trap, Treasure Lure', basePower: 8, baseHp: 45, isBoss: false },
+  [ENTITY.ANCIENT_MIMIC]:    { name: 'Ancient Mimic',     title: 'Abyssal Devourer',   level: 14, element: 'SHADOW', category: 'Aberration', desc: 'A centuries-old mimic that has consumed so many adventurers that it has gained a dark intelligence. Radiates an aura of wrongness that chills the soul.', lore: 'The oldest mimics develop a rudimentary consciousness from absorbing the memories of their victims. They choose their disguises with sinister deliberation.', habitat: 'Deep Vaults', threat: 'Very High', moves: 'Soul Devour, Shadow Jaws, Reality Warp, Digest', basePower: 12, baseHp: 70, isBoss: false },
+  // Guardians
+  [ENTITY.GUARDIAN_HOARDER]:  { name: 'Treasure Guardian', title: 'The Hoarder',        level: 15, element: 'EARTH',  category: 'Guardian', desc: 'A massive creature that has claimed a room of treasure as its own. It sits motionless atop piles of gold, but attacks with devastating fury when its hoard is threatened.', lore: 'Hoarders were once dungeon bosses that chose to stop hunting. Instead, they lure prey with glittering treasure, waiting for greed to deliver meals to their lair.', habitat: 'Guardian Chamber', threat: 'Extreme', moves: 'Crushing Slam, Gold Scatter, Treasure Surge', basePower: 10, baseHp: 60, isBoss: false },
+  [ENTITY.GUARDIAN_SENTINEL]: { name: 'Vault Sentinel',   title: 'Eternal Warden',     level: 16, element: 'EARTH',  category: 'Guardian', desc: 'An ancient construct of stone and iron, bound by forgotten magic to guard a vault for eternity. Its eyes glow with the light of ages past, and its fists can shatter walls.', lore: 'The sentinels were built by the same civilization that carved the deepest dungeons. Their creators are dust, but the sentinels remain, faithful to their eternal duty.', habitat: 'Guardian Chamber', threat: 'Extreme', moves: 'Iron Fist, Shield Bash, Sentinel Stance, Earthquake', basePower: 8, baseHp: 70, isBoss: false },
+  [ENTITY.GUARDIAN_KEEPER]:   { name: 'Arcane Keeper',    title: 'Keeper of Secrets',  level: 15, element: 'ARCANE', category: 'Guardian', desc: 'A robed figure hovering above a cache of magical artifacts. It phases in and out of reality, and its spells can unravel the strongest enchantments.', lore: 'Keepers are mages who fused their souls with their collections, becoming one with the magic they hoarded. They attack with the very artifacts they protect.', habitat: 'Guardian Chamber', threat: 'Extreme', moves: 'Arcane Barrage, Relic Blast, Phase Shift, Mana Drain', basePower: 12, baseHp: 55, isBoss: false },
 };
 
 // ── Ranged Attack Constants ──────────────────────
@@ -1537,8 +1624,42 @@ export const ROOM_TYPE = {
   TREASURE:      'treasure_room',
   LIBRARY:       'library',
   ARMORY:        'armory',
-  FOUNTAIN:      'fountain_room',
-  CRYPT_CHAMBER: 'crypt_chamber',
+  FOUNTAIN:          'fountain_room',
+  CRYPT_CHAMBER:     'crypt_chamber',
+  GUARDIAN_CHAMBER:   'guardian_chamber',
+};
+
+// ── Den Types (Monster Breeding Dens) ─────────────
+export const DEN_TYPES = {
+  goblin_cave:      { name: 'Goblin War Camp',   spawnType: ENTITY.GOBLIN,       hp: 20, sprite: 'den_goblin' },
+  spider_cavern:    { name: 'Spider Egg Sac',    spawnType: ENTITY.SPIDER,       hp: 15, sprite: 'den_spider' },
+  crypt:            { name: 'Bone Pit',          spawnType: ENTITY.SKELETON,     hp: 25, sprite: 'den_crypt' },
+  mushroom_grotto:  { name: 'Mycelium Cluster',  spawnType: ENTITY.MUSHROOM,     hp: 18, sprite: 'den_mushroom' },
+  scorched_depths:  { name: 'Magma Vent',        spawnType: ENTITY.FIRE_IMP,     hp: 30, sprite: 'den_fire' },
+  frozen_halls:     { name: 'Frost Nexus',       spawnType: ENTITY.FROST_WRAITH, hp: 28, sprite: 'den_ice' },
+};
+
+// ── Guardian Names ─────────────────────────────────
+export const GUARDIAN_NAMES = [
+  'Grethmaw the Hoarder',
+  'Sentinel of the Forgotten Vault',
+  'Ironmaw the Eternal',
+  'Keeper of Lost Souls',
+  'Thaldris the Unyielding',
+  'Warden of the Deep',
+  'Calcifax the Gilded',
+  'Stoneclaw the Avaricious',
+  'Vorthak the Undying',
+  'Aegis of the Lost Treasury',
+];
+
+export const GUARDIAN_FOR_THEME = {
+  goblin_cave:     ENTITY.GUARDIAN_HOARDER,
+  spider_cavern:   ENTITY.GUARDIAN_SENTINEL,
+  crypt:           ENTITY.GUARDIAN_KEEPER,
+  mushroom_grotto: ENTITY.GUARDIAN_HOARDER,
+  scorched_depths: ENTITY.GUARDIAN_SENTINEL,
+  frozen_halls:    ENTITY.GUARDIAN_KEEPER,
 };
 
 // ── Mage Spells ───────────────────────────────────
@@ -1615,6 +1736,14 @@ export const GOLD_REWARDS = {
   [ENTITY.VOID_TOUCHED]:     9,
   [ENTITY.ABYSSAL_WATCHER]:  10,
   [ENTITY.OBSIDIAN_DRAKE]:   12,
+  // Mimics
+  [ENTITY.MIMIC]:            15,
+  [ENTITY.GREATER_MIMIC]:    30,
+  [ENTITY.ANCIENT_MIMIC]:    60,
+  // Guardians
+  [ENTITY.GUARDIAN_HOARDER]:  60,
+  [ENTITY.GUARDIAN_SENTINEL]: 60,
+  [ENTITY.GUARDIAN_KEEPER]:   60,
 };
 
 export const HEALER_COST = 10; // gold to fully heal

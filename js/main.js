@@ -17,9 +17,9 @@ import {
   gameSettings, updateSetting, pickupItem,
   apiRegister, apiLogin, setAuth, isLoggedIn, getAuthUsername,
   startCloudSync, checkDbStatus,
-} from './engine.js?v=26';
-import { render, resizeCanvas } from './renderer.js?v=26';
-import { PLAYER_CLASS, PRESTIGE } from './constants.js?v=26';
+} from './engine.js?v=27';
+import { render, resizeCanvas } from './renderer.js?v=27';
+import { PLAYER_CLASS, PRESTIGE } from './constants.js?v=27';
 import { initI18n, setLanguage, applyStaticTranslations, t } from './i18n.js';
 
 // ── Initialize i18n ─────────────────────────

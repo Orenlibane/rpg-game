@@ -3,7 +3,7 @@ import {
   DUNGEON_W, DUNGEON_H,
   MIN_ROOM_SIZE, MAX_ROOM_SIZE, MAX_ROOMS,
   FLOOR_THEMES, ROOM_TYPE,
-} from './constants.js?v=26';
+} from './constants.js?v=27';
 
 // ── Village (fixed layout) ───────────────────────
 
@@ -373,6 +373,15 @@ function assignRoomTypes(rooms) {
   for (let i = 0; i < numSpecial; i++) {
     shuffled[i].type = types[i % types.length];
   }
+
+  // Guardian chamber: assign to one remaining NORMAL room (if enough rooms)
+  if (rooms.length > 4) {
+    const normalRooms = eligible.filter(r => r.type === ROOM_TYPE.NORMAL);
+    if (normalRooms.length > 0) {
+      const pick = normalRooms[Math.floor(Math.random() * normalRooms.length)];
+      pick.type = ROOM_TYPE.GUARDIAN_CHAMBER;
+    }
+  }
 }
 
 // ── Room Decoration ──────────────────────────────
@@ -395,6 +404,9 @@ function decorateRooms(map, rooms, floorTile, wallTile) {
         break;
       case ROOM_TYPE.CRYPT_CHAMBER:
         decorateCryptChamber(map, room, floorTile, doorways);
+        break;
+      case ROOM_TYPE.GUARDIAN_CHAMBER:
+        decorateGuardianChamber(map, room, floorTile, doorways);
         break;
       default:
         decorateNormalRoom(map, room, floorTile, doorways);
@@ -553,6 +565,33 @@ function decorateCryptChamber(map, room, floorTile, doorways) {
       if (map[ry][rx] === floorTile && Math.random() < 0.06) {
         map[ry][rx] = TILE.RUBBLE;
       }
+    }
+  }
+}
+
+// ── Guardian Chamber ─────────────────────────────
+
+function decorateGuardianChamber(map, room, floorTile, doorways) {
+  // Carpet in center area (like treasure room)
+  const insetX = Math.max(1, Math.floor(room.iw * 0.2));
+  const insetY = Math.max(1, Math.floor(room.ih * 0.2));
+  for (let ry = room.iy + insetY; ry < room.iy + room.ih - insetY; ry++) {
+    for (let rx = room.ix + insetX; rx < room.ix + room.iw - insetX; rx++) {
+      if (map[ry][rx] === floorTile) {
+        map[ry][rx] = TILE.CARPET;
+      }
+    }
+  }
+  // Pillars in corners (2 inset)
+  if (room.iw >= 5 && room.ih >= 5) {
+    const positions = [
+      [room.ix + 1, room.iy + 1],
+      [room.ix + room.iw - 2, room.iy + 1],
+      [room.ix + 1, room.iy + room.ih - 2],
+      [room.ix + room.iw - 2, room.iy + room.ih - 2],
+    ];
+    for (const [px, py] of positions) {
+      tryPlaceBlocking(map, px, py, TILE.PILLAR, floorTile, doorways);
     }
   }
 }

@@ -1,5 +1,5 @@
-import { TILE, TILE_SIZE, ENTITY } from './constants.js?v=26';
-import { gameSettings } from './engine.js?v=26';
+import { TILE, TILE_SIZE, ENTITY } from './constants.js?v=27';
+import { gameSettings } from './engine.js?v=27';
 
 const cache = {};
 const tileSeedCache = {};
@@ -127,6 +127,16 @@ const JRPG_MAP = {
   'blood_golem':     { col: 1, row: 5 },  // reuse magma golem position
   'frost_archer':    { col: 0, row: 1 },  // reuse bone archer sprite
   'abyssal_watcher': { col: 3, row: 2 },  // reuse wraith sprite
+  // Mimics
+  'mimic':            { col: 6, row: 3 },  // reuse scorpion (chest-like)
+  'greater_mimic':    { col: 5, row: 5 },  // reuse thunder lizard
+  'ancient_mimic':    { col: 7, row: 5 },  // reuse corpse eater (menacing)
+  // Guardians
+  'guardian_hoarder':  { col: 0, row: 5 },  // reuse demon lord (massive)
+  'guardian_sentinel': { col: 2, row: 5 },  // reuse ancient wyrm
+  'guardian_keeper':   { col: 6, row: 2 },  // reuse lich (arcane)
+  // Void Emperor
+  'void_emperor':     { col: 3, row: 5 },  // reuse dark acolyte
 };
 
 // Houses sheet: 12 cols at x=48+col*150, variable row heights

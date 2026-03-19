@@ -14,10 +14,11 @@ import {
   TOWN_UPGRADES, SHOP_UPGRADE_ITEMS, SHOP_EPIC_ITEMS,
   CRAFTING_RECIPES_T2, CRAFTING_RECIPES_T3,
   PHASE_BOSSES,
-} from './constants.js?v=26';
+  ROOM_TYPE, DEN_TYPES, GUARDIAN_NAMES, GUARDIAN_FOR_THEME,
+} from './constants.js?v=27';
 import { t } from './i18n.js';
-import { generateVillage, generateDungeon, generateArenaMap } from './mapgen.js?v=26';
-import { computeFOV } from './fov.js?v=26';
+import { generateVillage, generateDungeon, generateArenaMap } from './mapgen.js?v=27';
+import { computeFOV } from './fov.js?v=27';
 
 function randInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -107,6 +108,8 @@ export const state = {
   showRunHistory: false,
   // Saved dungeon snapshot for portal return
   savedDungeon: null,
+  // Monster breeding dens
+  dens: [],
 };
 
 // ── Game Settings (persisted separately) ────
@@ -552,6 +555,87 @@ export function enterDungeon(floor = 1) {
     }
   }
 
+  // Mimic chests: 15% chance per chest on floors 2+
+  if (floor >= 2) {
+    for (const chest of state.chests) {
+      if (Math.random() < 0.15) {
+        chest.isMimic = true;
+        if (floor >= 10) chest.mimicType = ENTITY.ANCIENT_MIMIC;
+        else if (floor >= 5) chest.mimicType = ENTITY.GREATER_MIMIC;
+        else chest.mimicType = ENTITY.MIMIC;
+      }
+    }
+  }
+
+  // Monster breeding dens: 1-2 per floor on floors 2+
+  state.dens = [];
+  if (floor >= 2 && floorRooms.length > 2) {
+    const denConfig = DEN_TYPES[themeKey];
+    if (denConfig) {
+      const numDens = randInt(1, 2);
+      for (let i = 0; i < numDens; i++) {
+        const dRoomIdx = randInt(1, floorRooms.length - 2);
+        const dRoom = floorRooms[dRoomIdx];
+        const dx = dRoom.cx + (i === 0 ? 0 : randInt(-1, 1));
+        const dy = dRoom.cy + (i === 0 ? 0 : randInt(-1, 1));
+        if (!isOccupied(dx, dy) && canWalk(dx, dy) && !isSpecialTile(dx, dy)) {
+          const denHp = denConfig.hp + floor * 3;
+          state.dens.push({
+            x: dx, y: dy,
+            hp: denHp, maxHp: denHp,
+            type: denConfig.sprite,
+            name: denConfig.name,
+            spawnType: denConfig.spawnType,
+            spawnTimer: 5,
+            spawnCount: 0,
+            maxSpawns: 6,
+            destroyed: false,
+            themeKey: themeKey,
+          });
+        }
+      }
+      if (state.dens.length > 0) {
+        log(`A ${denConfig.name} pulses with dark energy nearby...`, 'combat');
+      }
+    }
+  }
+
+  // Guardian chambers: spawn guardian in guardian rooms (floors 3+, 40% chance)
+  if (floor >= 3) {
+    for (const room of floorRooms) {
+      if (room.type !== ROOM_TYPE.GUARDIAN_CHAMBER) continue;
+      if (Math.random() > 0.40) continue;
+      const guardianType = GUARDIAN_FOR_THEME[themeKey] || ENTITY.GUARDIAN_HOARDER;
+      const gx = room.cx;
+      const gy = room.cy;
+      if (!isOccupied(gx, gy) && canWalk(gx, gy)) {
+        const guardian = createEntity(guardianType, gx, gy);
+        guardian.isGuardian = true;
+        guardian.guardianRoom = { x: room.x, y: room.y, w: room.w, h: room.h };
+        guardian.guardianName = GUARDIAN_NAMES[randInt(0, GUARDIAN_NAMES.length - 1)];
+        // Boost stats significantly
+        guardian.maxHp = Math.floor((guardian.maxHp + floor * 3) * 2.5);
+        guardian.hp = guardian.maxHp;
+        guardian.power = Math.floor((guardian.power + Math.floor(floor / 2)) * 1.8);
+        guardian.armor = (guardian.armor || 0) + 3;
+        state.enemies.push(guardian);
+        // Place extra treasure in the room
+        const extraGold = randInt(3, 5);
+        for (let g = 0; g < extraGold; g++) {
+          const gix = randInt(room.x + 2, room.x + room.w - 3);
+          const giy = randInt(room.y + 2, room.y + room.h - 3);
+          if (canWalk(gix, giy) && !isSpecialTile(gix, giy)) {
+            const goldAmount = randInt(10, 20 + floor * 3);
+            state.chests.push({ x: gix, y: giy, items: [], gold: goldAmount, opened: false });
+          }
+        }
+        log(`A powerful guardian protects a treasure hoard nearby...`, 'combat');
+      }
+    }
+  }
+
+  // Apply prestige scaling to guardians too (already in enemies array)
+
   state.revealed = Array.from({ length: state.mapH }, () => new Uint8Array(state.mapW));
   updateFOV();
 
@@ -692,9 +776,18 @@ const ENEMY_NAMES = {
   [ENTITY.FROST_ARCHER]:     'Frost Archer',
   [ENTITY.ABYSSAL_WATCHER]:  'Abyssal Watcher',
   [ENTITY.VOID_EMPEROR]:     'Void Emperor',
+  // Mimics
+  [ENTITY.MIMIC]:            'Mimic',
+  [ENTITY.GREATER_MIMIC]:    'Greater Mimic',
+  [ENTITY.ANCIENT_MIMIC]:    'Ancient Mimic',
+  // Guardians
+  [ENTITY.GUARDIAN_HOARDER]:  'Treasure Guardian',
+  [ENTITY.GUARDIAN_SENTINEL]: 'Vault Sentinel',
+  [ENTITY.GUARDIAN_KEEPER]:   'Arcane Keeper',
 };
 
 export function getEnemyName(entity) {
+  if (entity.guardianName) return entity.guardianName;
   const base = ENEMY_NAMES[entity.type] || 'Enemy';
   if (entity.elitePrefix) return entity.elitePrefix + ' ' + base;
   return base;
@@ -1890,6 +1983,7 @@ function saveDungeonSnapshot() {
     turnCount: state.turnCount,
     projectiles: state.projectiles,
     portalPos: state.portalPos,
+    dens: state.dens,
   };
 }
 
@@ -1910,6 +2004,7 @@ function restoreDungeonSnapshot() {
   state.turnCount = snap.turnCount;
   state.projectiles = snap.projectiles;
   state.portalPos = snap.portalPos;
+  state.dens = snap.dens || [];
   state.player.x = snap.playerX;
   state.player.y = snap.playerY;
   state.savedDungeon = null;
@@ -2629,6 +2724,31 @@ function attack(attacker, defender) {
   }
 }
 
+function attackDen(den) {
+  const power = getPlayerPower();
+  const damage = Math.max(1, power + randInt(-1, 2));
+  den.hp -= damage;
+  spawnDamageNumber(den.x, den.y, damage, '#ff8');
+  log(`You strike the ${den.name} for ${damage} damage!`, 'combat');
+  if (den.hp <= 0) {
+    den.hp = 0;
+    den.destroyed = true;
+    log(`The ${den.name} is destroyed!`, 'combat');
+    // Drop den core material
+    const item = { ...ITEMS['den_core'] };
+    state.items.push({ x: den.x, y: den.y, item });
+    log(`The ${den.name} dropped a Den Core!`, 'item');
+    // Grant XP
+    const xpAward = 15 + state.floor * 2;
+    grantXP(xpAward);
+    // Grant some gold
+    const goldAward = 5 + state.floor * 2;
+    state.player.gold += goldAward;
+    state.stats.totalGoldEarned += goldAward;
+    log(t('log.gold_gain', { n: goldAward }), 'item');
+  }
+}
+
 function rangedAttack(defender, damage, attackName) {
   const armor = getEffectiveArmor(defender);
   // Steady Aim bonus
@@ -2696,9 +2816,10 @@ function grantGold(enemy) {
   const base = GOLD_REWARDS[enemy.type] || 2;
   const bonus = randInt(0, Math.floor(base / 2));
   let gold = base + bonus;
-  // Elite/miniboss gold bonus
+  // Elite/miniboss/guardian gold bonus
   if (enemy.isElite) gold = Math.floor(gold * 2);
   if (enemy.isMiniboss) gold = Math.floor(gold * 3);
+  if (enemy.isGuardian) gold = Math.floor(gold * 8);
   // CHA bonus: extra gold %
   if (state.player.attrs) {
     const chaBonus = ATTR_BONUSES.cha.goldBonus(state.player.attrs.cha);
@@ -2731,9 +2852,9 @@ function dropLoot(enemy) {
     }
   }
 
-  // Elites and minibosses get boosted drop rates and can drop multiple
-  const isSpecial = enemy.isElite || enemy.isMiniboss || enemy.isBoss;
-  const chanceMultiplier = enemy.isMiniboss ? 2.0 : enemy.isElite ? 1.5 : 1.0;
+  // Elites, minibosses, and guardians get boosted drop rates and can drop multiple
+  const isSpecial = enemy.isElite || enemy.isMiniboss || enemy.isBoss || enemy.isGuardian;
+  const chanceMultiplier = enemy.isGuardian ? 3.0 : enemy.isMiniboss ? 2.0 : enemy.isElite ? 1.5 : 1.0;
 
   const autoLoot = !!state.bossSkills.gold_magnet;
 
@@ -3094,6 +3215,14 @@ const SIGHT_RANGES = {
   [ENTITY.MYCELIUM_LORD]:    6,
   [ENTITY.FIRE_ELEMENTAL]:   8,
   [ENTITY.FROST_GIANT]:      7,
+  // Mimics (chase after springing)
+  [ENTITY.MIMIC]:            5,
+  [ENTITY.GREATER_MIMIC]:    6,
+  [ENTITY.ANCIENT_MIMIC]:    7,
+  // Guardians (room-range sight)
+  [ENTITY.GUARDIAN_HOARDER]:  10,
+  [ENTITY.GUARDIAN_SENTINEL]: 10,
+  [ENTITY.GUARDIAN_KEEPER]:   10,
 };
 
 function getEnemySightRange(enemy) {
@@ -3164,6 +3293,15 @@ function moveEnemies() {
 
     // If player is invisible, enemies don't chase
     if (state.player.invisible > 0) continue;
+
+    // Guardians only activate when player is inside their room
+    if (enemy.isGuardian && enemy.guardianRoom) {
+      const gr = enemy.guardianRoom;
+      const px = state.player.x, py = state.player.y;
+      if (px < gr.x + 1 || px >= gr.x + gr.w - 1 || py < gr.y + 1 || py >= gr.y + gr.h - 1) {
+        continue; // Player not in guardian's room — stay passive
+      }
+    }
 
     const dx = state.player.x - enemy.x;
     const dy = state.player.y - enemy.y;
@@ -3368,6 +3506,14 @@ export function playerMove(dx, dy) {
 
   if (nx < 0 || nx >= state.mapW || ny < 0 || ny >= state.mapH) return;
 
+  // Bump to attack den
+  const targetDen = state.dens && state.dens.find(d => d.x === nx && d.y === ny && !d.destroyed);
+  if (targetDen) {
+    attackDen(targetDen);
+    endTurn();
+    return;
+  }
+
   // Bump to attack
   const enemy = enemyAt(nx, ny);
   if (enemy) {
@@ -3494,9 +3640,21 @@ export function playerMove(dx, dy) {
     return;
   }
 
-  // Check for chest
+  // Check for chest (or mimic!)
   const chest = state.chests.find(c => c.x === nx && c.y === ny && !c.opened);
   if (chest) {
+    // Mimic activation — chest springs to life!
+    if (chest.isMimic) {
+      state.chests = state.chests.filter(c => c !== chest);
+      const mimic = createEntity(chest.mimicType, chest.x, chest.y);
+      mimic.maxHp += state.floor * 2;
+      mimic.hp = mimic.maxHp;
+      mimic.power += Math.floor(state.floor / 2);
+      state.enemies.push(mimic);
+      log(`The chest springs to life! It's a ${getEnemyName(mimic)}!`, 'combat');
+      endTurn();
+      return;
+    }
     chest.opened = true;
     state.activeChest = chest;
     state.showChest = true;
@@ -3603,6 +3761,36 @@ function endTurn() {
       }
       return true;
     });
+  }
+
+  // Tick monster breeding dens
+  if (state.mode === 'dungeon' && state.dens) {
+    for (const den of state.dens) {
+      if (den.destroyed) continue;
+      den.spawnTimer--;
+      if (den.spawnTimer <= 0 && den.spawnCount < den.maxSpawns) {
+        // Find empty adjacent tile to spawn enemy
+        const offsets = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]];
+        let spawned = false;
+        for (const [ox, oy] of offsets) {
+          const sx = den.x + ox, sy = den.y + oy;
+          if (sx >= 0 && sx < state.mapW && sy >= 0 && sy < state.mapH &&
+              canWalk(sx, sy) && !isOccupied(sx, sy)) {
+            const spawn = createEntity(den.spawnType, sx, sy);
+            spawn.maxHp += state.floor * 2;
+            spawn.hp = spawn.maxHp;
+            spawn.power += Math.floor(state.floor / 2);
+            state.enemies.push(spawn);
+            den.spawnCount++;
+            den.spawnTimer = 5;
+            log(`The ${den.name} spawns a ${getEnemyName(spawn)}!`, 'combat');
+            spawned = true;
+            break;
+          }
+        }
+        if (!spawned) den.spawnTimer = 2; // Retry sooner if blocked
+      }
+    }
   }
 
   if (state.mode === 'dungeon' || state.mode === 'arena') {

@@ -1,4 +1,4 @@
-import { TILE_PROPS } from './constants.js?v=26';
+import { TILE_PROPS } from './constants.js?v=27';
 
 // Recursive shadowcasting FOV
 // Each tile has: visible (currently seen), revealed (ever seen)

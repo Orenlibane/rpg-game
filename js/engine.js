@@ -105,6 +105,8 @@ export const state = {
   // Run history (persist across runs)
   runHistory: [],
   showRunHistory: false,
+  // Saved dungeon snapshot for portal return
+  savedDungeon: null,
 };
 
 // ── Game Settings (persisted separately) ────
@@ -328,6 +330,8 @@ function weightedRandomPick(weights) {
 }
 
 export function enterDungeon(floor = 1) {
+  // Clear any saved dungeon snapshot since we're generating fresh
+  state.savedDungeon = null;
   // Pick a random theme appropriate for this floor
   const themeKey = pickFloorTheme(floor);
   const theme = FLOOR_THEMES[themeKey];
@@ -1869,10 +1873,56 @@ export function closeAchievements() {
 
 // ── Boss QoL Skills ─────────────────────────────
 
+function saveDungeonSnapshot() {
+  state.savedDungeon = {
+    map: state.map.map(row => new Uint8Array(row)),
+    mapW: state.mapW,
+    mapH: state.mapH,
+    floor: state.floor,
+    floorTheme: state.floorTheme,
+    enemies: state.enemies,
+    items: state.items,
+    chests: state.chests,
+    stairsPos: state.stairsPos,
+    revealed: state.revealed.map(row => new Uint8Array(row)),
+    playerX: state.player.x,
+    playerY: state.player.y,
+    turnCount: state.turnCount,
+    projectiles: state.projectiles,
+    portalPos: state.portalPos,
+  };
+}
+
+function restoreDungeonSnapshot() {
+  const snap = state.savedDungeon;
+  if (!snap) return false;
+  state.mode = 'dungeon';
+  state.floor = snap.floor;
+  state.floorTheme = snap.floorTheme;
+  state.map = snap.map;
+  state.mapW = snap.mapW;
+  state.mapH = snap.mapH;
+  state.enemies = snap.enemies;
+  state.items = snap.items;
+  state.chests = snap.chests;
+  state.stairsPos = snap.stairsPos;
+  state.revealed = snap.revealed;
+  state.turnCount = snap.turnCount;
+  state.projectiles = snap.projectiles;
+  state.portalPos = snap.portalPos;
+  state.player.x = snap.playerX;
+  state.player.y = snap.playerY;
+  state.savedDungeon = null;
+  state.lastDungeonFloor = 0;
+  updateFOV();
+  return true;
+}
+
 export function useTownPortal() {
   if (state.mode !== 'dungeon') { log(t('log.portal_dungeon_only'), 'info'); return; }
   if (!state.bossSkills.town_portal) { log(t('log.portal_not_learned'), 'info'); return; }
   log(t('log.portal_opened'), 'level');
+  saveDungeonSnapshot();
   state.lastDungeonFloor = state.floor;
   initVillage();
 }
@@ -2890,6 +2940,7 @@ export function useItem(slotIndex) {
         inv.splice(slotIndex, 1);
       }
       log('You use a Portal Scroll and open a portal to the village!', 'level');
+      saveDungeonSnapshot();
       state.lastDungeonFloor = state.floor;
       initVillage();
       return;
@@ -3373,13 +3424,18 @@ export function playerMove(dx, dy) {
     unlockAchievement('portal_user');
     if (state.mode === 'dungeon') {
       log(t('log.portal_return_village'), 'level');
+      saveDungeonSnapshot();
       state.lastDungeonFloor = state.floor;
       initVillage();
     } else if (state.mode === 'village' && state.lastDungeonFloor > 0) {
       log(t('log.portal_return_floor', { floor: state.lastDungeonFloor }), 'level');
-      const returnFloor = state.lastDungeonFloor;
-      state.lastDungeonFloor = 0;
-      enterDungeon(returnFloor);
+      if (state.savedDungeon) {
+        restoreDungeonSnapshot();
+      } else {
+        const returnFloor = state.lastDungeonFloor;
+        state.lastDungeonFloor = 0;
+        enterDungeon(returnFloor);
+      }
     }
     return;
   }
@@ -3799,6 +3855,7 @@ export function restartGame() {
   state.arenaEnemiesRemaining = 0;
   state.arenaRewards = { gold: 0, items: [] };
   state.arenaWaveCleared = false;
+  state.savedDungeon = null;
   deleteSave();
 }
 

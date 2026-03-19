@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Cave Diver</title>
   <link rel="stylesheet" href="style.css">
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700&display=swap" rel="stylesheet">
@@ -542,6 +542,25 @@
       <div id="item-popup-content"></div>
       <div id="item-popup-buttons" class="item-popup-actions"></div>
       <button id="item-popup-close" class="item-popup-close-btn" data-i18n="item.close">Close</button>
+    </div>
+  </div>
+
+  <!-- Mobile Touch Controls -->
+  <div id="mobile-controls" class="mobile-controls">
+    <div class="mobile-dpad">
+      <button class="dpad-btn dpad-up" data-dir="up">&#9650;</button>
+      <button class="dpad-btn dpad-left" data-dir="left">&#9664;</button>
+      <button class="dpad-btn dpad-center" data-dir="wait">&#9679;</button>
+      <button class="dpad-btn dpad-right" data-dir="right">&#9654;</button>
+      <button class="dpad-btn dpad-down" data-dir="down">&#9660;</button>
+    </div>
+    <div class="mobile-actions">
+      <button class="mobile-action-btn" data-action="pickup">E<span>Pick</span></button>
+      <button class="mobile-action-btn" data-action="shoot">R<span>Shoot</span></button>
+      <button class="mobile-action-btn" data-action="spell">F<span>Spell</span></button>
+      <button class="mobile-action-btn" data-action="map">M<span>Map</span></button>
+      <button class="mobile-action-btn" data-action="char">C<span>Char</span></button>
+      <button class="mobile-action-btn" data-action="settings">&#9881;<span>Menu</span></button>
     </div>
   </div>
 

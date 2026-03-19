@@ -786,3 +786,64 @@ window.addEventListener('resize', () => {
   resizeCanvas();
   render();
 });
+
+// ── Mobile Touch Controls ───────────────────
+(function initMobileControls() {
+  const isTouchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+  const mobileControls = document.getElementById('mobile-controls');
+  if (!mobileControls) return;
+
+  // Show mobile controls on touch devices or narrow screens
+  function checkMobile() {
+    if (isTouchDevice || window.innerWidth <= 768) {
+      mobileControls.classList.add('visible');
+    } else {
+      mobileControls.classList.remove('visible');
+    }
+  }
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
+
+  // D-pad direction buttons
+  const dirMap = {
+    up:    { key: 'ArrowUp' },
+    down:  { key: 'ArrowDown' },
+    left:  { key: 'ArrowLeft' },
+    right: { key: 'ArrowRight' },
+    wait:  { key: ' ' },
+  };
+  mobileControls.querySelectorAll('.dpad-btn').forEach(btn => {
+    const dir = btn.dataset.dir;
+    if (!dirMap[dir]) return;
+    btn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: dirMap[dir].key, bubbles: true }));
+    });
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: dirMap[dir].key, bubbles: true }));
+    });
+  });
+
+  // Action buttons
+  const actionMap = {
+    pickup:   'e',
+    shoot:    'r',
+    spell:    'f',
+    map:      'm',
+    char:     'c',
+    settings: 'Escape',
+  };
+  mobileControls.querySelectorAll('.mobile-action-btn').forEach(btn => {
+    const action = btn.dataset.action;
+    if (!actionMap[action]) return;
+    btn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: actionMap[action], bubbles: true }));
+    });
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: actionMap[action], bubbles: true }));
+    });
+  });
+})();

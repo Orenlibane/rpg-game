@@ -1,5 +1,5 @@
-import { TILE, TILE_SIZE, ENTITY } from './constants.js?v=23';
-import { gameSettings } from './engine.js?v=23';
+import { TILE, TILE_SIZE, ENTITY } from './constants.js?v=24';
+import { gameSettings } from './engine.js?v=24';
 
 const cache = {};
 const tileSeedCache = {};
@@ -106,6 +106,27 @@ const JRPG_MAP = {
   'demon_lord':      { col: 0, row: 5 },
   'dragon_whelp':    { col: 0, row: 3 },
   'ancient_wyrm':    { col: 2, row: 5 },
+  // Wave 2 monsters
+  'blood_bat':       { col: 7, row: 3 },  // reuse bat sprite (red tint)
+  'plague_rat':      { col: 3, row: 3 },
+  'sand_scorpion':   { col: 6, row: 3 },
+  'bone_sentinel':   { col: 1, row: 1 },
+  'dark_acolyte':    { col: 3, row: 5 },
+  'swamp_hag':       { col: 4, row: 5 },
+  'thunder_lizard':  { col: 5, row: 5 },
+  'stone_gargoyle':  { col: 6, row: 5 },
+  'corpse_eater':    { col: 7, row: 5 },
+  'void_touched':    { col: 3, row: 4 },
+  'flame_dancer':    { col: 0, row: 4 },
+  'glacial_beetle':  { col: 4, row: 6 },
+  'iron_revenant':   { col: 5, row: 6 },
+  'myconid_sprout':  { col: 6, row: 6 },
+  'wailing_banshee': { col: 7, row: 6 },
+  'obsidian_drake':  { col: 0, row: 3 },  // reuse dragon whelp (dark variant)
+  'vile_shaman':     { col: 4, row: 1 },  // reuse goblin shaman sprite
+  'blood_golem':     { col: 1, row: 5 },  // reuse magma golem position
+  'frost_archer':    { col: 0, row: 1 },  // reuse bone archer sprite
+  'abyssal_watcher': { col: 3, row: 2 },  // reuse wraith sprite
 };
 
 // Houses sheet: 12 cols at x=48+col*150, variable row heights

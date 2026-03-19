@@ -10,10 +10,10 @@ import {
   ATTR_BONUSES, FEATURE_INFO, QUEST_POOL, SKILL_TREES, ACHIEVEMENTS,
   BOSS_SKILLS, ITEM_SETS, PRESTIGE,
   FISH_LOOT, ARENA_CONFIG, CRAFTING_RECIPES,
-} from './constants.js?v=23';
+} from './constants.js?v=24';
 import { t } from './i18n.js';
-import { generateVillage, generateDungeon, generateArenaMap } from './mapgen.js?v=23';
-import { computeFOV } from './fov.js?v=23';
+import { generateVillage, generateDungeon, generateArenaMap } from './mapgen.js?v=24';
+import { computeFOV } from './fov.js?v=24';
 
 function randInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -633,6 +633,27 @@ const ENEMY_NAMES = {
   [ENTITY.DEMON_LORD]:       'Demon Lord',
   [ENTITY.DRAGON_WHELP]:     'Dragon Whelp',
   [ENTITY.ANCIENT_WYRM]:     'Ancient Wyrm',
+  // Wave 2 monsters
+  [ENTITY.BLOOD_BAT]:        'Blood Bat',
+  [ENTITY.PLAGUE_RAT]:       'Plague Rat',
+  [ENTITY.SAND_SCORPION]:    'Sand Scorpion',
+  [ENTITY.BONE_SENTINEL]:    'Bone Sentinel',
+  [ENTITY.DARK_ACOLYTE]:     'Dark Acolyte',
+  [ENTITY.SWAMP_HAG]:        'Swamp Hag',
+  [ENTITY.THUNDER_LIZARD]:   'Thunder Lizard',
+  [ENTITY.STONE_GARGOYLE]:   'Stone Gargoyle',
+  [ENTITY.CORPSE_EATER]:     'Corpse Eater',
+  [ENTITY.VOID_TOUCHED]:     'Void Touched',
+  [ENTITY.FLAME_DANCER]:     'Flame Dancer',
+  [ENTITY.GLACIAL_BEETLE]:   'Glacial Beetle',
+  [ENTITY.IRON_REVENANT]:    'Iron Revenant',
+  [ENTITY.MYCONID_SPROUT]:   'Myconid Sprout',
+  [ENTITY.WAILING_BANSHEE]:  'Wailing Banshee',
+  [ENTITY.OBSIDIAN_DRAKE]:   'Obsidian Drake',
+  [ENTITY.VILE_SHAMAN]:      'Vile Shaman',
+  [ENTITY.BLOOD_GOLEM]:      'Blood Golem',
+  [ENTITY.FROST_ARCHER]:     'Frost Archer',
+  [ENTITY.ABYSSAL_WATCHER]:  'Abyssal Watcher',
 };
 
 export function getEnemyName(entity) {

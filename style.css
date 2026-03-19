@@ -614,6 +614,36 @@ button:hover, .choice-btn:hover {
   gap: 0;
 }
 
+.bst-category-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: #12121e;
+  border-left: 3px solid #888;
+  font-size: 11px;
+  font-weight: bold;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.bst-cat-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.bst-cat-count {
+  font-weight: normal;
+  color: #666;
+  font-size: 10px;
+}
+
 .bst-slot {
   display: flex;
   align-items: center;
@@ -730,6 +760,13 @@ button:hover, .choice-btn:hover {
   color: #e0c860;
   letter-spacing: 3px;
   text-transform: uppercase;
+}
+
+.bst-detail-category {
+  font-size: 10px;
+  font-weight: normal;
+  letter-spacing: 1px;
+  opacity: 0.8;
 }
 
 .bst-detail-sprite-area {

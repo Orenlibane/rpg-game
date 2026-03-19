@@ -16,9 +16,9 @@ import {
   gameSettings, updateSetting, pickupItem,
   apiRegister, apiLogin, setAuth, isLoggedIn, getAuthUsername,
   startCloudSync, checkDbStatus,
-} from './engine.js?v=23';
-import { render, resizeCanvas } from './renderer.js?v=23';
-import { PLAYER_CLASS, PRESTIGE } from './constants.js?v=23';
+} from './engine.js?v=24';
+import { render, resizeCanvas } from './renderer.js?v=24';
+import { PLAYER_CLASS, PRESTIGE } from './constants.js?v=24';
 import { initI18n, setLanguage, applyStaticTranslations, t } from './i18n.js';
 
 // ── Initialize i18n ─────────────────────────
@@ -54,7 +54,7 @@ function hideLoginOverlay() {
 function updateUserBadge() {
   const el = document.getElementById('game-version');
   if (el && isLoggedIn()) {
-    el.textContent = `v23 | ${getAuthUsername()}`;
+    el.textContent = `v24 | ${getAuthUsername()}`;
   }
 }
 

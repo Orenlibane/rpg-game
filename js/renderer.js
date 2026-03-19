@@ -1,11 +1,11 @@
-import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE, CRAFTING_RECIPES } from './constants.js?v=23';
+import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE, CRAFTING_RECIPES, MONSTER_CATEGORIES, BESTIARY_INFO } from './constants.js?v=24';
 import { t } from './i18n.js';
 
 // Lookups for bestiary
 const BASE_STATS_LOOKUP = BASE_STATS;
 const GOLD_LOOKUP = GOLD_REWARDS;
-import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js?v=23';
-import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith } from './engine.js?v=23';
+import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js?v=24';
+import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith } from './engine.js?v=24';
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
@@ -1354,7 +1354,39 @@ function updateBestiary() {
   const listPanel = document.getElementById('bestiary-list');
   listPanel.innerHTML = '';
 
-  for (const entry of filtered) {
+  // Group by category for creatures tab
+  const CATEGORY_ORDER = ['Goblinoid', 'Undead', 'Beast', 'Nature', 'Fire', 'Ice', 'Construct', 'Arcane', 'Dragon'];
+  const CATEGORY_COLORS = { Goblinoid: '#8a7a50', Undead: '#6a8a6a', Beast: '#8a6a40', Nature: '#4a9a4a', Fire: '#e06020', Ice: '#80c0e0', Construct: '#8a8a9a', Arcane: '#6060c0', Dragon: '#e06030' };
+
+  if (bestiaryTab === 'creatures' || bestiaryTab === 'bosses') {
+    // Group entries by category
+    const grouped = {};
+    for (const entry of filtered) {
+      const info = BESTIARY_INFO[entry.type];
+      const cat = info?.category || 'Beast';
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push(entry);
+    }
+
+    // Render with category headers
+    for (const cat of CATEGORY_ORDER) {
+      if (!grouped[cat] || grouped[cat].length === 0) continue;
+      const header = document.createElement('div');
+      header.className = 'bst-category-header';
+      header.style.borderLeftColor = CATEGORY_COLORS[cat] || '#888';
+      header.innerHTML = `<span class="bst-cat-dot" style="background:${CATEGORY_COLORS[cat] || '#888'}"></span>${cat} <span class="bst-cat-count">(${grouped[cat].length})</span>`;
+      listPanel.appendChild(header);
+      for (const entry of grouped[cat]) {
+        listPanel.appendChild(buildBestiarySlot(entry));
+      }
+    }
+  } else {
+    for (const entry of filtered) {
+      listPanel.appendChild(buildBestiarySlot(entry));
+    }
+  }
+
+  function buildBestiarySlot(entry) {
     const slot = document.createElement('div');
     const isSelected = entry.type === bestiarySelectedType;
     slot.className = 'bst-slot' + (isSelected ? ' bst-selected' : '') + (entry.discovered ? '' : ' bst-undiscovered');
@@ -1401,7 +1433,7 @@ function updateBestiary() {
       `;
     }
 
-    listPanel.appendChild(slot);
+    return slot;
   }
 
   // Render right detail panel
@@ -1426,8 +1458,11 @@ function updateBestiary() {
   const xpReward = BASE_STATS_LOOKUP[selected.type]?.xpReward || '?';
   const goldReward = GOLD_LOOKUP[selected.type] || '?';
 
+  const categoryLabel = BESTIARY_INFO[selected.type]?.category || 'Beast';
+  const catColor = { Goblinoid: '#8a7a50', Undead: '#6a8a6a', Beast: '#8a6a40', Nature: '#4a9a4a', Fire: '#e06020', Ice: '#80c0e0', Construct: '#8a8a9a', Arcane: '#6060c0', Dragon: '#e06030' }[categoryLabel] || '#888';
+
   detailPanel.innerHTML = `
-    <div class="bst-detail-title">${selected.title || selected.name}</div>
+    <div class="bst-detail-title">${selected.title || selected.name} <span class="bst-detail-category" style="color:${catColor}">${categoryLabel}</span></div>
     <div class="bst-detail-sprite-area">
       <div class="bst-detail-sprite-wrap" id="bst-sprite-target"></div>
     </div>

@@ -44,7 +44,7 @@
     <div id="ui-panel">
       <!-- Player Stats -->
       <div id="stats-panel" class="panel">
-        <h2>Cave Diver <span id="game-version" style="font-size:10px;color:#555;font-weight:normal;">v24</span></h2>
+        <h2>Cave Diver <span id="game-version" style="font-size:10px;color:#555;font-weight:normal;">v25</span></h2>
         <div id="class-display" class="class-badge">Warrior</div>
         <div id="prestige-badge" style="display: none;"></div>
         <div id="floor-display" class="stat-row">Village</div>
@@ -414,6 +414,15 @@
     </div>
   </div>
 
+  <!-- Subclass Selection Overlay -->
+  <div id="subclass-overlay" class="overlay hidden">
+    <div class="overlay-content subclass-select-content">
+      <h1 class="title-subclass">Choose Your Specialization</h1>
+      <p class="subclass-subtitle">You have reached Level 5! Choose a path to unlock new abilities.</p>
+      <div id="subclass-body" class="subclass-cards"></div>
+    </div>
+  </div>
+
   <!-- Achievement Overlay -->
   <div id="achievement-overlay" class="overlay hidden">
     <div class="overlay-content achievement-panel">
@@ -525,9 +534,9 @@
       document.body.appendChild(d);
     };
   </script>
-  <script type="module" src="js/main.js?v=24"></script>
+  <script type="module" src="js/main.js?v=25"></script>
   <script type="module">
-    import('./js/main.js?v=24').catch(function(e) {
+    import('./js/main.js?v=25').catch(function(e) {
       var d = document.createElement('div');
       d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:red;color:white;padding:10px;z-index:9999;font-size:14px';
       d.textContent = 'MODULE LOAD ERROR: ' + e.message;

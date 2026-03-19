@@ -86,6 +86,10 @@ export const ITEM_FEATURE = {
   CRIT_CHANCE:    'crit_chance',
   ALL_SEEING_EYE: 'all_seeing_eye',
   XP_BOOST:       'xp_boost',
+  STUN_CHANCE:    'stun_chance',
+  DODGE_BONUS:    'dodge_bonus',
+  MANA_REGEN:     'mana_regen',
+  DOUBLE_STRIKE:  'double_strike',
 };
 
 export const FEATURE_INFO = {
@@ -97,6 +101,10 @@ export const FEATURE_INFO = {
   crit_chance:    { name: 'Critical Hit',   color: '#e0c040', desc: (v) => `${v}% chance for double damage` },
   all_seeing_eye: { name: 'All-Seeing Eye', color: '#c080e0', desc: () => 'Reveals enemies on minimap' },
   xp_boost:       { name: 'XP Boost',       color: '#40c0c0', desc: (v) => `+${v}% bonus XP` },
+  stun_chance:    { name: 'Stun Chance',    color: '#e0e040', desc: (v) => `${v}% chance to stun for 1 turn` },
+  dodge_bonus:    { name: 'Dodge Bonus',    color: '#60e0a0', desc: (v) => `+${v}% dodge chance` },
+  mana_regen:     { name: 'Mana Regen',     color: '#6080e0', desc: (v) => `Restore ${v} mana per turn` },
+  double_strike:  { name: 'Double Strike',  color: '#e08060', desc: (v) => `${v}% chance to attack twice` },
 };
 
 // ── Entity Types ──────────────────────────────────
@@ -203,6 +211,55 @@ export const CLASS_STATS = {
     xp: 0, level: 1, xpToLevel: 20,
     attrs: { str: 2, agi: 5, int: 1, vit: 3, cha: 2 },
     // Derived: HP=8+4+9=21, Pow=0+1=1, Arm=1, RangedBonus=2
+  },
+};
+
+// ── Subclass Specializations ─────────────────────
+export const SUBCLASS = {
+  BERSERKER:   'berserker',
+  PALADIN:     'paladin',
+  PYROMANCER:  'pyromancer',
+  NECROMANCER: 'necromancer',
+  RANGER:      'ranger',
+  ASSASSIN:    'assassin',
+};
+
+export const SUBCLASS_INFO = {
+  [SUBCLASS.BERSERKER]: {
+    name: 'Berserker', baseClass: PLAYER_CLASS.WARRIOR, requiredLevel: 5,
+    desc: 'A raging warrior who trades defense for devastating damage.',
+    statBonuses: { power: 3, maxHp: 5 },
+    branches: ['fury'],
+  },
+  [SUBCLASS.PALADIN]: {
+    name: 'Paladin', baseClass: PLAYER_CLASS.WARRIOR, requiredLevel: 5,
+    desc: 'A holy knight who heals allies and smites the undead.',
+    statBonuses: { armor: 2, maxHp: 8 },
+    branches: ['holy'],
+  },
+  [SUBCLASS.PYROMANCER]: {
+    name: 'Pyromancer', baseClass: PLAYER_CLASS.MAGE, requiredLevel: 5,
+    desc: 'A fire mage specializing in burn damage and AoE destruction.',
+    statBonuses: { spellBonus: 3, maxMana: 5 },
+    branches: ['inferno'],
+  },
+  [SUBCLASS.NECROMANCER]: {
+    name: 'Necromancer', baseClass: PLAYER_CLASS.MAGE, requiredLevel: 5,
+    desc: 'A dark caster who drains life and bends shadow to their will.',
+    statBonuses: { spellBonus: 2, maxHp: 8 },
+    branches: ['shadow'],
+  },
+  [SUBCLASS.RANGER]: {
+    name: 'Ranger', baseClass: PLAYER_CLASS.ARCHER, requiredLevel: 5,
+    desc: 'A nature warrior with traps, companions, and rain of arrows.',
+    statBonuses: { rangedBonus: 2, maxHp: 5 },
+    branches: ['nature'],
+  },
+  [SUBCLASS.ASSASSIN]: {
+    name: 'Assassin', baseClass: PLAYER_CLASS.ARCHER, requiredLevel: 5,
+    desc: 'A shadow striker with lethal crits and devastating combos.',
+    statBonuses: { power: 3, critBonus: 10 },
+    branches: ['shadow_arts'],
   },
 };
 
@@ -404,6 +461,24 @@ export const ITEMS = {
   holy_mail:        { id: 'holy_mail',        name: 'Holy Chainmail',   type: ITEM_TYPE.CHEST,  slot: EQUIP_SLOT.CHEST,  armor: 4, icon: 'CH', desc: '+4 Armor, Life Steal 1 [Holy Crusader]', tier: 3, setId: 'holy_set', features: [{ type: 'life_steal', value: 1 }] },
   holy_shield_cape: { id: 'holy_shield_cape', name: 'Holy Shield Cape', type: ITEM_TYPE.CAPE,   slot: EQUIP_SLOT.CAPE,   armor: 2, icon: 'KH', desc: '+2 Armor, Thorns 2 [Holy Crusader]', tier: 3, setId: 'holy_set', features: [{ type: 'thorns', value: 2 }] },
   holy_sabatons:    { id: 'holy_sabatons',    name: 'Holy Sabatons',    type: ITEM_TYPE.BOOTS,  slot: EQUIP_SLOT.BOOTS,  armor: 3, icon: 'BH', desc: '+3 Armor [Holy Crusader]', tier: 3, setId: 'holy_set' },
+
+  // ── Epic Items (Tier 4) ────────────────────
+  demon_slayer:       { id: 'demon_slayer',       name: 'Demon Slayer',       type: ITEM_TYPE.WEAPON, slot: EQUIP_SLOT.WEAPON, power: 8,  icon: 'WA', desc: '+8 Power, Fire Dmg, Crit',           tier: 4, features: [{ type: 'fire_dmg', value: 4 }, { type: 'crit_chance', value: 10 }] },
+  frostfire_staff:    { id: 'frostfire_staff',    name: 'Frostfire Staff',    type: ITEM_TYPE.WEAPON, slot: EQUIP_SLOT.WEAPON, power: 6,  icon: 'WF', desc: '+6 Power, +5 Spell, Fire+Ice',       spellBonus: 5, tier: 4, features: [{ type: 'fire_dmg', value: 3 }, { type: 'ice_dmg', value: 3 }] },
+  windrunner_bow:     { id: 'windrunner_bow',     name: 'Windrunner Bow',     type: ITEM_TYPE.WEAPON, slot: EQUIP_SLOT.WEAPON, power: 7,  icon: 'WB', desc: '+7 Power, +3 Range, Crit',           rangeBonus: 3, tier: 4, features: [{ type: 'crit_chance', value: 12 }] },
+  titan_helm:         { id: 'titan_helm',         name: 'Titan Helm',         type: ITEM_TYPE.HELMET, slot: EQUIP_SLOT.HELMET, armor: 4,  icon: 'H3', desc: '+4 Armor, +10 Max HP',               hpBonus: 10, tier: 4 },
+  dragonhide_plate:   { id: 'dragonhide_plate',   name: 'Dragonhide Plate',   type: ITEM_TYPE.CHEST,  slot: EQUIP_SLOT.CHEST,  armor: 6,  icon: 'CD', desc: '+6 Armor, Thorns 3',                 tier: 4, features: [{ type: 'thorns', value: 3 }] },
+  wraithweave_gloves: { id: 'wraithweave_gloves', name: 'Wraithweave Gloves', type: ITEM_TYPE.GLOVES, slot: EQUIP_SLOT.GLOVES, armor: 3,  icon: 'GS', desc: '+3 Armor, Life Steal 2',             tier: 4, features: [{ type: 'life_steal', value: 2 }] },
+  stormstrider_boots: { id: 'stormstrider_boots', name: 'Stormstrider Boots', type: ITEM_TYPE.BOOTS,  slot: EQUIP_SLOT.BOOTS,  armor: 3,  icon: 'BS', desc: '+3 Armor, +8% Dodge',                tier: 4, features: [{ type: 'dodge_bonus', value: 8 }] },
+  phoenix_cloak:      { id: 'phoenix_cloak',      name: 'Phoenix Cloak',      type: ITEM_TYPE.CAPE,   slot: EQUIP_SLOT.CAPE,   armor: 2,  icon: 'KF', desc: '+2 Armor, Mana Regen 2',            tier: 4, features: [{ type: 'mana_regen', value: 2 }] },
+
+  // ── Legendary Items (Tier 5) ─────────────
+  excalibur:          { id: 'excalibur',          name: 'Excalibur',          type: ITEM_TYPE.WEAPON, slot: EQUIP_SLOT.WEAPON, power: 12, icon: 'W3', desc: '+12 Power, Life Steal, Crit, Fire',  tier: 5, features: [{ type: 'life_steal', value: 3 }, { type: 'crit_chance', value: 15 }, { type: 'fire_dmg', value: 5 }] },
+  staff_of_eternity:  { id: 'staff_of_eternity',  name: 'Staff of Eternity',  type: ITEM_TYPE.WEAPON, slot: EQUIP_SLOT.WEAPON, power: 10, icon: 'WF', desc: '+10 Power, +8 Spell, Mana Regen, Ice', spellBonus: 8, tier: 5, features: [{ type: 'mana_regen', value: 5 }, { type: 'ice_dmg', value: 6 }] },
+  artemis_longbow:    { id: 'artemis_longbow',    name: "Artemis' Longbow",   type: ITEM_TYPE.WEAPON, slot: EQUIP_SLOT.WEAPON, power: 11, icon: 'WB', desc: '+11 Power, +4 Range, Double Strike', rangeBonus: 4, tier: 5, features: [{ type: 'double_strike', value: 15 }, { type: 'crit_chance', value: 20 }] },
+  crown_of_ages:      { id: 'crown_of_ages',      name: 'Crown of Ages',      type: ITEM_TYPE.HELMET, slot: EQUIP_SLOT.HELMET, armor: 6,  icon: 'HH', desc: '+6 Armor, All-Seeing Eye, XP Boost', tier: 5, features: [{ type: 'all_seeing_eye', value: 1 }, { type: 'xp_boost', value: 15 }] },
+  aegis_plate:        { id: 'aegis_plate',        name: 'Aegis Plate',        type: ITEM_TYPE.CHEST,  slot: EQUIP_SLOT.CHEST,  armor: 8,  icon: 'CH', desc: '+8 Armor, Thorns 5, Life Steal 2',  tier: 5, features: [{ type: 'thorns', value: 5 }, { type: 'life_steal', value: 2 }] },
+  boots_of_hermes:    { id: 'boots_of_hermes',    name: 'Boots of Hermes',    type: ITEM_TYPE.BOOTS,  slot: EQUIP_SLOT.BOOTS,  armor: 4,  icon: 'BH', desc: '+4 Armor, +15% Dodge',              tier: 5, features: [{ type: 'dodge_bonus', value: 15 }] },
 
   // Fishing
   trident_deep:     { id: 'trident_deep',     name: 'Trident of the Deep', type: ITEM_TYPE.WEAPON, slot: EQUIP_SLOT.WEAPON, power: 5, icon: 'WT', desc: '+5 Power, Life Steal 2', tier: 3, features: [{ type: 'life_steal', value: 2 }] },
@@ -666,6 +741,11 @@ export const LOOT_TABLES = {
     { itemId: 'arcane_wraps',     chance: 0.06 },
     { itemId: 'crystal_shard',    chance: 0.30 },
     { itemId: 'dark_essence',     chance: 0.50 },
+    // Epic/Legendary drops
+    { itemId: 'frostfire_staff',    chance: 0.10 },
+    { itemId: 'phoenix_cloak',     chance: 0.08 },
+    { itemId: 'staff_of_eternity', chance: 0.03 },
+    { itemId: 'crown_of_ages',     chance: 0.03 },
   ],
   [ENTITY.MYCELIUM_LORD]: [
     { itemId: 'plate_armor',      chance: 0.30 },
@@ -688,6 +768,10 @@ export const LOOT_TABLES = {
     { itemId: 'dragon_plate',     chance: 0.05 },
     { itemId: 'crystal_shard',    chance: 0.30 },
     { itemId: 'dragon_scale',     chance: 0.40 },
+    // Epic/Legendary drops
+    { itemId: 'demon_slayer',     chance: 0.10 },
+    { itemId: 'dragonhide_plate', chance: 0.08 },
+    { itemId: 'excalibur',        chance: 0.03 },
   ],
   [ENTITY.FROST_GIANT]: [
     { itemId: 'frost_wand',       chance: 0.35 },
@@ -701,6 +785,11 @@ export const LOOT_TABLES = {
     { itemId: 'holy_mail',        chance: 0.06 },
     { itemId: 'holy_sabatons',    chance: 0.06 },
     { itemId: 'holy_shield_cape', chance: 0.05 },
+    // Epic/Legendary drops
+    { itemId: 'titan_helm',          chance: 0.10 },
+    { itemId: 'stormstrider_boots',  chance: 0.08 },
+    { itemId: 'crown_of_ages',       chance: 0.03 },
+    { itemId: 'aegis_plate',         chance: 0.03 },
   ],
   // New monster loot - Early
   [ENTITY.GOBLIN_SCOUT]: [
@@ -907,6 +996,12 @@ export const LOOT_TABLES = {
     { itemId: 'dragon_greaves',   chance: 0.07 },
     { itemId: 'dragon_scale',     chance: 0.30 },
     { itemId: 'crystal_shard',    chance: 0.25 },
+    // Epic/Legendary drops
+    { itemId: 'demon_slayer',       chance: 0.15 },
+    { itemId: 'phoenix_cloak',      chance: 0.10 },
+    { itemId: 'wraithweave_gloves', chance: 0.10 },
+    { itemId: 'excalibur',          chance: 0.04 },
+    { itemId: 'boots_of_hermes',    chance: 0.03 },
   ],
   [ENTITY.ANCIENT_WYRM]: [
     { itemId: 'steel_blade',      chance: 0.40 },
@@ -923,6 +1018,18 @@ export const LOOT_TABLES = {
     { itemId: 'dragon_plate',     chance: 0.08 },
     { itemId: 'crystal_shard',    chance: 0.40 },
     { itemId: 'dragon_scale',     chance: 0.50 },
+    // Epic/Legendary drops
+    { itemId: 'windrunner_bow',      chance: 0.12 },
+    { itemId: 'frostfire_staff',     chance: 0.12 },
+    { itemId: 'titan_helm',          chance: 0.10 },
+    { itemId: 'dragonhide_plate',    chance: 0.10 },
+    { itemId: 'stormstrider_boots',  chance: 0.08 },
+    { itemId: 'excalibur',           chance: 0.05 },
+    { itemId: 'staff_of_eternity',   chance: 0.05 },
+    { itemId: 'artemis_longbow',     chance: 0.05 },
+    { itemId: 'crown_of_ages',       chance: 0.04 },
+    { itemId: 'aegis_plate',         chance: 0.04 },
+    { itemId: 'boots_of_hermes',     chance: 0.04 },
   ],
   // Wave 2 monsters
   [ENTITY.PLAGUE_RAT]: [
@@ -1473,6 +1580,12 @@ export const SKILL_TREES = {
         { id: 'execute', name: 'Execute', maxRank: 1, type: 'active', key: 'G', cooldown: 6,
           desc: ['Deal 3x damage to enemies below 30% HP'],
           icon: '💀', requires: 'cleave' },
+        { id: 'weapon_mastery', name: 'Weapon Mastery', maxRank: 3, type: 'passive',
+          desc: ['+1 weapon damage', '+2 weapon damage', '+3 weapon damage'],
+          icon: '🗡', requires: 'execute' },
+        { id: 'devastating_blow', name: 'Devastating Blow', maxRank: 1, type: 'active', key: 'V', cooldown: 10,
+          desc: ['Deal 5x damage and stun for 2 turns'],
+          icon: '💢', requires: 'weapon_mastery' },
       ]
     },
     fortitude: {
@@ -1487,6 +1600,56 @@ export const SKILL_TREES = {
         { id: 'bloodlust', name: 'Bloodlust', maxRank: 3, type: 'passive',
           desc: ['Heal 3 HP on kill', 'Heal 5 HP on kill', 'Heal 8 HP on kill'],
           icon: '🩸', requires: 'tough_skin' },
+        { id: 'iron_will', name: 'Iron Will', maxRank: 3, type: 'passive',
+          desc: ['5% damage reduction', '10% damage reduction', '15% damage reduction'],
+          icon: '🏰', requires: 'bloodlust' },
+        { id: 'last_stand', name: 'Last Stand', maxRank: 1, type: 'active', key: 'B', cooldown: 20,
+          desc: ['When HP < 20%, +50% damage for 5 turns'],
+          icon: '🔥', requires: 'iron_will' },
+      ]
+    },
+    // Berserker subclass branch
+    fury: {
+      name: 'Fury',
+      subclass: 'berserker',
+      skills: [
+        { id: 'rage', name: 'Rage', maxRank: 3, type: 'passive',
+          desc: ['+1 damage per 3 rage stacks', '+1 damage per 2 rage stacks', '+2 damage per 2 rage stacks'],
+          icon: '😤' },
+        { id: 'frenzy', name: 'Frenzy', maxRank: 1, type: 'active', key: 'R', cooldown: 8,
+          desc: ['Attack twice per turn for 3 turns'],
+          icon: '⚡', requires: 'rage' },
+        { id: 'reckless_swing', name: 'Reckless Swing', maxRank: 3, type: 'active', key: 'T', cooldown: 4,
+          desc: ['200% damage, take 25% recoil', '225% damage, take 20% recoil', '250% damage, take 15% recoil'],
+          icon: '🪓', requires: 'rage' },
+        { id: 'bloodrage', name: 'Bloodrage', maxRank: 3, type: 'passive',
+          desc: ['Below 50% HP: +30% damage', 'Below 50% HP: +40% damage', 'Below 50% HP: +50% damage'],
+          icon: '🩸', requires: 'reckless_swing' },
+        { id: 'unstoppable', name: 'Unstoppable', maxRank: 1, type: 'active', key: 'Y', cooldown: 15,
+          desc: ['Immune to stun/slow for 5 turns'],
+          icon: '🛡', requires: 'bloodrage' },
+      ]
+    },
+    // Paladin subclass branch
+    holy: {
+      name: 'Holy',
+      subclass: 'paladin',
+      skills: [
+        { id: 'holy_light', name: 'Holy Light', maxRank: 3, type: 'active', key: 'R', cooldown: 6,
+          desc: ['Heal 5 HP', 'Heal 8 HP', 'Heal 12 HP'],
+          icon: '✨' },
+        { id: 'divine_shield', name: 'Divine Shield', maxRank: 3, type: 'active', key: 'T', cooldown: 10,
+          desc: ['Block next 2 hits', 'Block next 3 hits', 'Block next 4 hits'],
+          icon: '🛡', requires: 'holy_light' },
+        { id: 'smite', name: 'Smite', maxRank: 1, type: 'active', key: 'Y', cooldown: 5,
+          desc: ['Deal 2x power as holy damage to nearest undead'],
+          icon: '⚡', requires: 'holy_light' },
+        { id: 'aura_of_protection', name: 'Aura of Protection', maxRank: 3, type: 'passive',
+          desc: ['+1 armor aura', '+2 armor aura', '+3 armor aura'],
+          icon: '🌟', requires: 'smite' },
+        { id: 'resurrection', name: 'Resurrection', maxRank: 1, type: 'passive',
+          desc: ['Revive once per floor with 50% HP'],
+          icon: '💫', requires: 'aura_of_protection' },
       ]
     },
   },
@@ -1503,6 +1666,12 @@ export const SKILL_TREES = {
         { id: 'chain_master', name: 'Chain Master', maxRank: 3, type: 'passive',
           desc: ['Chain lightning +1 target', 'Chain lightning +2 targets', 'Chain lightning +3 targets'],
           icon: '⚡', requires: 'empower' },
+        { id: 'elemental_surge', name: 'Elemental Surge', maxRank: 1, type: 'active', key: 'V', cooldown: 8,
+          desc: ['Next spell deals double damage'],
+          icon: '💥', requires: 'chain_master' },
+        { id: 'spell_echo', name: 'Spell Echo', maxRank: 3, type: 'passive',
+          desc: ['10% chance to cast spell twice', '15% chance to cast spell twice', '20% chance to cast spell twice'],
+          icon: '🔁', requires: 'elemental_surge' },
       ]
     },
     arcane: {
@@ -1517,6 +1686,56 @@ export const SKILL_TREES = {
         { id: 'arcane_mastery', name: 'Arcane Mastery', maxRank: 3, type: 'passive',
           desc: ['All spell costs -1', 'All spell costs -2', 'All spell costs -3'],
           icon: '✨', requires: 'mana_flow' },
+        { id: 'mana_surge', name: 'Mana Surge', maxRank: 3, type: 'active', key: 'B', cooldown: 8,
+          desc: ['Restore 10 mana', 'Restore 15 mana', 'Restore 20 mana'],
+          icon: '💎', requires: 'arcane_mastery' },
+        { id: 'arcane_barrier', name: 'Arcane Barrier', maxRank: 3, type: 'active', key: 'N', cooldown: 12,
+          desc: ['Absorb next 10 damage', 'Absorb next 15 damage', 'Absorb next 20 damage'],
+          icon: '🌀', requires: 'mana_surge' },
+      ]
+    },
+    // Pyromancer subclass branch
+    inferno: {
+      name: 'Inferno',
+      subclass: 'pyromancer',
+      skills: [
+        { id: 'ignite', name: 'Ignite', maxRank: 3, type: 'passive',
+          desc: ['20% chance to burn (3 dmg/turn, 3 turns)', '30% chance to burn (3 dmg/turn, 3 turns)', '40% chance to burn (3 dmg/turn, 3 turns)'],
+          icon: '🔥' },
+        { id: 'fireball', name: 'Fireball', maxRank: 1, type: 'active', key: 'R', cooldown: 6,
+          desc: ['AoE: hit all enemies in 2-tile radius for spell damage'],
+          icon: '☄', requires: 'ignite' },
+        { id: 'flame_wall', name: 'Flame Wall', maxRank: 3, type: 'active', key: 'T', cooldown: 8,
+          desc: ['Create burning tiles (4 dmg)', 'Create burning tiles (6 dmg)', 'Create burning tiles (8 dmg)'],
+          icon: '🧱', requires: 'fireball' },
+        { id: 'combustion', name: 'Combustion', maxRank: 1, type: 'passive',
+          desc: ['Burning enemies explode on death, 5 dmg to adjacent'],
+          icon: '💣', requires: 'flame_wall' },
+        { id: 'inferno_skill', name: 'Inferno', maxRank: 1, type: 'active', key: 'Y', cooldown: 15,
+          desc: ['All visible enemies take 8 fire damage'],
+          icon: '🌋', requires: 'combustion' },
+      ]
+    },
+    // Necromancer subclass branch
+    shadow: {
+      name: 'Shadow',
+      subclass: 'necromancer',
+      skills: [
+        { id: 'life_drain', name: 'Life Drain', maxRank: 3, type: 'active', key: 'R', cooldown: 4,
+          desc: ['Steal 2 HP from target', 'Steal 3 HP from target', 'Steal 4 HP from target'],
+          icon: '🩸' },
+        { id: 'dark_pact', name: 'Dark Pact', maxRank: 3, type: 'active', key: 'T', cooldown: 6,
+          desc: ['Sacrifice 5 HP, +8 spell dmg 3 turns', 'Sacrifice 5 HP, +10 spell dmg 3 turns', 'Sacrifice 5 HP, +12 spell dmg 3 turns'],
+          icon: '📿', requires: 'life_drain' },
+        { id: 'soul_harvest', name: 'Soul Harvest', maxRank: 3, type: 'passive',
+          desc: ['Kills restore 2 mana', 'Kills restore 3 mana', 'Kills restore 5 mana'],
+          icon: '👻', requires: 'life_drain' },
+        { id: 'shadow_cloak', name: 'Shadow Cloak', maxRank: 3, type: 'active', key: 'Y', cooldown: 10,
+          desc: ['Invisible for 2 turns', 'Invisible for 3 turns', 'Invisible for 4 turns'],
+          icon: '🌑', requires: 'soul_harvest' },
+        { id: 'death_mark', name: 'Death Mark', maxRank: 1, type: 'active', key: 'U', cooldown: 8,
+          desc: ['Mark enemy: takes 50% more damage for 4 turns'],
+          icon: '💀', requires: 'shadow_cloak' },
       ]
     },
   },
@@ -1533,6 +1752,12 @@ export const SKILL_TREES = {
         { id: 'headshot', name: 'Headshot', maxRank: 3, type: 'passive',
           desc: ['10% crit chance (2x damage)', '15% crit chance (2x damage)', '20% crit chance (2x damage)'],
           icon: '💥', requires: 'steady_aim' },
+        { id: 'piercing_shot', name: 'Piercing Shot', maxRank: 1, type: 'active', key: 'V', cooldown: 6,
+          desc: ['Arrow ignores all armor'],
+          icon: '🔱', requires: 'headshot' },
+        { id: 'eagle_eye', name: 'Eagle Eye', maxRank: 3, type: 'passive',
+          desc: ['+1 attack range', '+2 attack range', '+3 attack range'],
+          icon: '🦅', requires: 'piercing_shot' },
       ]
     },
     survival: {
@@ -1547,6 +1772,56 @@ export const SKILL_TREES = {
         { id: 'smoke_bomb', name: 'Smoke Bomb', maxRank: 1, type: 'active', key: 'H', cooldown: 10,
           desc: ['Invisible for 3 turns, enemies lose track'],
           icon: '💭', requires: 'evasion_skill' },
+        { id: 'trap_mastery', name: 'Trap Mastery', maxRank: 3, type: 'active', key: 'B', cooldown: 6,
+          desc: ['Place spike trap (5 dmg)', 'Place spike trap (8 dmg)', 'Place spike trap (12 dmg)'],
+          icon: '🪤', requires: 'smoke_bomb' },
+        { id: 'second_wind', name: 'Second Wind', maxRank: 3, type: 'active', key: 'N', cooldown: 15,
+          desc: ['Heal 15% max HP', 'Heal 20% max HP', 'Heal 25% max HP'],
+          icon: '💚', requires: 'trap_mastery' },
+      ]
+    },
+    // Ranger subclass branch
+    nature: {
+      name: 'Nature',
+      subclass: 'ranger',
+      skills: [
+        { id: 'nature_bond', name: 'Nature Bond', maxRank: 3, type: 'passive',
+          desc: ['Regen 1 HP per turn', 'Regen 2 HP per turn', 'Regen 3 HP per turn'],
+          icon: '🌿' },
+        { id: 'entangle', name: 'Entangle', maxRank: 3, type: 'active', key: 'R', cooldown: 6,
+          desc: ['Root enemy for 2 turns', 'Root enemy for 3 turns', 'Root enemy for 4 turns'],
+          icon: '🌱', requires: 'nature_bond' },
+        { id: 'rain_of_arrows', name: 'Rain of Arrows', maxRank: 1, type: 'active', key: 'T', cooldown: 8,
+          desc: ['Hit all enemies in 3-tile radius'],
+          icon: '🌧', requires: 'entangle' },
+        { id: 'camouflage', name: 'Camouflage', maxRank: 3, type: 'passive',
+          desc: ['+15% dodge in combat', '+20% dodge in combat', '+25% dodge in combat'],
+          icon: '🍃', requires: 'rain_of_arrows' },
+        { id: 'beast_companion', name: 'Beast Companion', maxRank: 3, type: 'active', key: 'Y', cooldown: 10,
+          desc: ['Summon wolf (3 dmg/turn)', 'Summon wolf (4 dmg/turn)', 'Summon wolf (5 dmg/turn)'],
+          icon: '🐺', requires: 'camouflage' },
+      ]
+    },
+    // Assassin subclass branch
+    shadow_arts: {
+      name: 'Shadow Arts',
+      subclass: 'assassin',
+      skills: [
+        { id: 'backstab', name: 'Backstab', maxRank: 3, type: 'passive',
+          desc: ['Stealth attacks deal 3x damage', 'Stealth attacks deal 4x damage', 'Stealth attacks deal 5x damage'],
+          icon: '🗡' },
+        { id: 'fan_of_knives', name: 'Fan of Knives', maxRank: 3, type: 'active', key: 'R', cooldown: 5,
+          desc: ['Hit all adjacent for 4 damage', 'Hit all adjacent for 6 damage', 'Hit all adjacent for 8 damage'],
+          icon: '🔪', requires: 'backstab' },
+        { id: 'mark_for_death', name: 'Mark for Death', maxRank: 3, type: 'active', key: 'T', cooldown: 8,
+          desc: ['Target takes +25% damage 4 turns', 'Target takes +35% damage 4 turns', 'Target takes +50% damage 4 turns'],
+          icon: '❌', requires: 'backstab' },
+        { id: 'shadow_step', name: 'Shadow Step', maxRank: 1, type: 'active', key: 'Y', cooldown: 6,
+          desc: ['Teleport behind nearest enemy within 3 tiles'],
+          icon: '👤', requires: 'mark_for_death' },
+        { id: 'death_lotus', name: 'Death Lotus', maxRank: 1, type: 'active', key: 'U', cooldown: 12,
+          desc: ['5 attacks on random visible enemies for full damage'],
+          icon: '🌸', requires: 'shadow_step' },
       ]
     },
   },

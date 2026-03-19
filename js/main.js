@@ -16,9 +16,9 @@ import {
   gameSettings, updateSetting, pickupItem,
   apiRegister, apiLogin, setAuth, isLoggedIn, getAuthUsername,
   startCloudSync, checkDbStatus,
-} from './engine.js?v=24';
-import { render, resizeCanvas } from './renderer.js?v=24';
-import { PLAYER_CLASS, PRESTIGE } from './constants.js?v=24';
+} from './engine.js?v=25';
+import { render, resizeCanvas } from './renderer.js?v=25';
+import { PLAYER_CLASS, PRESTIGE } from './constants.js?v=25';
 import { initI18n, setLanguage, applyStaticTranslations, t } from './i18n.js';
 
 // ── Initialize i18n ─────────────────────────
@@ -54,7 +54,7 @@ function hideLoginOverlay() {
 function updateUserBadge() {
   const el = document.getElementById('game-version');
   if (el && isLoggedIn()) {
-    el.textContent = `v24 | ${getAuthUsername()}`;
+    el.textContent = `v25 | ${getAuthUsername()}`;
   }
 }
 
@@ -330,6 +330,7 @@ document.addEventListener('keydown', (e) => {
   if (state.showCharSheet) return;
   if (state.showSkillTree) return;
   if (state.showAchievements) return;
+  if (state.showSubclassSelect) return;
   if (state.showChest) return;
 
   // Throw mode: intercept direction keys

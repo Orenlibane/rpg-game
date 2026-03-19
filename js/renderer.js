@@ -1,11 +1,11 @@
-import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE, CRAFTING_RECIPES, MONSTER_CATEGORIES, BESTIARY_INFO } from './constants.js?v=24';
+import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE, CRAFTING_RECIPES, MONSTER_CATEGORIES, BESTIARY_INFO, SUBCLASS, SUBCLASS_INFO } from './constants.js?v=25';
 import { t } from './i18n.js';
 
 // Lookups for bestiary
 const BASE_STATS_LOOKUP = BASE_STATS;
 const GOLD_LOOKUP = GOLD_REWARDS;
-import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js?v=24';
-import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith } from './engine.js?v=24';
+import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js?v=25';
+import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith, selectSubclass, isSubclassBranchUnlocked } from './engine.js?v=25';
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
@@ -282,8 +282,12 @@ function updateUI() {
   // Class display
   const classEl = document.getElementById('class-display');
   if (classEl) {
-    const classKey = { warrior: 'class.warrior', mage: 'class.mage', archer: 'class.archer' };
-    classEl.textContent = t(classKey[state.playerClass] || 'class.adventurer');
+    if (state.player && state.player.subclass && SUBCLASS_INFO[state.player.subclass]) {
+      classEl.textContent = SUBCLASS_INFO[state.player.subclass].name;
+    } else {
+      const classKey = { warrior: 'class.warrior', mage: 'class.mage', archer: 'class.archer' };
+      classEl.textContent = t(classKey[state.playerClass] || 'class.adventurer');
+    }
   }
 
   // Floor display
@@ -418,6 +422,9 @@ function updateUI() {
 
   // Skill tree overlay
   updateSkillTreeOverlay();
+
+  // Subclass selection overlay
+  updateSubclassOverlay();
 
   // Achievement overlay
   updateAchievementOverlay();
@@ -721,84 +728,165 @@ function updateSkillTreeOverlay() {
   const tree = getSkillTree();
   if (!tree || Object.keys(tree).length === 0) return;
 
+  // Create a 2-column grid for 4 branches
+  const grid = document.createElement('div');
+  grid.className = 'st-grid';
+
   for (const [branchKey, branch] of Object.entries(tree)) {
+    const isLocked = !isSubclassBranchUnlocked(branchKey);
+    const isSubclassBranch = !!branch.subclass;
+
     const branchDiv = document.createElement('div');
-    branchDiv.className = 'st-branch';
+    branchDiv.className = 'st-branch' + (isLocked ? ' st-locked' : '') + (isSubclassBranch ? ' st-subclass-branch' : '');
 
     const branchTitle = document.createElement('h3');
     branchTitle.className = 'st-branch-title';
     branchTitle.textContent = branch.name;
+    if (isSubclassBranch) {
+      const tag = document.createElement('span');
+      tag.className = 'st-subclass-tag';
+      tag.textContent = isLocked ? ' (Locked - Level 5)' : ` (${SUBCLASS_INFO[branch.subclass]?.name || ''})`;
+      branchTitle.appendChild(tag);
+    }
     branchDiv.appendChild(branchTitle);
 
-    for (const skill of branch.skills) {
-      const rank = getSkillRank(skill.id);
-      const canLearn = canLearnSkill(skill.id);
-      const maxed = rank >= skill.maxRank;
+    if (isLocked) {
+      const lockMsg = document.createElement('div');
+      lockMsg.className = 'st-lock-msg';
+      lockMsg.textContent = `Choose ${branch.subclass === 'berserker' || branch.subclass === 'paladin' ? 'Warrior' : branch.subclass === 'pyromancer' || branch.subclass === 'necromancer' ? 'Mage' : 'Archer'} specialization at Level 5 to unlock`;
+      branchDiv.appendChild(lockMsg);
+    } else {
+      for (const skill of branch.skills) {
+        const rank = getSkillRank(skill.id);
+        const canLearnThis = canLearnSkill(skill.id);
+        const maxed = rank >= skill.maxRank;
 
-      const skillDiv = document.createElement('div');
-      skillDiv.className = 'st-skill' + (rank > 0 ? ' st-learned' : '') + (maxed ? ' st-maxed' : '') + (canLearn ? ' st-available' : '');
+        const skillDiv = document.createElement('div');
+        skillDiv.className = 'st-skill' + (rank > 0 ? ' st-learned' : '') + (maxed ? ' st-maxed' : '') + (canLearnThis ? ' st-available' : '');
 
-      const header = document.createElement('div');
-      header.className = 'st-skill-header';
+        const header = document.createElement('div');
+        header.className = 'st-skill-header';
 
-      const nameSpan = document.createElement('span');
-      nameSpan.className = 'st-skill-name';
-      nameSpan.textContent = `${skill.icon || ''} ${skill.name}`;
-      header.appendChild(nameSpan);
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'st-skill-name';
+        nameSpan.textContent = `${skill.icon || ''} ${skill.name}`;
+        header.appendChild(nameSpan);
 
-      const rankSpan = document.createElement('span');
-      rankSpan.className = 'st-skill-rank';
-      rankSpan.textContent = `${rank}/${skill.maxRank}`;
-      header.appendChild(rankSpan);
+        const rankSpan = document.createElement('span');
+        rankSpan.className = 'st-skill-rank';
+        rankSpan.textContent = `${rank}/${skill.maxRank}`;
+        header.appendChild(rankSpan);
 
-      if (skill.type === 'active' && skill.key) {
-        const keySpan = document.createElement('span');
-        keySpan.className = 'st-skill-key';
-        keySpan.textContent = skill.key;
-        header.appendChild(keySpan);
-      }
-
-      skillDiv.appendChild(header);
-
-      const descDiv = document.createElement('div');
-      descDiv.className = 'st-skill-desc';
-      const descIdx = Math.min(rank > 0 ? rank - 1 : 0, skill.desc.length - 1);
-      descDiv.textContent = skill.desc[descIdx];
-      if (rank > 0 && rank < skill.maxRank && skill.desc[rank]) {
-        descDiv.textContent += ` → ${skill.desc[rank]}`;
-      }
-      skillDiv.appendChild(descDiv);
-
-      if (skill.type === 'active') {
-        const cdDiv = document.createElement('div');
-        cdDiv.className = 'st-skill-meta';
-        cdDiv.textContent = `${t('skilltree.active')} | ${t('skilltree.cd', { n: skill.cooldown })}`;
-        if (rank > 0 && p.skillCooldowns && p.skillCooldowns[skill.id] > 0) {
-          cdDiv.textContent += ` ${t('skilltree.cd_left', { n: p.skillCooldowns[skill.id] })}`;
+        if (skill.type === 'active' && skill.key) {
+          const keySpan = document.createElement('span');
+          keySpan.className = 'st-skill-key';
+          keySpan.textContent = skill.key;
+          header.appendChild(keySpan);
         }
-        skillDiv.appendChild(cdDiv);
-      } else {
-        const typeDiv = document.createElement('div');
-        typeDiv.className = 'st-skill-meta';
-        typeDiv.textContent = t('skilltree.passive');
-        skillDiv.appendChild(typeDiv);
-      }
 
-      if (canLearn) {
-        const btn = document.createElement('button');
-        btn.className = 'st-learn-btn';
-        btn.textContent = rank > 0 ? t('skilltree.upgrade') : t('skilltree.learn');
-        btn.addEventListener('click', () => {
-          learnSkill(skill.id);
-          updateSkillTreeOverlay();
-        });
-        skillDiv.appendChild(btn);
-      }
+        skillDiv.appendChild(header);
 
-      branchDiv.appendChild(skillDiv);
+        const descDiv = document.createElement('div');
+        descDiv.className = 'st-skill-desc';
+        const descIdx = Math.min(rank > 0 ? rank - 1 : 0, skill.desc.length - 1);
+        descDiv.textContent = skill.desc[descIdx];
+        if (rank > 0 && rank < skill.maxRank && skill.desc[rank]) {
+          descDiv.textContent += ` \u2192 ${skill.desc[rank]}`;
+        }
+        skillDiv.appendChild(descDiv);
+
+        if (skill.type === 'active') {
+          const cdDiv = document.createElement('div');
+          cdDiv.className = 'st-skill-meta';
+          cdDiv.textContent = `${t('skilltree.active')} | ${t('skilltree.cd', { n: skill.cooldown })}`;
+          if (rank > 0 && p.skillCooldowns && p.skillCooldowns[skill.id] > 0) {
+            cdDiv.textContent += ` ${t('skilltree.cd_left', { n: p.skillCooldowns[skill.id] })}`;
+          }
+          skillDiv.appendChild(cdDiv);
+        } else {
+          const typeDiv = document.createElement('div');
+          typeDiv.className = 'st-skill-meta';
+          typeDiv.textContent = t('skilltree.passive');
+          skillDiv.appendChild(typeDiv);
+        }
+
+        if (canLearnThis) {
+          const btn = document.createElement('button');
+          btn.className = 'st-learn-btn';
+          btn.textContent = rank > 0 ? t('skilltree.upgrade') : t('skilltree.learn');
+          btn.addEventListener('click', () => {
+            learnSkill(skill.id);
+            updateSkillTreeOverlay();
+          });
+          skillDiv.appendChild(btn);
+        }
+
+        branchDiv.appendChild(skillDiv);
+      }
     }
 
-    body.appendChild(branchDiv);
+    grid.appendChild(branchDiv);
+  }
+
+  body.appendChild(grid);
+}
+
+// ── Subclass Selection Overlay ────────────
+
+function updateSubclassOverlay() {
+  const overlay = document.getElementById('subclass-overlay');
+  if (!overlay) return;
+  if (!state.showSubclassSelect) {
+    overlay.classList.add('hidden');
+    return;
+  }
+  overlay.classList.remove('hidden');
+
+  const body = document.getElementById('subclass-body');
+  if (!body) return;
+  body.innerHTML = '';
+
+  const cls = state.playerClass;
+  const options = Object.entries(SUBCLASS_INFO).filter(([, info]) => info.baseClass === cls);
+
+  for (const [subId, info] of options) {
+    const card = document.createElement('div');
+    card.className = 'subclass-card';
+
+    const title = document.createElement('h2');
+    title.className = 'subclass-name';
+    title.textContent = info.name;
+    card.appendChild(title);
+
+    const desc = document.createElement('p');
+    desc.className = 'subclass-desc';
+    desc.textContent = info.desc;
+    card.appendChild(desc);
+
+    const bonuses = document.createElement('div');
+    bonuses.className = 'subclass-bonuses';
+    const bonusLabels = [];
+    if (info.statBonuses.power) bonusLabels.push(`+${info.statBonuses.power} Power`);
+    if (info.statBonuses.armor) bonusLabels.push(`+${info.statBonuses.armor} Armor`);
+    if (info.statBonuses.maxHp) bonusLabels.push(`+${info.statBonuses.maxHp} Max HP`);
+    if (info.statBonuses.maxMana) bonusLabels.push(`+${info.statBonuses.maxMana} Max Mana`);
+    if (info.statBonuses.spellBonus) bonusLabels.push(`+${info.statBonuses.spellBonus} Spell Dmg`);
+    if (info.statBonuses.rangedBonus) bonusLabels.push(`+${info.statBonuses.rangedBonus} Ranged Dmg`);
+    if (info.statBonuses.critBonus) bonusLabels.push(`+${info.statBonuses.critBonus}% Crit`);
+    bonuses.textContent = bonusLabels.join(' | ');
+    card.appendChild(bonuses);
+
+    const btn = document.createElement('button');
+    btn.className = 'subclass-select-btn';
+    btn.textContent = `Choose ${info.name}`;
+    btn.addEventListener('click', () => {
+      selectSubclass(subId);
+      updateSubclassOverlay();
+      updateSkillTreeOverlay();
+    });
+    card.appendChild(btn);
+
+    body.appendChild(card);
   }
 }
 
@@ -1528,8 +1616,8 @@ document.getElementById('bestiary-tab-map')?.addEventListener('click', () => {
 let armorySelectedId = null;
 let armoryTab = 'all';
 
-const TIER_COLORS = { 1: '#888', 2: '#4a9ae0', 3: '#c060e0' };
-const TIER_NAMES = { 1: 'Common', 2: 'Uncommon', 3: 'Rare' };
+const TIER_COLORS = { 1: '#888', 2: '#4a9', 3: '#4a9ae0', 4: '#c060e0', 5: '#e08030' };
+const TIER_NAMES = { 1: 'Common', 2: 'Uncommon', 3: 'Rare', 4: 'Epic', 5: 'Legendary' };
 const TYPE_LABELS = {
   [ITEM_TYPE.WEAPON]: 'Weapon',
   [ITEM_TYPE.HELMET]: 'Helmet',

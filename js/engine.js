@@ -10,10 +10,11 @@ import {
   ATTR_BONUSES, FEATURE_INFO, QUEST_POOL, SKILL_TREES, ACHIEVEMENTS,
   BOSS_SKILLS, ITEM_SETS, PRESTIGE,
   FISH_LOOT, ARENA_CONFIG, CRAFTING_RECIPES,
-} from './constants.js?v=24';
+  SUBCLASS, SUBCLASS_INFO,
+} from './constants.js?v=25';
 import { t } from './i18n.js';
-import { generateVillage, generateDungeon, generateArenaMap } from './mapgen.js?v=24';
-import { computeFOV } from './fov.js?v=24';
+import { generateVillage, generateDungeon, generateArenaMap } from './mapgen.js?v=25';
+import { computeFOV } from './fov.js?v=25';
 
 function randInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -65,6 +66,7 @@ export const state = {
   showSettings: false,
   showCharSheet: false,
   showSkillTree: false,
+  showSubclassSelect: false,
   showAchievements: false,
   godMode: false,         // unkillable when true
   bossSkills: {},         // { town_portal: true, gold_magnet: true, ... }
@@ -424,7 +426,7 @@ export function enterDungeon(floor = 1) {
   const numItems = randInt(ITEMS_PER_FLOOR_MIN, ITEMS_PER_FLOOR_MAX);
   const allItemIds = Object.keys(ITEMS);
   // Filter items to appropriate tier for this floor
-  const tierMax = Math.min(3, 1 + Math.floor(floor / 2));
+  const tierMax = Math.min(5, 1 + Math.floor(floor / 2));
   const eligibleItems = allItemIds.filter(id => (ITEMS[id].tier || 0) <= tierMax || ITEMS[id].type === ITEM_TYPE.CONSUMABLE);
   const isSpecialTile = (x, y) => {
     const tile = state.map[y] && state.map[y][x];
@@ -1184,6 +1186,12 @@ export function canLearnSkill(skillId) {
   if (currentRank >= def.maxRank) return false;
   // Check prerequisite
   if (def.requires && getSkillRank(def.requires) < 1) return false;
+  // Check subclass branch access
+  for (const [branchKey, branch] of Object.entries(tree)) {
+    if (branch.skills.some(s => s.id === skillId) && branch.subclass) {
+      if (!p.subclass || p.subclass !== branch.subclass) return false;
+    }
+  }
   return true;
 }
 
@@ -1197,13 +1205,49 @@ export function learnSkill(skillId) {
   const rank = p.skills[skillId];
   log(t('log.learned_skill', { name: def.name, rank: rank }), 'level');
   // Apply passive effects that change stats
-  if (skillId === 'tough_skin') recalcDerivedStats();
-  if (skillId === 'mana_flow') recalcDerivedStats();
+  const statSkills = ['tough_skin', 'mana_flow', 'aura_of_protection', 'iron_will', 'weapon_mastery'];
+  if (statSkills.includes(skillId)) recalcDerivedStats();
   return true;
 }
 
 export function getSkillTree() {
-  return SKILL_TREES[state.playerClass] || {};
+  const fullTree = SKILL_TREES[state.playerClass];
+  if (!fullTree) return {};
+  // Return all branches — subclass branches will be marked locked in UI if not unlocked
+  return fullTree;
+}
+
+export function selectSubclass(subclassId) {
+  const info = SUBCLASS_INFO[subclassId];
+  if (!info) return false;
+  if (info.baseClass !== state.playerClass) return false;
+  const p = state.player;
+  if (!p) return false;
+  p.subclass = subclassId;
+  state.showSubclassSelect = false;
+
+  // Apply stat bonuses
+  if (info.statBonuses.power) p.basePower = (p.basePower || 0) + info.statBonuses.power;
+  if (info.statBonuses.armor) p.baseArmor = (p.baseArmor || 0) + info.statBonuses.armor;
+  if (info.statBonuses.maxHp) p.baseMaxHp = (p.baseMaxHp || 20) + info.statBonuses.maxHp;
+  if (info.statBonuses.maxMana) p.baseMaxMana = (p.baseMaxMana || 0) + info.statBonuses.maxMana;
+  if (info.statBonuses.spellBonus) p.subclassSpellBonus = info.statBonuses.spellBonus;
+  if (info.statBonuses.rangedBonus) p.subclassRangedBonus = info.statBonuses.rangedBonus;
+  if (info.statBonuses.critBonus) p.subclassCritBonus = info.statBonuses.critBonus;
+
+  recalcDerivedStats();
+  log(`Specialized as ${info.name}!`, 'level');
+  return true;
+}
+
+export function isSubclassBranchUnlocked(branchKey) {
+  const fullTree = SKILL_TREES[state.playerClass];
+  if (!fullTree || !fullTree[branchKey]) return true; // base branches always unlocked
+  const branch = fullTree[branchKey];
+  if (!branch.subclass) return true; // no subclass requirement
+  const p = state.player;
+  if (!p || !p.subclass) return false;
+  return p.subclass === branch.subclass;
 }
 
 // ── Active Skills ──────────────────────────────
@@ -1311,6 +1355,328 @@ export function useActiveSkill(skillId) {
     case 'smoke_bomb': {
       p.invisible = 3;
       log(t('log.smoke_bomb'), 'combat');
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    // ── New base skills ──
+    case 'devastating_blow': {
+      const target = findNearestVisibleEnemy(2);
+      if (!target) { log('No enemies nearby!', 'info'); return false; }
+      const power = getEffectivePower(p);
+      const dmg = Math.max(1, power * 5 - getEffectiveArmor(target));
+      target.hp -= dmg;
+      target.stunTurns = (target.stunTurns || 0) + 2;
+      log(`Devastating Blow hits ${getEnemyName(target)} for ${dmg} damage! Stunned!`, 'combat');
+      if (target.hp <= 0) { target.hp = 0; recordKill(target.type, target); grantXP(target.xpReward || 8); grantGold(target); dropLoot(target); onKillEffects(); }
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'last_stand': {
+      if (p.hp > p.maxHp * 0.2) { log('HP too high for Last Stand!', 'info'); return false; }
+      p.effects.push({ name: 'Last Stand', stat: 'power', amount: Math.floor(getEffectivePower(p) * 0.5), turns: 5 });
+      log('Last Stand activated! +50% damage for 5 turns!', 'combat');
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'elemental_surge': {
+      p.elementalSurge = true;
+      log('Elemental Surge! Next spell deals double damage!', 'combat');
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'mana_surge': {
+      const restore = [10, 15, 20][rank - 1];
+      p.mana = Math.min(p.maxMana, p.mana + restore);
+      log(`Mana Surge restores ${restore} mana!`, 'combat');
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'arcane_barrier': {
+      const absorb = [10, 15, 20][rank - 1];
+      p.arcaneBarrier = (p.arcaneBarrier || 0) + absorb;
+      log(`Arcane Barrier absorbs next ${absorb} damage!`, 'combat');
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'piercing_shot': {
+      const bowRange = BOW_RANGE + getRangeBonus(p);
+      const target = findNearestVisibleEnemy(bowRange);
+      if (!target) { log('No enemies in range!', 'info'); return false; }
+      const bowPower = getEffectiveRangedPower(p);
+      const dmg = Math.max(1, bowPower); // ignores armor
+      target.hp -= dmg;
+      state.projectiles.push({ x: target.x, y: target.y, type: 'arrow', ttl: 3 });
+      log(`Piercing Shot hits ${getEnemyName(target)} for ${dmg} damage (ignores armor)!`, 'combat');
+      if (target.hp <= 0) { target.hp = 0; recordKill(target.type, target); grantXP(target.xpReward || 8); grantGold(target); dropLoot(target); onKillEffects(); }
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'trap_mastery': {
+      const trapDmg = [5, 8, 12][rank - 1];
+      const tx = p.x, ty = p.y;
+      if (!state.traps) state.traps = [];
+      state.traps.push({ x: tx, y: ty, damage: trapDmg, active: true });
+      log(`Placed a spike trap (${trapDmg} dmg)!`, 'combat');
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'second_wind': {
+      const healPct = [0.15, 0.20, 0.25][rank - 1];
+      const heal = Math.floor(p.maxHp * healPct);
+      p.hp = Math.min(p.maxHp, p.hp + heal);
+      log(`Second Wind heals ${heal} HP!`, 'combat');
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    // ── Berserker skills ──
+    case 'frenzy': {
+      p.frenzyTurns = 3;
+      log('Frenzy! Attack twice per turn for 3 turns!', 'combat');
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'reckless_swing': {
+      const target = findNearestVisibleEnemy(2);
+      if (!target) { log('No enemies nearby!', 'info'); return false; }
+      const dmgPct = [2.0, 2.25, 2.5][rank - 1];
+      const recoilPct = [0.25, 0.20, 0.15][rank - 1];
+      const power = getEffectivePower(p);
+      const dmg = Math.max(1, Math.floor(power * dmgPct) - getEffectiveArmor(target));
+      target.hp -= dmg;
+      const recoil = Math.floor(dmg * recoilPct);
+      p.hp = Math.max(1, p.hp - recoil);
+      log(`Reckless Swing hits ${getEnemyName(target)} for ${dmg}! Recoil: ${recoil}`, 'combat');
+      if (target.hp <= 0) { target.hp = 0; recordKill(target.type, target); grantXP(target.xpReward || 8); grantGold(target); dropLoot(target); onKillEffects(); }
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'unstoppable': {
+      p.unstoppableTurns = 5;
+      log('Unstoppable! Immune to stun/slow for 5 turns!', 'combat');
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    // ── Paladin skills ──
+    case 'holy_light': {
+      const heal = [5, 8, 12][rank - 1];
+      p.hp = Math.min(p.maxHp, p.hp + heal);
+      log(`Holy Light heals ${heal} HP!`, 'combat');
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'divine_shield': {
+      const blocks = [2, 3, 4][rank - 1];
+      p.divineShield = (p.divineShield || 0) + blocks;
+      log(`Divine Shield! Block next ${blocks} hits!`, 'combat');
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'smite': {
+      const target = findNearestVisibleEnemy(3);
+      if (!target) { log('No enemies nearby!', 'info'); return false; }
+      const power = getEffectivePower(p);
+      const isUndead = [ENTITY.SKELETON, ENTITY.WRAITH, ENTITY.ZOMBIE, ENTITY.PHANTOM, ENTITY.DEATH_KNIGHT,
+        ENTITY.NECROMANCER, ENTITY.BONE_ARCHER, ENTITY.WAILING_BANSHEE, ENTITY.BONE_SENTINEL,
+        ENTITY.CORPSE_EATER, ENTITY.BLOOD_BAT, ENTITY.DARK_ACOLYTE, ENTITY.BLOOD_GOLEM].includes(target.type);
+      const dmg = Math.max(1, (isUndead ? power * 2 : power) - getEffectiveArmor(target));
+      target.hp -= dmg;
+      log(`Smite hits ${getEnemyName(target)} for ${dmg}${isUndead ? ' (Holy!)' : ''}!`, 'combat');
+      if (target.hp <= 0) { target.hp = 0; recordKill(target.type, target); grantXP(target.xpReward || 8); grantGold(target); dropLoot(target); onKillEffects(); }
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    // ── Pyromancer skills ──
+    case 'fireball': {
+      const target = findNearestVisibleEnemy(5);
+      if (!target) { log('No enemies in range!', 'info'); return false; }
+      const spellPow = getSpellPower(p);
+      const enemies = state.enemies.filter(e => e.hp > 0 && Math.abs(e.x - target.x) <= 2 && Math.abs(e.y - target.y) <= 2 && state.visibility[e.y] && state.visibility[e.y][e.x]);
+      for (const e of enemies) {
+        const dmg = Math.max(1, spellPow - getEffectiveArmor(e));
+        e.hp -= dmg;
+        log(`Fireball burns ${getEnemyName(e)} for ${dmg}!`, 'combat');
+        if (e.hp <= 0) { e.hp = 0; recordKill(e.type, e); grantXP(e.xpReward || 8); grantGold(e); dropLoot(e); onKillEffects(); }
+      }
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'flame_wall': {
+      const dmg = [4, 6, 8][rank - 1];
+      if (!state.burningTiles) state.burningTiles = [];
+      // Place burning tiles around player
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+          if (dx === 0 && dy === 0) continue;
+          const bx = p.x + dx, by = p.y + dy;
+          if (bx >= 0 && bx < state.mapW && by >= 0 && by < state.mapH && canWalk(bx, by)) {
+            state.burningTiles.push({ x: bx, y: by, damage: dmg, turns: 4 });
+          }
+        }
+      }
+      log(`Flame Wall created (${dmg} dmg/turn)!`, 'combat');
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'inferno_skill': {
+      const visible = state.enemies.filter(e => e.hp > 0 && state.visibility[e.y] && state.visibility[e.y][e.x]);
+      if (visible.length === 0) { log('No visible enemies!', 'info'); return false; }
+      for (const e of visible) {
+        const dmg = 8;
+        e.hp -= dmg;
+        log(`Inferno burns ${getEnemyName(e)} for ${dmg}!`, 'combat');
+        if (e.hp <= 0) { e.hp = 0; recordKill(e.type, e); grantXP(e.xpReward || 8); grantGold(e); dropLoot(e); onKillEffects(); }
+      }
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    // ── Necromancer skills ──
+    case 'life_drain': {
+      const target = findNearestVisibleEnemy(4);
+      if (!target) { log('No enemies in range!', 'info'); return false; }
+      const steal = [2, 3, 4][rank - 1];
+      target.hp -= steal;
+      p.hp = Math.min(p.maxHp, p.hp + steal);
+      log(`Life Drain steals ${steal} HP from ${getEnemyName(target)}!`, 'combat');
+      if (target.hp <= 0) { target.hp = 0; recordKill(target.type, target); grantXP(target.xpReward || 8); grantGold(target); dropLoot(target); onKillEffects(); }
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'dark_pact': {
+      const spellBuff = [8, 10, 12][rank - 1];
+      p.hp = Math.max(1, p.hp - 5);
+      p.effects.push({ name: 'Dark Pact', stat: 'spellPower', amount: spellBuff, turns: 3 });
+      log(`Dark Pact! -5 HP, +${spellBuff} spell damage for 3 turns!`, 'combat');
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'shadow_cloak': {
+      const turns = [2, 3, 4][rank - 1];
+      p.invisible = turns;
+      log(`Shadow Cloak! Invisible for ${turns} turns!`, 'combat');
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'death_mark': {
+      const target = findNearestVisibleEnemy(5);
+      if (!target) { log('No enemies in range!', 'info'); return false; }
+      target.deathMark = 4;
+      log(`Death Mark on ${getEnemyName(target)}! +50% damage for 4 turns!`, 'combat');
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    // ── Ranger skills ──
+    case 'entangle': {
+      const target = findNearestVisibleEnemy(5);
+      if (!target) { log('No enemies in range!', 'info'); return false; }
+      const rootTurns = [2, 3, 4][rank - 1];
+      target.rootedTurns = (target.rootedTurns || 0) + rootTurns;
+      log(`Entangle roots ${getEnemyName(target)} for ${rootTurns} turns!`, 'combat');
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'rain_of_arrows': {
+      const target = findNearestVisibleEnemy(6);
+      if (!target) { log('No enemies in range!', 'info'); return false; }
+      const bowPower = getEffectiveRangedPower(p);
+      const targets = state.enemies.filter(e => e.hp > 0 && Math.abs(e.x - target.x) <= 3 && Math.abs(e.y - target.y) <= 3 && state.visibility[e.y] && state.visibility[e.y][e.x]);
+      for (const tgt of targets) {
+        const dmg = Math.max(1, bowPower - getEffectiveArmor(tgt));
+        tgt.hp -= dmg;
+        state.projectiles.push({ x: tgt.x, y: tgt.y, type: 'arrow', ttl: 3 });
+        log(`Rain of Arrows hits ${getEnemyName(tgt)} for ${dmg}!`, 'combat');
+        if (tgt.hp <= 0) { tgt.hp = 0; recordKill(tgt.type, tgt); grantXP(tgt.xpReward || 8); grantGold(tgt); dropLoot(tgt); onKillEffects(); }
+      }
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'beast_companion': {
+      const wolfDmg = [3, 4, 5][rank - 1];
+      p.beastCompanion = { damage: wolfDmg, active: true };
+      log(`Wolf companion summoned (${wolfDmg} dmg/turn)!`, 'combat');
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    // ── Assassin skills ──
+    case 'fan_of_knives': {
+      const targets = getAdjacentEnemies();
+      if (targets.length === 0) { log('No adjacent enemies!', 'info'); return false; }
+      const dmg = [4, 6, 8][rank - 1];
+      for (const tgt of targets) {
+        const finalDmg = Math.max(1, dmg - getEffectiveArmor(tgt));
+        tgt.hp -= finalDmg;
+        log(`Fan of Knives hits ${getEnemyName(tgt)} for ${finalDmg}!`, 'combat');
+        if (tgt.hp <= 0) { tgt.hp = 0; recordKill(tgt.type, tgt); grantXP(tgt.xpReward || 8); grantGold(tgt); dropLoot(tgt); onKillEffects(); }
+      }
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'mark_for_death': {
+      const target = findNearestVisibleEnemy(5);
+      if (!target) { log('No enemies in range!', 'info'); return false; }
+      const bonus = [25, 35, 50][rank - 1];
+      target.deathMark = 4;
+      target.deathMarkBonus = bonus;
+      log(`Marked ${getEnemyName(target)} for Death! +${bonus}% damage for 4 turns!`, 'combat');
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'shadow_step': {
+      const target = findNearestVisibleEnemy(3);
+      if (!target) { log('No enemies within 3 tiles!', 'info'); return false; }
+      // Teleport behind target
+      const dx = target.x - p.x, dy = target.y - p.y;
+      const behindX = target.x + Math.sign(dx), behindY = target.y + Math.sign(dy);
+      if (behindX >= 0 && behindX < state.mapW && behindY >= 0 && behindY < state.mapH && canWalk(behindX, behindY)) {
+        p.x = behindX; p.y = behindY;
+      } else {
+        p.x = target.x; p.y = target.y; // fallback to target position
+        target.x = target.x + Math.sign(-dx); target.y = target.y + Math.sign(-dy); // swap
+      }
+      p.invisible = 1; // brief stealth for backstab
+      log(`Shadow Step behind ${getEnemyName(target)}!`, 'combat');
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'death_lotus': {
+      const visible = state.enemies.filter(e => e.hp > 0 && state.visibility[e.y] && state.visibility[e.y][e.x]);
+      if (visible.length === 0) { log('No visible enemies!', 'info'); return false; }
+      const power = getEffectivePower(p);
+      for (let i = 0; i < 5; i++) {
+        const tgt = visible[randInt(0, visible.length - 1)];
+        if (tgt.hp <= 0) continue;
+        const dmg = Math.max(1, power - getEffectiveArmor(tgt));
+        tgt.hp -= dmg;
+        log(`Death Lotus strikes ${getEnemyName(tgt)} for ${dmg}!`, 'combat');
+        if (tgt.hp <= 0) { tgt.hp = 0; recordKill(tgt.type, tgt); grantXP(tgt.xpReward || 8); grantGold(tgt); dropLoot(tgt); onKillEffects(); }
+      }
       cd[skillId] = def.cooldown;
       endTurn();
       return true;
@@ -1722,6 +2088,8 @@ function recalcDerivedStats() {
   if (tsRank > 0) p.armor += tsRank; // +1/+2/+3 armor
   const mfRank = (p.skills && p.skills.mana_flow) || 0;
   if (mfRank > 0) p.maxMana += [5, 10, 15][mfRank - 1];
+  const aopRank = (p.skills && p.skills.aura_of_protection) || 0;
+  if (aopRank > 0) p.armor += aopRank; // +1/+2/+3 armor from paladin aura
 
   // Set bonuses (HP/mana)
   for (const sb of getActiveSetBonuses(p)) {
@@ -1886,6 +2254,16 @@ export function playerHasAllSeeingEye() {
 
 function getXpBoostPercent(entity) {
   return getFeatureValue(entity, 'xp_boost');
+}
+
+function getSpellPower(entity) {
+  // Total spell power = base power + spell bonus + empower skill
+  const base = getEffectivePower(entity);
+  const spellB = getSpellBonus(entity);
+  const empowerRank = (entity.skills && entity.skills.empower) || 0;
+  const empowerBonus = empowerRank > 0 ? [2, 4, 6][empowerRank - 1] : 0;
+  const subclassBonus = entity.subclassSpellBonus || 0;
+  return base + spellB + empowerBonus + subclassBonus;
 }
 
 function getSpellBonus(entity) {
@@ -2121,6 +2499,11 @@ function grantXP(amount) {
     p.statPoints += 2;
     p.skillPoints = (p.skillPoints || 0) + 1;
     log(t('log.level_up', { level: p.level }), 'level');
+    // Trigger subclass selection at level 5
+    if (p.level === 5 && !p.subclass) {
+      state.showSubclassSelect = true;
+      log('Choose your specialization!', 'level');
+    }
   }
 }
 

@@ -7,7 +7,7 @@ import {
   toggleCharSheet, closeCharSheet,
   toggleSkillTree, closeSkillTree, useActiveSkill, getSkillRank,
   toggleAchievements, closeAchievements,
-  loadGame, hasSaveGame, deleteSave, loadGameFromCloud, throwTrash,
+  loadGame, hasSaveGame, deleteSave, loadGameFromCloud, throwTrash, fullResetGame,
   useTownPortal,
   activatePrestige, declinePrestige,
   closeFishing, castLine, reelIn,
@@ -520,6 +520,27 @@ document.getElementById('close-healer')?.addEventListener('click', () => {
 // Settings
 document.getElementById('close-settings')?.addEventListener('click', () => {
   closeSettings();
+  render();
+});
+
+// Start Over (full reset)
+document.getElementById('start-over-btn')?.addEventListener('click', () => {
+  document.getElementById('start-over-confirm').classList.remove('hidden');
+  document.getElementById('start-over-btn').classList.add('hidden');
+});
+document.getElementById('start-over-no')?.addEventListener('click', () => {
+  document.getElementById('start-over-confirm').classList.add('hidden');
+  document.getElementById('start-over-btn').classList.remove('hidden');
+});
+document.getElementById('start-over-yes')?.addEventListener('click', () => {
+  fullResetGame();
+  document.getElementById('start-over-confirm').classList.add('hidden');
+  document.getElementById('start-over-btn').classList.remove('hidden');
+  document.getElementById('settings-overlay').classList.add('hidden');
+  document.getElementById('class-select').classList.remove('hidden');
+  document.getElementById('continue-save').style.display = 'none';
+  const manaBtn = document.getElementById('choose-mana');
+  if (manaBtn) manaBtn.remove();
   render();
 });
 

@@ -4041,3 +4041,29 @@ export function hasSaveGame() {
 export function deleteSave() {
   localStorage.removeItem('rpg_save');
 }
+
+export function fullResetGame() {
+  // Wipe everything — persistent data included
+  localStorage.removeItem('rpg_save');
+  localStorage.removeItem(SETTINGS_KEY);
+  state.player = null;
+  state.pendingLevelUp = false;
+  state.bestiary = {};
+  state.achievements = {};
+  state.stats = { kills: 0, deaths: 0, floorsCleared: 0, bossKills: 0, itemsCrafted: 0, questsCompleted: 0, totalGold: 0, totalXp: 0, fishCaught: 0, chestsOpened: 0, potionsUsed: 0, spellsCast: 0, arrowsFired: 0, stepsWalked: 0, criticalHits: 0, dodges: 0, timePlayedMs: 0 };
+  state.bossSkills = {};
+  state.prestigeLevel = 0;
+  state.arenaBestWave = 0;
+  state.townUpgrades = { healer: 1, shop: 1, blacksmith: 1, arena: 1 };
+  state.runHistory = [];
+  state.armory = {};
+  state.phase = 'class_select';
+  state.gameOver = false;
+  state.showSettings = false;
+  closeFishing();
+  state.showArena = false;
+  state.arenaWave = 0;
+  state.arenaEnemiesRemaining = 0;
+  state.arenaRewards = { gold: 0, items: [] };
+  state.arenaWaveCleared = false;
+}

@@ -99,6 +99,31 @@ class Room {
   }
 }
 
+// BFS flood-fill reachability check
+function isReachable(map, from, to) {
+  const H = map.length, W = map[0].length;
+  const visited = Array.from({ length: H }, () => new Uint8Array(W));
+  const queue = [from.x, from.y];
+  visited[from.y][from.x] = 1;
+  let head = 0;
+  while (head < queue.length) {
+    const x = queue[head++], y = queue[head++];
+    if (x === to.x && y === to.y) return true;
+    const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    for (const [dx, dy] of dirs) {
+      const nx = x + dx, ny = y + dy;
+      if (nx >= 0 && nx < W && ny >= 0 && ny < H && !visited[ny][nx]) {
+        const t = map[ny][nx];
+        if (TILE_PROPS[t] && TILE_PROPS[t].walkable) {
+          visited[ny][nx] = 1;
+          queue.push(nx, ny);
+        }
+      }
+    }
+  }
+  return false;
+}
+
 export function generateDungeon(floor, themeKey) {
   const theme = FLOOR_THEMES[themeKey];
   const wallTile = theme ? theme.wallTile : TILE.CAVE_WALL;
@@ -164,7 +189,33 @@ export function generateDungeon(floor, themeKey) {
   map[lastRoom.cy][lastRoom.cx] = TILE.CAVE_STAIRS;
   const stairsPos = { x: lastRoom.cx, y: lastRoom.cy };
 
-  return { map, rooms, playerStart, stairsPos };
+  // Up stairs: place near player start (floor > 1 only)
+  let upStairsPos = null;
+  if (floor > 1) {
+    // Try one tile to the left of player, then try adjacent offsets
+    const offsets = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]];
+    for (const [ox, oy] of offsets) {
+      const ux = playerStart.x + ox, uy = playerStart.y + oy;
+      if (ux >= 0 && ux < DUNGEON_W && uy >= 0 && uy < DUNGEON_H) {
+        const t = map[uy][ux];
+        if (TILE_PROPS[t] && TILE_PROPS[t].walkable && t !== TILE.CAVE_STAIRS) {
+          map[uy][ux] = TILE.UP_STAIRS;
+          upStairsPos = { x: ux, y: uy };
+          break;
+        }
+      }
+    }
+  }
+
+  // BFS reachability: ensure player can reach down stairs (and up stairs if present)
+  if (!isReachable(map, playerStart, stairsPos)) {
+    // Force a direct corridor from player to stairs, then re-place stairs tiles
+    carveCorridor(map, playerStart.x, playerStart.y, stairsPos.x, stairsPos.y, floorTile);
+    map[stairsPos.y][stairsPos.x] = TILE.CAVE_STAIRS;
+    if (upStairsPos) map[upStairsPos.y][upStairsPos.x] = TILE.UP_STAIRS;
+  }
+
+  return { map, rooms, playerStart, stairsPos, upStairsPos };
 }
 
 // ── Room Carving ────────────────────────────────

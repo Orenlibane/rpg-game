@@ -339,6 +339,21 @@ function buildTileSprite(tileType, variant) {
       fillRect(g, 8, 12, 18, 2, '#7a7a8a');
       break;
 
+    case TILE.UP_STAIRS:
+      fillRect(g, 0, 0, 32, 32, '#2a2a3a');
+      // Stairs going up (reversed — wider at bottom)
+      fillRect(g, 12, 6, 14, 4, '#3a3a4a');
+      fillRect(g, 10, 12, 16, 4, '#4a4a5a');
+      fillRect(g, 8, 18, 18, 4, '#5a5a6a');
+      fillRect(g, 6, 24, 20, 4, '#6a6a7a');
+      // Highlight
+      fillRect(g, 8, 18, 18, 2, '#7a7a8a');
+      fillRect(g, 6, 24, 20, 2, '#8a8a9a');
+      // Up arrow indicator
+      fillRect(g, 15, 2, 2, 4, '#aaaacc');
+      fillRect(g, 13, 4, 6, 2, '#aaaacc');
+      break;
+
     case TILE.MOSS_WALL:
       fillRect(g, 0, 0, 32, 32, '#2a4a2a');
       g.fillStyle = '#3a5a3a';

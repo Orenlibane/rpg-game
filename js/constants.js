@@ -36,6 +36,7 @@ export const TILE = {
   FISHING_SPOT:     31,
   ARENA:            32,
   BLACKSMITH:       33,
+  UP_STAIRS:        34,
 };
 
 
@@ -74,6 +75,7 @@ export const TILE_PROPS = {
   [TILE.FISHING_SPOT]:     { name: 'Fishing Spot',     walkable: true,  transparent: true  },
   [TILE.ARENA]:            { name: 'Arena',            walkable: true,  transparent: true  },
   [TILE.BLACKSMITH]:       { name: 'Blacksmith',       walkable: true,  transparent: true  },
+  [TILE.UP_STAIRS]:        { name: 'Stairs Up',        walkable: true,  transparent: true  },
 };
 
 // ── Item Features ────────────────────────────────

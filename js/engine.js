@@ -460,7 +460,7 @@ export function enterDungeon(floor = 1) {
   const eligibleItems = allItemIds.filter(id => (ITEMS[id].tier || 0) <= tierMax || ITEMS[id].type === ITEM_TYPE.CONSUMABLE);
   const isSpecialTile = (x, y) => {
     const tile = state.map[y] && state.map[y][x];
-    return tile === TILE.CAVE_STAIRS || tile === TILE.PORTAL || tile === TILE.CAVE_ENTRANCE ||
+    return tile === TILE.CAVE_STAIRS || tile === TILE.UP_STAIRS || tile === TILE.PORTAL || tile === TILE.CAVE_ENTRANCE ||
            tile === TILE.DUNGEON_MERCHANT || tile === TILE.FOUNTAIN || tile === TILE.SARCOPHAGUS;
   };
   for (let i = 0; i < numItems; i++) {
@@ -2667,14 +2667,14 @@ function dropLoot(enemy) {
   // Find a safe drop position (not on stairs/portal)
   let dropX = enemy.x, dropY = enemy.y;
   const dropTile = state.map[dropY] && state.map[dropY][dropX];
-  if (dropTile === TILE.CAVE_STAIRS || dropTile === TILE.PORTAL || dropTile === TILE.CAVE_ENTRANCE) {
+  if (dropTile === TILE.CAVE_STAIRS || dropTile === TILE.UP_STAIRS || dropTile === TILE.PORTAL || dropTile === TILE.CAVE_ENTRANCE) {
     // Shift to an adjacent walkable tile
     const offsets = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]];
     for (const [ox, oy] of offsets) {
       const tx = dropX + ox, ty = dropY + oy;
       if (tx >= 0 && tx < state.mapW && ty >= 0 && ty < state.mapH && canWalk(tx, ty)) {
         const tt = state.map[ty][tx];
-        if (tt !== TILE.CAVE_STAIRS && tt !== TILE.PORTAL && tt !== TILE.CAVE_ENTRANCE) {
+        if (tt !== TILE.CAVE_STAIRS && tt !== TILE.UP_STAIRS && tt !== TILE.PORTAL && tt !== TILE.CAVE_ENTRANCE) {
           dropX = tx; dropY = ty; break;
         }
       }
@@ -3342,7 +3342,7 @@ export function playerMove(dx, dy) {
     return;
   }
 
-  // Stairs
+  // Stairs down
   if (state.mode === 'dungeon' && state.map[ny][nx] === TILE.CAVE_STAIRS) {
     // Prestige check: clearing floor 20 triggers NG+ offer
     if (state.floor === PRESTIGE.TRIGGER_FLOOR && state.prestigeLevel < PRESTIGE.MAX_LEVEL) {
@@ -3352,6 +3352,19 @@ export function playerMove(dx, dy) {
     }
     log(t('log.descend_deeper'), 'info');
     enterDungeon(state.floor + 1);
+    return;
+  }
+
+  // Stairs up
+  if (state.mode === 'dungeon' && state.map[ny][nx] === TILE.UP_STAIRS) {
+    if (state.floor <= 1) {
+      log('You ascend back to the village.', 'info');
+      state.lastDungeonFloor = 0;
+      initVillage();
+    } else {
+      log('You ascend to floor ' + (state.floor - 1) + '.', 'info');
+      enterDungeon(state.floor - 1);
+    }
     return;
   }
 

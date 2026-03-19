@@ -1,5 +1,5 @@
-import { TILE, TILE_SIZE, ENTITY } from './constants.js?v=25';
-import { gameSettings } from './engine.js?v=25';
+import { TILE, TILE_SIZE, ENTITY } from './constants.js?v=26';
+import { gameSettings } from './engine.js?v=26';
 
 const cache = {};
 const tileSeedCache = {};
@@ -2227,6 +2227,29 @@ function buildEnemySprite(entityType) {
       // Glowing eyes
       fillRect(g, 6, 8, 3, 2, '#ff4400');
       fillRect(g, 22, 8, 3, 2, '#ff4400');
+      break;
+
+    case ENTITY.VOID_EMPEROR:
+      // Dark void entity with glowing purple aura
+      g.fillStyle = 'rgba(80,0,120,0.3)';
+      g.beginPath();
+      g.arc(16, 16, 15, 0, Math.PI * 2);
+      g.fill();
+      // Body - dark void
+      fillRect(g, 8, 4, 16, 22, '#1a0030');
+      fillRect(g, 10, 6, 12, 18, '#2a0050');
+      // Crown
+      fillRect(g, 10, 2, 2, 4, '#8040c0');
+      fillRect(g, 14, 1, 4, 3, '#a060e0');
+      fillRect(g, 20, 2, 2, 4, '#8040c0');
+      // Eyes - glowing void
+      fillRect(g, 11, 10, 3, 2, '#c060ff');
+      fillRect(g, 18, 10, 3, 2, '#c060ff');
+      // Shadow tendrils
+      fillRect(g, 4, 14, 4, 2, '#3a0060');
+      fillRect(g, 24, 14, 4, 2, '#3a0060');
+      fillRect(g, 2, 18, 4, 2, '#2a0040');
+      fillRect(g, 26, 18, 4, 2, '#2a0040');
       break;
 
     default:

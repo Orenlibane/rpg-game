@@ -181,6 +181,7 @@ export const ENTITY = {
   BLOOD_GOLEM:      'blood_golem',
   FROST_ARCHER:     'frost_archer',
   ABYSSAL_WATCHER:  'abyssal_watcher',
+  VOID_EMPEROR:     'void_emperor',
 };
 
 // ── Player Classes ────────────────────────────────
@@ -344,6 +345,7 @@ export const BASE_STATS = {
   [ENTITY.GOBLIN_CHIEF]:     { maxHp: 35, hp: 35, power: 6, armor: 2, xpReward: 50 },
   [ENTITY.DEMON_LORD]:       { maxHp: 55, hp: 55, power: 9, armor: 4, xpReward: 85 },
   [ENTITY.ANCIENT_WYRM]:     { maxHp: 60, hp: 60, power: 10, armor: 5, xpReward: 90 },
+  [ENTITY.VOID_EMPEROR]:     { maxHp: 80, hp: 80, power: 12, armor: 6, xpReward: 150 },
   // Wave 2 monsters - Early (floors 1-3)
   [ENTITY.PLAGUE_RAT]:       { maxHp: 5,  hp: 5,  power: 2, armor: 0, xpReward: 5 },
   [ENTITY.MYCONID_SPROUT]:   { maxHp: 4,  hp: 4,  power: 1, armor: 1, xpReward: 4 },
@@ -484,15 +486,16 @@ export const ITEMS = {
   trident_deep:     { id: 'trident_deep',     name: 'Trident of the Deep', type: ITEM_TYPE.WEAPON, slot: EQUIP_SLOT.WEAPON, power: 5, icon: 'WT', desc: '+5 Power, Life Steal 2', tier: 3, features: [{ type: 'life_steal', value: 2 }] },
 
   // Consumables (stackable)
-  minor_health_pot: { id: 'minor_health_pot', name: 'Health Potion',   type: ITEM_TYPE.CONSUMABLE, healAmount: 15, icon: 'PH', desc: 'Restore 15 HP',   stackable: true, maxStack: 20 },
-  major_health_pot: { id: 'major_health_pot', name: 'Greater Health',  type: ITEM_TYPE.CONSUMABLE, healAmount: 30, icon: 'PH+', desc: 'Restore 30 HP',  stackable: true, maxStack: 20 },
-  mana_potion:      { id: 'mana_potion',      name: 'Mana Potion',     type: ITEM_TYPE.CONSUMABLE, manaAmount: 10, icon: 'PM', desc: 'Restore 10 Mana', stackable: true, maxStack: 20 },
-  antidote:         { id: 'antidote',          name: 'Antidote',        type: ITEM_TYPE.CONSUMABLE, curePoison: true, icon: 'PA', desc: 'Cure poison',   stackable: true, maxStack: 20 },
+  minor_health_pot: { id: 'minor_health_pot', name: 'Health Potion',   type: ITEM_TYPE.CONSUMABLE, healAmount: 15, icon: 'PH', desc: 'Restore 15 HP',   stackable: true, maxStack: 30 },
+  major_health_pot: { id: 'major_health_pot', name: 'Greater Health',  type: ITEM_TYPE.CONSUMABLE, healAmount: 30, icon: 'PH+', desc: 'Restore 30 HP',  stackable: true, maxStack: 30 },
+  mana_potion:      { id: 'mana_potion',      name: 'Mana Potion',     type: ITEM_TYPE.CONSUMABLE, manaAmount: 10, icon: 'PM', desc: 'Restore 10 Mana', stackable: true, maxStack: 30 },
+  antidote:         { id: 'antidote',          name: 'Antidote',        type: ITEM_TYPE.CONSUMABLE, curePoison: true, icon: 'PA', desc: 'Cure poison',   stackable: true, maxStack: 30 },
   // Effect potions
-  strength_potion:  { id: 'strength_potion',  name: 'Str Potion',     type: ITEM_TYPE.CONSUMABLE, effect: { name: 'Strength', stat: 'power',  amount: 3, turns: 15 }, icon: 'PS', desc: '+3 Power for 15 turns', stackable: true, maxStack: 20 },
-  shield_potion:    { id: 'shield_potion',    name: 'Shield Potion',  type: ITEM_TYPE.CONSUMABLE, effect: { name: 'Shield',   stat: 'armor',  amount: 3, turns: 15 }, icon: 'PD', desc: '+3 Armor for 15 turns', stackable: true, maxStack: 20 },
-  haste_potion:     { id: 'haste_potion',     name: 'Haste Potion',   type: ITEM_TYPE.CONSUMABLE, effect: { name: 'Haste',    stat: 'haste',  amount: 1, turns: 10 }, icon: 'PF', desc: 'Double attack for 10 turns', stackable: true, maxStack: 20 },
-  regen_potion:     { id: 'regen_potion',     name: 'Regen Potion',   type: ITEM_TYPE.CONSUMABLE, effect: { name: 'Regen',    stat: 'regen',  amount: 2, turns: 20 }, icon: 'PR', desc: 'Regen 2 HP/turn for 20 turns', stackable: true, maxStack: 20 },
+  strength_potion:  { id: 'strength_potion',  name: 'Str Potion',     type: ITEM_TYPE.CONSUMABLE, effect: { name: 'Strength', stat: 'power',  amount: 3, turns: 15 }, icon: 'PS', desc: '+3 Power for 15 turns', stackable: true, maxStack: 30 },
+  shield_potion:    { id: 'shield_potion',    name: 'Shield Potion',  type: ITEM_TYPE.CONSUMABLE, effect: { name: 'Shield',   stat: 'armor',  amount: 3, turns: 15 }, icon: 'PD', desc: '+3 Armor for 15 turns', stackable: true, maxStack: 30 },
+  haste_potion:     { id: 'haste_potion',     name: 'Haste Potion',   type: ITEM_TYPE.CONSUMABLE, effect: { name: 'Haste',    stat: 'haste',  amount: 1, turns: 10 }, icon: 'PF', desc: 'Double attack for 10 turns', stackable: true, maxStack: 30 },
+  regen_potion:     { id: 'regen_potion',     name: 'Regen Potion',   type: ITEM_TYPE.CONSUMABLE, effect: { name: 'Regen',    stat: 'regen',  amount: 2, turns: 20 }, icon: 'PR', desc: 'Regen 2 HP/turn for 20 turns', stackable: true, maxStack: 30 },
+  town_portal_scroll: { id: 'town_portal_scroll', name: 'Portal Scroll', type: ITEM_TYPE.CONSUMABLE, isPortalScroll: true, icon: 'PT', desc: 'Open a portal to the village. Use again to return.', stackable: true, maxStack: 30 },
 
   // ── Crafting Materials ────────────────────────
   bone_fragment:    { id: 'bone_fragment',    name: 'Bone Fragment',    type: 'material', icon: 'MB', desc: 'A shard of bone. Used in crafting.', stackable: true, maxStack: 50 },
@@ -996,6 +999,7 @@ export const LOOT_TABLES = {
     { itemId: 'dragon_greaves',   chance: 0.07 },
     { itemId: 'dragon_scale',     chance: 0.30 },
     { itemId: 'crystal_shard',    chance: 0.25 },
+    { itemId: 'town_portal_scroll', chance: 0.10 },
     // Epic/Legendary drops
     { itemId: 'demon_slayer',       chance: 0.15 },
     { itemId: 'phoenix_cloak',      chance: 0.10 },
@@ -1030,6 +1034,29 @@ export const LOOT_TABLES = {
     { itemId: 'crown_of_ages',       chance: 0.04 },
     { itemId: 'aegis_plate',         chance: 0.04 },
     { itemId: 'boots_of_hermes',     chance: 0.04 },
+  ],
+  [ENTITY.VOID_EMPEROR]: [
+    { itemId: 'plate_armor',        chance: 0.40 },
+    { itemId: 'skull_helm',         chance: 0.35 },
+    { itemId: 'shadow_dagger',      chance: 0.35 },
+    { itemId: 'vampiric_blade',     chance: 0.25 },
+    { itemId: 'major_health_pot',   chance: 0.80 },
+    { itemId: 'dragon_scale',       chance: 0.50 },
+    { itemId: 'crystal_shard',      chance: 0.50 },
+    { itemId: 'dark_essence',       chance: 0.40 },
+    { itemId: 'town_portal_scroll', chance: 0.30 },
+    // Epic/Legendary drops
+    { itemId: 'frostfire_staff',       chance: 0.15 },
+    { itemId: 'windrunner_bow',        chance: 0.15 },
+    { itemId: 'titan_helm',            chance: 0.12 },
+    { itemId: 'dragonhide_plate',      chance: 0.12 },
+    { itemId: 'stormstrider_boots',    chance: 0.10 },
+    { itemId: 'excalibur',             chance: 0.08 },
+    { itemId: 'staff_of_eternity',     chance: 0.08 },
+    { itemId: 'artemis_longbow',       chance: 0.08 },
+    { itemId: 'crown_of_ages',         chance: 0.06 },
+    { itemId: 'aegis_plate',           chance: 0.06 },
+    { itemId: 'boots_of_hermes',       chance: 0.06 },
   ],
   // Wave 2 monsters
   [ENTITY.PLAGUE_RAT]: [
@@ -1267,6 +1294,7 @@ export const BESTIARY_INFO = {
   [ENTITY.VOID_TOUCHED]:     { name: 'Void Touched',      title: 'Null Walker',       level: 12, element: 'SHADOW', category: 'Arcane', desc: 'A being partially consumed by the void between worlds. Reality warps around it, and its attacks bypass conventional defenses.', lore: 'Void touched were once mages who glimpsed the space between dimensions. What looked back consumed them.', habitat: 'Frozen Halls', threat: 'High', moves: 'Void Bolt, Reality Tear, Null Field', basePower: 7, baseHp: 14, isBoss: false },
   [ENTITY.ABYSSAL_WATCHER]:  { name: 'Abyssal Watcher',   title: 'Deep Eye',          level: 14, element: 'SHADOW', category: 'Arcane', desc: 'A floating mass of darkness with a single burning eye. Observes intruders from the shadows before striking with devastating psychic attacks.', lore: 'Watchers drift up from the deepest abyss beneath the dungeon. What they watch for, no one knows.', habitat: 'Deep Caves', threat: 'Very High', moves: 'Abyssal Gaze, Mind Crush, Shadow Pulse', basePower: 8, baseHp: 18, isBoss: false },
   [ENTITY.OBSIDIAN_DRAKE]:   { name: 'Obsidian Drake',    title: 'Volcanic Wyrm',     level: 14, element: 'FIRE',   category: 'Dragon', desc: 'A drake with scales of volcanic glass that reflect firelight like black mirrors. Breathes superheated gas that ignites on contact with air.', lore: 'Obsidian drakes nest in lava tubes, incubating their eggs in pools of molten rock. They are fiercely territorial.', habitat: 'Scorched Depths', threat: 'Very High', moves: 'Obsidian Breath, Glass Shard, Volcanic Charge', basePower: 7, baseHp: 24, isBoss: false },
+  [ENTITY.VOID_EMPEROR]:     { name: 'Void Emperor',      title: 'Lord of the Abyss',  level: 30, element: 'SHADOW', category: 'Arcane', desc: 'The supreme entity of the void, a being of pure darkness that bends reality itself. Its shadow bolts bypass armor, and it can create mirror images of itself.', lore: 'The Void Emperor ruled the space between dimensions until a crack in reality drew it into the dungeon. It seeks to merge both realms into eternal darkness.', habitat: 'Void Throne', threat: 'Catastrophic', moves: 'Shadow Bolt, Clone Self, Double Attack, Reality Fracture', basePower: 12, baseHp: 80, isBoss: true },
 };
 
 // ── Ranged Attack Constants ──────────────────────
@@ -1319,6 +1347,111 @@ export const BOSS_SKILLS = {
   gold_magnet:  { id: 'gold_magnet',  name: 'Gold Magnet',  floor: 10, type: 'passive', desc: 'Loot from kills is collected automatically.' },
   cartographer: { id: 'cartographer', name: 'Cartographer', floor: 15, type: 'passive', desc: 'Dungeon maps are fully revealed on entry.' },
   second_life:  { id: 'second_life',  name: 'Second Life',  floor: 20, type: 'passive', desc: 'Revive once on death with 50% HP.' },
+};
+
+// ── Town Upgrades ────────────────────────────────
+export const TOWN_UPGRADES = {
+  healer: {
+    name: 'Healer',
+    maxLevel: 3,
+    costs: [0, 50, 150], // cost to reach level 1/2/3 (lvl 1 is free/default)
+    descriptions: [
+      'Heal costs 10g',
+      'Heal costs 5g, cures poison',
+      'Free heals, +2 regen buff (10 turns)',
+    ],
+  },
+  shop: {
+    name: 'Shop',
+    maxLevel: 3,
+    costs: [0, 75, 200],
+    descriptions: [
+      'Standard inventory',
+      '+5 items, 10% discount',
+      'Epic items available, 20% discount',
+    ],
+  },
+  blacksmith: {
+    name: 'Blacksmith',
+    maxLevel: 3,
+    costs: [0, 100, 250],
+    descriptions: [
+      'Standard recipes',
+      'Epic tier recipes unlocked',
+      'Legendary recipes, 20% cheaper crafting',
+    ],
+  },
+  arena: {
+    name: 'Arena',
+    maxLevel: 3,
+    costs: [0, 60, 175],
+    descriptions: [
+      'Standard arena rewards',
+      '+50% arena gold',
+      'Arena gives XP, bonus item at wave 10',
+    ],
+  },
+};
+
+// Additional shop items unlocked at shop upgrade level 2
+export const SHOP_UPGRADE_ITEMS = [
+  { itemId: 'steel_blade',     price: 65 },
+  { itemId: 'plate_armor',     price: 80 },
+  { itemId: 'skull_helm',      price: 55 },
+  { itemId: 'shadow_cape',     price: 45 },
+  { itemId: 'antidote',        price: 10 },
+];
+
+// Additional shop items unlocked at shop upgrade level 3
+export const SHOP_EPIC_ITEMS = [
+  { itemId: 'inferno_axe',     price: 120 },
+  { itemId: 'vampiric_blade',  price: 140 },
+  { itemId: 'seer_orb',        price: 110 },
+  { itemId: 'fire_cloak',      price: 100 },
+  { itemId: 'town_portal_scroll', price: 20 },
+];
+
+// Crafting recipes unlocked at blacksmith level 2 (Epic tier)
+export const CRAFTING_RECIPES_T2 = [
+  { name: 'Demon Slayer',    output: 'demon_slayer',       gold: 120, materials: { dragon_scale: 3, dark_essence: 3, iron_ore: 4 } },
+  { name: 'Phoenix Cloak',   output: 'phoenix_cloak',      gold: 100, materials: { dragon_scale: 2, crystal_shard: 2, spider_silk: 3 } },
+];
+
+// Crafting recipes unlocked at blacksmith level 3 (Legendary tier)
+export const CRAFTING_RECIPES_T3 = [
+  { name: 'Excalibur',       output: 'excalibur',          gold: 250, materials: { dragon_scale: 5, crystal_shard: 4, iron_ore: 6 } },
+  { name: 'Crown of Ages',   output: 'crown_of_ages',      gold: 200, materials: { crystal_shard: 5, dark_essence: 4, dragon_scale: 3 } },
+];
+
+// ── Phase Bosses (floors 10, 20, 30) ────────────
+export const PHASE_BOSSES = {
+  10: {
+    type: ENTITY.DEMON_LORD,
+    name: 'Demon Lord',
+    phases: [
+      { threshold: 1.0, mods: {}, abilities: ['melee'], msg: 'The Demon Lord draws his blade!' },
+      { threshold: 0.66, mods: { power: 2 }, abilities: ['melee', 'fire_attack'], summon: { type: ENTITY.FIRE_IMP, count: 2 }, msg: 'The Demon Lord erupts in flame and summons Fire Imps!' },
+      { threshold: 0.33, mods: { power: 5, armor: 2 }, abilities: ['melee', 'fire_attack', 'enrage'], msg: 'The Demon Lord enters a berserker rage!' },
+    ],
+  },
+  20: {
+    type: ENTITY.ANCIENT_WYRM,
+    name: 'Ancient Dragon',
+    phases: [
+      { threshold: 1.0, mods: {}, abilities: ['ranged_fire'], msg: 'The Ancient Dragon roars!' },
+      { threshold: 0.66, mods: { armor: 3 }, abilities: ['ranged_fire', 'ground_slam'], msg: 'The Ancient Dragon slams the ground, cracking stone!' },
+      { threshold: 0.33, mods: { power: 4 }, abilities: ['ranged_fire', 'ground_slam', 'breath_weapon'], msg: 'The Ancient Dragon unleashes its breath weapon!' },
+    ],
+  },
+  30: {
+    type: ENTITY.VOID_EMPEROR,
+    name: 'Void Emperor',
+    phases: [
+      { threshold: 1.0, mods: {}, abilities: ['shadow_bolt'], msg: 'The Void Emperor manifests from the darkness!' },
+      { threshold: 0.66, mods: { armor: 2 }, abilities: ['shadow_bolt', 'clone_self'], summon: { type: ENTITY.VOID_TOUCHED, count: 2, isClone: true }, msg: 'The Void Emperor splits into mirror images!' },
+      { threshold: 0.33, mods: { power: 3 }, abilities: ['shadow_bolt', 'double_attack'], msg: 'The Void Emperor attacks with blinding speed!' },
+    ],
+  },
 };
 
 // ── Set Items ───────────────────────────────────
@@ -1458,6 +1591,7 @@ export const GOLD_REWARDS = {
   [ENTITY.GOBLIN_CHIEF]:     20,
   [ENTITY.DEMON_LORD]:       30,
   [ENTITY.ANCIENT_WYRM]:     30,
+  [ENTITY.VOID_EMPEROR]:     50,
   // Wave 2 monsters
   [ENTITY.PLAGUE_RAT]:       2,
   [ENTITY.MYCONID_SPROUT]:   2,
@@ -1499,6 +1633,7 @@ export const SHOP_INVENTORY = [
   { itemId: 'shadow_cape',      price: 40 },
   { itemId: 'long_bow',         price: 45 },
   { itemId: 'fire_staff',       price: 50 },
+  { itemId: 'town_portal_scroll', price: 25 },
 ];
 
 export const DUNGEON_SHOP_INVENTORY = [
@@ -1509,6 +1644,7 @@ export const DUNGEON_SHOP_INVENTORY = [
   { itemId: 'shield_potion',    price: 30 },
   { itemId: 'haste_potion',     price: 35 },
   { itemId: 'regen_potion',     price: 32 },
+  { itemId: 'town_portal_scroll', price: 35 },
 ];
 
 // ── Spells ───────────────────────────────────────

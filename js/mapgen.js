@@ -3,7 +3,7 @@ import {
   DUNGEON_W, DUNGEON_H,
   MIN_ROOM_SIZE, MAX_ROOM_SIZE, MAX_ROOMS,
   FLOOR_THEMES, ROOM_TYPE,
-} from './constants.js?v=25';
+} from './constants.js?v=26';
 
 // ── Village (fixed layout) ───────────────────────
 

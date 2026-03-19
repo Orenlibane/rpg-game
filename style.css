@@ -3091,3 +3091,259 @@ body.rtl .side-minimap-legend {
   margin-left: 8px;
   vertical-align: middle;
 }
+
+/* ── Town Upgrade Section ───────────────────── */
+.town-upgrade-section {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #2a2a3a;
+  text-align: left;
+}
+
+.upgrade-level {
+  font-size: 12px;
+  color: #e0c860;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.upgrade-desc {
+  font-size: 11px;
+  color: #aaa;
+  margin-bottom: 6px;
+}
+
+.upgrade-next {
+  font-size: 11px;
+  color: #8ab4f8;
+  margin-bottom: 8px;
+}
+
+.upgrade-btn {
+  background: #2a3a2a;
+  color: #8f8;
+  border: 1px solid #4a6a4a;
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.upgrade-btn:hover:not(:disabled) {
+  background: #3a5a3a;
+}
+
+.upgrade-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Run History Overlay ────────────────────── */
+.history-panel {
+  max-width: 500px;
+  width: 90vw;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.history-panel h1 {
+  font-size: 24px;
+  color: #e0c860;
+  margin-bottom: 16px;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.history-empty {
+  color: #666;
+  font-size: 13px;
+  text-align: center;
+  padding: 20px;
+}
+
+.history-entry {
+  background: #1a1a2e;
+  border: 1px solid #2a2a3a;
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.history-date {
+  font-size: 10px;
+  color: #666;
+}
+
+.history-class {
+  font-size: 12px;
+  color: #8ab4f8;
+  font-weight: bold;
+}
+
+.history-details {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: #aaa;
+  margin-bottom: 4px;
+}
+
+.history-cause {
+  font-size: 11px;
+  color: #e06060;
+  font-style: italic;
+}
+
+/* ── Mobile Responsive ──────────────────────── */
+@media (max-width: 768px) {
+  body {
+    overflow: auto;
+  }
+
+  #game-wrapper {
+    flex-direction: column;
+    padding: 4px;
+    gap: 4px;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  #canvas-container {
+    width: 100%;
+  }
+
+  #game-canvas {
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100vw;
+  }
+
+  #ui-panel {
+    width: 100%;
+    max-height: none;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .panel {
+    flex: 1 1 45%;
+    min-width: 140px;
+    padding: 6px 8px;
+  }
+
+  .panel h2, .panel h3 {
+    font-size: 12px;
+  }
+
+  #controls-panel {
+    display: none;
+  }
+
+  #message-log {
+    max-height: 80px;
+    font-size: 10px;
+  }
+
+  .overlay-content {
+    padding: 16px;
+    max-width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .overlay-content h1 {
+    font-size: 20px;
+    letter-spacing: 1px;
+  }
+
+  .overlay-content p {
+    font-size: 12px;
+  }
+
+  .choice-btn {
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+
+  .shop-item {
+    font-size: 11px;
+    padding: 4px;
+  }
+
+  .inv-slot {
+    width: 32px;
+    height: 32px;
+    font-size: 9px;
+  }
+
+  .bestiary-panel,
+  .armory-panel,
+  .quest-panel,
+  .settings-panel {
+    max-width: 95vw;
+    max-height: 85vh;
+  }
+
+  .bestiary-list-panel {
+    max-height: 50vh;
+    overflow-y: auto;
+  }
+
+  .skill-tree-overlay {
+    max-width: 95vw;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+
+  .history-panel {
+    max-width: 95vw;
+  }
+
+  .bs-recipe {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  #ui-panel {
+    flex-direction: column;
+  }
+
+  .panel {
+    flex: 1 1 100%;
+  }
+
+  .overlay-content {
+    padding: 10px;
+  }
+
+  .overlay-content h1 {
+    font-size: 16px;
+  }
+
+  .inv-slot {
+    width: 28px;
+    height: 28px;
+    font-size: 8px;
+  }
+
+  .history-details {
+    gap: 6px;
+    font-size: 10px;
+  }
+}

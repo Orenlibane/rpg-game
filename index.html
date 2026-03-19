@@ -44,7 +44,7 @@
     <div id="ui-panel">
       <!-- Player Stats -->
       <div id="stats-panel" class="panel">
-        <h2>Cave Diver <span id="game-version" style="font-size:10px;color:#555;font-weight:normal;">v25</span></h2>
+        <h2>Cave Diver <span id="game-version" style="font-size:10px;color:#555;font-weight:normal;">v26</span></h2>
         <div id="class-display" class="class-badge">Warrior</div>
         <div id="prestige-badge" style="display: none;"></div>
         <div id="floor-display" class="stat-row">Village</div>
@@ -108,6 +108,7 @@
         <div class="control-row"><kbd>I</kbd> <span data-i18n="ctrl.armory">Armory</span></div>
         <div class="control-row"><kbd>M</kbd> <span data-i18n="ctrl.map">Map</span></div>
         <div class="control-row"><kbd>N</kbd> <span data-i18n="ctrl.achievements">Achievements</span></div>
+        <div class="control-row"><kbd>L</kbd> <span>Run History</span></div>
         <div class="control-row"><kbd>Q</kbd> <span data-i18n="ctrl.town_portal">Town Portal</span></div>
         <div class="control-row"><kbd>E</kbd> <span data-i18n="ctrl.pickup">Pick up item</span></div>
         <div class="control-row"><kbd>Esc</kbd> <span data-i18n="ctrl.settings">Settings</span></div>
@@ -510,6 +511,15 @@
     </div>
   </div>
 
+  <!-- Run History Overlay -->
+  <div id="history-overlay" class="overlay hidden">
+    <div class="overlay-content history-panel">
+      <h1>Run History</h1>
+      <div id="history-list" class="history-list"></div>
+      <button id="close-history" class="choice-btn">Close</button>
+    </div>
+  </div>
+
   <!-- Achievement Toast -->
   <div id="achievement-toast" class="achievement-toast hidden"></div>
 
@@ -534,9 +544,9 @@
       document.body.appendChild(d);
     };
   </script>
-  <script type="module" src="js/main.js?v=25"></script>
+  <script type="module" src="js/main.js?v=26"></script>
   <script type="module">
-    import('./js/main.js?v=25').catch(function(e) {
+    import('./js/main.js?v=26').catch(function(e) {
       var d = document.createElement('div');
       d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:red;color:white;padding:10px;z-index:9999;font-size:14px';
       d.textContent = 'MODULE LOAD ERROR: ' + e.message;

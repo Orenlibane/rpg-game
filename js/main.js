@@ -13,12 +13,13 @@ import {
   closeFishing, castLine, reelIn,
   closeArena, enterArena, nextArenaWave, leaveArena,
   closeBlacksmith, craftItem,
+  toggleRunHistory, closeRunHistory,
   gameSettings, updateSetting, pickupItem,
   apiRegister, apiLogin, setAuth, isLoggedIn, getAuthUsername,
   startCloudSync, checkDbStatus,
-} from './engine.js?v=25';
-import { render, resizeCanvas } from './renderer.js?v=25';
-import { PLAYER_CLASS, PRESTIGE } from './constants.js?v=25';
+} from './engine.js?v=26';
+import { render, resizeCanvas } from './renderer.js?v=26';
+import { PLAYER_CLASS, PRESTIGE } from './constants.js?v=26';
 import { initI18n, setLanguage, applyStaticTranslations, t } from './i18n.js';
 
 // ── Initialize i18n ─────────────────────────
@@ -54,7 +55,7 @@ function hideLoginOverlay() {
 function updateUserBadge() {
   const el = document.getElementById('game-version');
   if (el && isLoggedIn()) {
-    el.textContent = `v25 | ${getAuthUsername()}`;
+    el.textContent = `v26 | ${getAuthUsername()}`;
   }
 }
 
@@ -283,6 +284,16 @@ document.addEventListener('keydown', (e) => {
     }
   }
 
+  // Run history toggle
+  if (e.key === 'l' || e.key === 'L') {
+    if (state.phase !== 'class_select') {
+      e.preventDefault();
+      toggleRunHistory();
+      render();
+      return;
+    }
+  }
+
   // Escape closes overlays (but not prestige overlay or arena wave cleared)
   if (e.key === 'Escape') {
     if (state.showPrestige) return; // Cannot dismiss prestige with Escape
@@ -303,6 +314,7 @@ document.addEventListener('keydown', (e) => {
     if (state.showCharSheet) { closeCharSheet(); render(); return; }
     if (state.showSkillTree) { closeSkillTree(); render(); return; }
     if (state.showAchievements) { closeAchievements(); render(); return; }
+    if (state.showRunHistory) { closeRunHistory(); render(); return; }
     if (state.showBestiary) { toggleBestiary(); render(); return; }
     if (state.showArmory) { toggleArmory(); render(); return; }
     if (state.showMinimap) { toggleMinimap(); render(); return; }
@@ -330,6 +342,7 @@ document.addEventListener('keydown', (e) => {
   if (state.showCharSheet) return;
   if (state.showSkillTree) return;
   if (state.showAchievements) return;
+  if (state.showRunHistory) return;
   if (state.showSubclassSelect) return;
   if (state.showChest) return;
 
@@ -654,6 +667,11 @@ document.getElementById('enter-arena-btn')?.addEventListener('click', () => {
 
 document.getElementById('close-arena')?.addEventListener('click', () => {
   closeArena();
+  render();
+});
+
+document.getElementById('close-history')?.addEventListener('click', () => {
+  closeRunHistory();
   render();
 });
 

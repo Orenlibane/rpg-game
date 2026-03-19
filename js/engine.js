@@ -11,10 +11,13 @@ import {
   BOSS_SKILLS, ITEM_SETS, PRESTIGE,
   FISH_LOOT, ARENA_CONFIG, CRAFTING_RECIPES,
   SUBCLASS, SUBCLASS_INFO,
-} from './constants.js?v=25';
+  TOWN_UPGRADES, SHOP_UPGRADE_ITEMS, SHOP_EPIC_ITEMS,
+  CRAFTING_RECIPES_T2, CRAFTING_RECIPES_T3,
+  PHASE_BOSSES,
+} from './constants.js?v=26';
 import { t } from './i18n.js';
-import { generateVillage, generateDungeon, generateArenaMap } from './mapgen.js?v=25';
-import { computeFOV } from './fov.js?v=25';
+import { generateVillage, generateDungeon, generateArenaMap } from './mapgen.js?v=26';
+import { computeFOV } from './fov.js?v=26';
 
 function randInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -97,6 +100,11 @@ export const state = {
     fishCaught: 0,
     arenaBestWave: 0,
   },
+  // Town upgrades (persist across runs)
+  townUpgrades: { healer: 1, shop: 1, blacksmith: 1, arena: 1 },
+  // Run history (persist across runs)
+  runHistory: [],
+  showRunHistory: false,
 };
 
 // ── Game Settings (persisted separately) ────
@@ -392,22 +400,44 @@ export function enterDungeon(floor = 1) {
     }
   }
 
-  // Spawn boss every 5 floors
-  if (floor % 5 === 0 && BOSS_FOR_THEME[themeKey]) {
-    const bossType = BOSS_FOR_THEME[themeKey];
-    // Place boss in a non-start room
-    const bossRoomIdx = floorRooms.length > 2 ? randInt(1, floorRooms.length - 2) : 1;
-    const bossRoom = floorRooms[bossRoomIdx];
-    const bx = bossRoom.cx;
-    const by = bossRoom.cy;
-    const boss = createEntity(bossType, bx, by);
-    boss.isBoss = true;
-    // Extra scaling for bosses
-    boss.maxHp += floor * 3;
-    boss.hp = boss.maxHp;
-    boss.power += Math.floor(floor / 3);
-    state.enemies.push(boss);
-    log(t('log.boss_lurks', { name: getEnemyName(boss) }), 'combat');
+  // Spawn boss every 5 floors (phase boss overrides on floors 10/20/30)
+  if (floor % 5 === 0) {
+    const phaseBossData = PHASE_BOSSES[floor];
+    if (phaseBossData) {
+      // Spawn a phase boss
+      const bossRoomIdx = floorRooms.length > 2 ? randInt(1, floorRooms.length - 2) : 1;
+      const bossRoom = floorRooms[bossRoomIdx];
+      const bx = bossRoom.cx;
+      const by = bossRoom.cy;
+      const boss = createEntity(phaseBossData.type, bx, by);
+      boss.isBoss = true;
+      boss.isPhaseBoss = true;
+      boss.bossPhase = 0;
+      boss.phaseFloor = floor;
+      boss.phaseName = phaseBossData.name;
+      boss.phaseInvulnerable = 0;
+      // Extra scaling for phase bosses
+      boss.maxHp += floor * 4;
+      boss.hp = boss.maxHp;
+      boss.power += Math.floor(floor / 2);
+      state.enemies.push(boss);
+      log(`${phaseBossData.phases[0].msg}`, 'combat');
+    } else if (BOSS_FOR_THEME[themeKey]) {
+      const bossType = BOSS_FOR_THEME[themeKey];
+      // Place boss in a non-start room
+      const bossRoomIdx = floorRooms.length > 2 ? randInt(1, floorRooms.length - 2) : 1;
+      const bossRoom = floorRooms[bossRoomIdx];
+      const bx = bossRoom.cx;
+      const by = bossRoom.cy;
+      const boss = createEntity(bossType, bx, by);
+      boss.isBoss = true;
+      // Extra scaling for bosses
+      boss.maxHp += floor * 3;
+      boss.hp = boss.maxHp;
+      boss.power += Math.floor(floor / 3);
+      state.enemies.push(boss);
+      log(t('log.boss_lurks', { name: getEnemyName(boss) }), 'combat');
+    }
   }
 
   // Apply prestige scaling to all enemies
@@ -564,6 +594,7 @@ function checkPlayerDeath(deathMsg) {
     log(t('log.second_life'), 'level');
     return false;
   }
+  recordRun(deathMsg || 'Slain');
   log(deathMsg || t('log.you_died'), 'combat');
   state.gameOver = true;
   return true;
@@ -656,6 +687,7 @@ const ENEMY_NAMES = {
   [ENTITY.BLOOD_GOLEM]:      'Blood Golem',
   [ENTITY.FROST_ARCHER]:     'Frost Archer',
   [ENTITY.ABYSSAL_WATCHER]:  'Abyssal Watcher',
+  [ENTITY.VOID_EMPEROR]:     'Void Emperor',
 };
 
 export function getEnemyName(entity) {
@@ -963,12 +995,21 @@ export function checkArenaWaveCleared() {
   state.arenaWaveCleared = true;
   const wave = state.arenaWave;
 
-  // Calculate rewards
-  const waveGold = ARENA_CONFIG.REWARDS.goldPerWave(wave);
+  // Calculate rewards (arena upgrade: 1.5x gold at level 2+)
+  const arenaLevel = getTownUpgradeLevel('arena');
+  let waveGold = ARENA_CONFIG.REWARDS.goldPerWave(wave);
+  if (arenaLevel >= 2) waveGold = Math.floor(waveGold * 1.5);
   state.arenaRewards.gold += waveGold;
   state.player.gold += waveGold;
   state.stats.totalGoldEarned += waveGold;
-  log(t('log.wave_cleared', { n: wave, gold: waveGold }), 'level');
+  // Arena level 3: grant XP per wave
+  if (arenaLevel >= 3 && state.player) {
+    const xpGain = 5 + wave * 3;
+    grantXP(xpGain);
+    log(t('log.wave_cleared', { n: wave, gold: waveGold }) + ` (+${xpGain} XP)`, 'level');
+  } else {
+    log(t('log.wave_cleared', { n: wave, gold: waveGold }), 'level');
+  }
 
   // Milestone bonuses
   if (wave === 5) {
@@ -1006,6 +1047,20 @@ export function checkArenaWaveCleared() {
       }
     }
     log(t('log.wave10_bonus', { n: ARENA_CONFIG.REWARDS.wave10Bonus }), 'level');
+    // Arena level 3: bonus epic item at wave 10
+    if (arenaLevel >= 3) {
+      const epicItems = Object.entries(ITEMS).filter(([, v]) => v.tier === 4 && (v.type === ITEM_TYPE.WEAPON || v.type === ITEM_TYPE.ARMOR || v.type === ITEM_TYPE.HELMET || v.type === ITEM_TYPE.CHEST || v.type === ITEM_TYPE.BOOTS));
+      if (epicItems.length > 0) {
+        const [eid, eDef] = epicItems[randInt(0, epicItems.length - 1)];
+        const eItem = { ...eDef };
+        if (state.player.inventory.length < BACKPACK_SIZE) {
+          state.player.inventory.push(eItem);
+          registerArmoryItem(eid);
+          state.arenaRewards.items.push(eItem.name);
+          log(`Arena bonus: ${eItem.name}!`, 'item');
+        }
+      }
+    }
   }
   if (wave >= 15) {
     state.arenaRewards.gold += ARENA_CONFIG.REWARDS.wave15PlusBonus;
@@ -1840,20 +1895,54 @@ export function closeHealer() {
   state.showHealer = false;
 }
 
+export function getTownUpgradeLevel(building) {
+  return state.townUpgrades[building] || 1;
+}
+
+export function upgradeTownBuilding(building) {
+  const info = TOWN_UPGRADES[building];
+  if (!info) return;
+  const currentLevel = getTownUpgradeLevel(building);
+  if (currentLevel >= info.maxLevel) {
+    log('Already at max level!', 'info');
+    return;
+  }
+  const cost = info.costs[currentLevel]; // cost to reach next level
+  if (state.player.gold < cost) {
+    log(`Not enough gold! Need ${cost}g.`, 'info');
+    return;
+  }
+  state.player.gold -= cost;
+  state.townUpgrades[building] = currentLevel + 1;
+  log(`${info.name} upgraded to level ${currentLevel + 1}!`, 'level');
+}
+
 export function healPlayer() {
   const p = state.player;
   if (p.hp >= p.maxHp && p.mana >= p.maxMana) {
     log(t('log.already_healed'), 'info');
     return;
   }
-  if (p.gold < HEALER_COST) {
-    log(t('log.not_enough_gold_healer', { n: HEALER_COST }), 'info');
+  const healerLevel = getTownUpgradeLevel('healer');
+  const cost = healerLevel >= 3 ? 0 : healerLevel >= 2 ? 5 : HEALER_COST;
+  if (cost > 0 && p.gold < cost) {
+    log(t('log.not_enough_gold_healer', { n: cost }), 'info');
     return;
   }
-  p.gold -= HEALER_COST;
+  p.gold -= cost;
   p.hp = p.maxHp;
   p.mana = p.maxMana;
-  log(t('log.healer_healed', { n: HEALER_COST }), 'item');
+  // Level 2+: cure poison
+  if (healerLevel >= 2) {
+    p.effects = p.effects ? p.effects.filter(e => e.name !== 'Poison') : [];
+  }
+  // Level 3: regen buff
+  if (healerLevel >= 3) {
+    if (!p.effects) p.effects = [];
+    p.effects = p.effects.filter(e => e.name !== 'Regen');
+    p.effects.push({ name: 'Regen', stat: 'regen', amount: 2, turns: 10 });
+  }
+  log(cost > 0 ? t('log.healer_healed', { n: cost }) : 'Healed for free!', 'item');
 }
 
 export function closeShop() {
@@ -1867,14 +1956,25 @@ export function closeBlacksmith() {
   state.showBlacksmith = false;
 }
 
+export function getAvailableCraftingRecipes() {
+  let recipes = [...CRAFTING_RECIPES];
+  const bsLevel = getTownUpgradeLevel('blacksmith');
+  if (bsLevel >= 2) recipes = recipes.concat(CRAFTING_RECIPES_T2);
+  if (bsLevel >= 3) recipes = recipes.concat(CRAFTING_RECIPES_T3);
+  return recipes;
+}
+
 export function craftItem(recipeIndex) {
-  const recipe = CRAFTING_RECIPES[recipeIndex];
+  const allRecipes = getAvailableCraftingRecipes();
+  const recipe = allRecipes[recipeIndex];
   if (!recipe) return;
 
   const p = state.player;
+  const bsLevel = getTownUpgradeLevel('blacksmith');
 
-  // Check gold
-  if (p.gold < recipe.gold) {
+  // Check gold (20% reduction at level 3)
+  const goldCost = bsLevel >= 3 ? Math.floor(recipe.gold * 0.8) : recipe.gold;
+  if (p.gold < goldCost) {
     log(t('log.not_enough_gold'), 'info');
     return;
   }
@@ -1895,7 +1995,7 @@ export function craftItem(recipeIndex) {
   }
 
   // Deduct gold
-  p.gold -= recipe.gold;
+  p.gold -= goldCost;
 
   // Deduct materials
   for (const [matId, qty] of Object.entries(recipe.materials)) {
@@ -1992,12 +2092,17 @@ export function getActiveChest() {
 
 export function getDiscountedPrice(basePrice) {
   if (!state.player || !state.player.attrs) return basePrice;
-  const discount = ATTR_BONUSES.cha.shopDiscount(state.player.attrs.cha);
+  let discount = ATTR_BONUSES.cha.shopDiscount(state.player.attrs.cha);
+  // Shop upgrade discount
+  const shopLevel = getTownUpgradeLevel('shop');
+  if (shopLevel >= 3) discount += 20;
+  else if (shopLevel >= 2) discount += 10;
+  discount = Math.min(discount, 60); // cap at 60%
   return Math.max(1, Math.floor(basePrice * (100 - discount) / 100));
 }
 
 export function buyItem(shopIndex) {
-  const inventory = state.isDungeonShop ? DUNGEON_SHOP_INVENTORY : SHOP_INVENTORY;
+  const inventory = getShopItems();
   const entry = inventory[shopIndex];
   if (!entry) return;
   const p = state.player;
@@ -2051,9 +2156,20 @@ export function sellItem(invIndex) {
   log(t('log.sold_item', { name: item.name, price: sellPrice }), 'item');
 }
 
+function getShopItems() {
+  let inventory = state.isDungeonShop
+    ? [...DUNGEON_SHOP_INVENTORY]
+    : [...SHOP_INVENTORY];
+  if (!state.isDungeonShop) {
+    const shopLevel = getTownUpgradeLevel('shop');
+    if (shopLevel >= 2) inventory = inventory.concat(SHOP_UPGRADE_ITEMS);
+    if (shopLevel >= 3) inventory = inventory.concat(SHOP_EPIC_ITEMS);
+  }
+  return inventory;
+}
+
 export function getShopInventory() {
-  const inventory = state.isDungeonShop ? DUNGEON_SHOP_INVENTORY : SHOP_INVENTORY;
-  return inventory.map((entry, idx) => ({
+  return getShopItems().map((entry, idx) => ({
     index: idx,
     item: ITEMS[entry.itemId],
     price: entry.price,
@@ -2330,6 +2446,12 @@ function attack(attacker, defender) {
     }
   }
 
+  // Phase boss invulnerability during transition
+  if (defender.isPhaseBoss && defender.phaseInvulnerable > 0) {
+    log(`${defender.phaseName || 'Boss'} is invulnerable!`, 'combat');
+    return;
+  }
+
   const power = getEffectivePower(attacker);
   const armor = getEffectiveArmor(defender);
   let baseDmg = Math.max(1, power - armor + randInt(-1, 1));
@@ -2362,6 +2484,11 @@ function attack(attacker, defender) {
   // Godmode: player can't die
   if (defender.type === ENTITY.PLAYER && state.godMode && defender.hp < 1) {
     defender.hp = 1;
+  }
+
+  // Phase boss: check mid-fight phase transitions
+  if (defender.isPhaseBoss && defender.hp > 0) {
+    checkBossPhaseTransition(defender);
   }
 
   const aName = attacker.type === ENTITY.PLAYER ? 'You' : getEnemyName(attacker);
@@ -2419,6 +2546,14 @@ function attack(attacker, defender) {
     attacker.hp = 1;
   }
 
+  // Phase boss: check phase transition before death
+  if (defender.isPhaseBoss && defender.hp <= 0) {
+    const pbData = PHASE_BOSSES[defender.phaseFloor];
+    if (pbData && (defender.bossPhase || 0) < pbData.phases.length - 1) {
+      defender.hp = 1; // prevent death, transition will heal
+      checkBossPhaseTransition(defender);
+    }
+  }
   if (defender.hp <= 0) {
     defender.hp = 0;
     if (defender.type === ENTITY.PLAYER) {
@@ -2742,6 +2877,23 @@ export function useItem(slotIndex) {
   const item = inv[slotIndex];
 
   if (item.type === ITEM_TYPE.CONSUMABLE) {
+    // Portal scroll: teleport to village (and back)
+    if (item.isPortalScroll) {
+      if (state.mode !== 'dungeon') {
+        log('Portal scrolls can only be used in the dungeon!', 'info');
+        return;
+      }
+      // Consume one scroll
+      if (item.stackable && (item.count || 1) > 1) {
+        item.count--;
+      } else {
+        inv.splice(slotIndex, 1);
+      }
+      log('You use a Portal Scroll and open a portal to the village!', 'level');
+      state.lastDungeonFloor = state.floor;
+      initVillage();
+      return;
+    }
     if (item.healAmount) {
       const p = state.player;
       const healed = Math.min(item.healAmount, p.maxHp - p.hp);
@@ -2897,6 +3049,58 @@ function getEnemySightRange(enemy) {
   return SIGHT_RANGES[enemy.type] || GOBLIN_SIGHT_RANGE;
 }
 
+// ── Phase Boss Transitions ─────────────────────
+function checkBossPhaseTransition(enemy) {
+  if (!enemy.isPhaseBoss || !enemy.phaseFloor) return false;
+  const pbData = PHASE_BOSSES[enemy.phaseFloor];
+  if (!pbData) return false;
+  const phases = pbData.phases;
+  const currentPhase = enemy.bossPhase || 0;
+  const nextPhase = currentPhase + 1;
+  if (nextPhase >= phases.length) return false;
+
+  const hpRatio = enemy.hp / enemy.maxHp;
+  const nextThreshold = phases[nextPhase].threshold;
+  if (hpRatio > nextThreshold) return false;
+
+  // Transition!
+  enemy.bossPhase = nextPhase;
+  const phaseData = phases[nextPhase];
+
+  // Heal 10%
+  enemy.hp = Math.min(enemy.maxHp, enemy.hp + Math.floor(enemy.maxHp * 0.1));
+
+  // Apply stat mods
+  if (phaseData.mods.power) enemy.power += phaseData.mods.power;
+  if (phaseData.mods.armor) enemy.armor = (enemy.armor || 0) + phaseData.mods.armor;
+
+  // 1-turn invulnerability
+  enemy.phaseInvulnerable = 1;
+
+  // Summon adds
+  if (phaseData.summon) {
+    const s = phaseData.summon;
+    for (let i = 0; i < s.count; i++) {
+      const ox = enemy.x + randInt(-2, 2);
+      const oy = enemy.y + randInt(-2, 2);
+      if (ox >= 0 && ox < state.mapW && oy >= 0 && oy < state.mapH && canWalk(ox, oy) && !isOccupied(ox, oy)) {
+        const add = createEntity(s.type, ox, oy);
+        add.maxHp += state.floor * 2;
+        add.hp = add.maxHp;
+        add.power += Math.floor(state.floor / 2);
+        if (s.isClone) {
+          add.isElite = true;
+          add.elitePrefix = 'Mirror';
+        }
+        state.enemies.push(add);
+      }
+    }
+  }
+
+  log(phaseData.msg, 'combat');
+  return true;
+}
+
 function moveEnemies() {
   for (const enemy of state.enemies) {
     if (enemy.hp <= 0) continue;
@@ -2916,6 +3120,12 @@ function moveEnemies() {
     const sightRange = getEnemySightRange(enemy);
 
     if (dist > sightRange) continue;
+
+    // Phase boss invulnerability tick
+    if (enemy.phaseInvulnerable > 0) {
+      enemy.phaseInvulnerable--;
+      continue;
+    }
 
     // Adjacent? Attack
     if (dist === 1) {
@@ -2937,7 +3147,67 @@ function moveEnemies() {
         log(t('log.frost_slam', { n: slamDmg }), 'combat');
         if (state.player.hp <= 0) checkPlayerDeath('You have been slain!');
       }
+      // Phase boss: double_attack ability (Void Emperor phase 3)
+      if (enemy.isPhaseBoss && state.player.hp > 0) {
+        const pbData = PHASE_BOSSES[enemy.phaseFloor];
+        if (pbData) {
+          const abilities = pbData.phases[enemy.bossPhase || 0].abilities;
+          if (abilities.includes('double_attack')) {
+            log(`${enemy.phaseName || 'Boss'} attacks again!`, 'combat');
+            attack(enemy, state.player);
+          }
+          if (abilities.includes('enrage') && Math.random() < 0.3 && state.player.hp > 0) {
+            const rageDmg = Math.max(1, Math.floor(enemy.power * 0.5));
+            state.player.hp -= rageDmg;
+            log(`${enemy.phaseName || 'Boss'} rages for ${rageDmg} bonus damage!`, 'combat');
+            if (state.player.hp <= 0) checkPlayerDeath('You have been slain!');
+          }
+        }
+      }
       continue;
+    }
+
+    // Phase boss ranged abilities (non-adjacent)
+    if (enemy.isPhaseBoss && dist > 1) {
+      const pbData = PHASE_BOSSES[enemy.phaseFloor];
+      if (pbData) {
+        const abilities = pbData.phases[enemy.bossPhase || 0].abilities;
+        // fire_attack (Demon Lord phase 2+, range 3)
+        if (abilities.includes('fire_attack') && dist <= 3 && hasLineOfSight(enemy.x, enemy.y, state.player.x, state.player.y)) {
+          const fDmg = Math.max(1, enemy.power - getEffectiveArmor(state.player) + randInt(-1, 2));
+          state.player.hp -= fDmg;
+          state.projectiles.push({ x: state.player.x, y: state.player.y, type: 'fire', ttl: 2 });
+          log(`${enemy.phaseName || 'Boss'} hurls fire for ${fDmg} damage!`, 'combat');
+          if (state.player.hp <= 0) checkPlayerDeath('You have been slain!');
+          continue;
+        }
+        // ranged_fire (Ancient Dragon, range 6)
+        if (abilities.includes('ranged_fire') && dist <= 6 && hasLineOfSight(enemy.x, enemy.y, state.player.x, state.player.y)) {
+          const rDmg = Math.max(1, enemy.power - getEffectiveArmor(state.player) + randInt(-1, 2));
+          state.player.hp -= rDmg;
+          state.projectiles.push({ x: state.player.x, y: state.player.y, type: 'fire', ttl: 2 });
+          log(`${enemy.phaseName || 'Boss'} breathes fire for ${rDmg} damage!`, 'combat');
+          if (state.player.hp <= 0) checkPlayerDeath('You have been slain!');
+          // ground_slam (Dragon phase 2+, AoE 1.5x)
+          if (abilities.includes('ground_slam') && Math.random() < 0.3) {
+            const gDmg = Math.max(1, Math.floor(enemy.power * 1.5) - getEffectiveArmor(state.player));
+            state.player.hp -= gDmg;
+            log(`${enemy.phaseName || 'Boss'} slams the ground for ${gDmg} damage!`, 'combat');
+            if (state.player.hp <= 0) checkPlayerDeath('You have been slain!');
+          }
+          continue;
+        }
+        // shadow_bolt (Void Emperor, range 7, half armor)
+        if (abilities.includes('shadow_bolt') && dist <= 7 && hasLineOfSight(enemy.x, enemy.y, state.player.x, state.player.y)) {
+          const halfArm = Math.floor(getEffectiveArmor(state.player) / 2);
+          const sDmg = Math.max(1, enemy.power - halfArm + randInt(-1, 2));
+          state.player.hp -= sDmg;
+          state.projectiles.push({ x: state.player.x, y: state.player.y, type: 'fire', ttl: 2 });
+          log(`${enemy.phaseName || 'Boss'} fires a shadow bolt for ${sDmg} damage!`, 'combat');
+          if (state.player.hp <= 0) checkPlayerDeath('You have been slain!');
+          continue;
+        }
+      }
     }
 
     // Mycelium Lord regeneration
@@ -3454,17 +3724,50 @@ export function castSpell(spellId) {
   return false;
 }
 
+// ── Run History ──────────────────────────────
+
+function recordRun(cause) {
+  if (!state.player) return;
+  const record = {
+    timestamp: Date.now(),
+    playerClass: state.playerClass,
+    subclass: state.player.subclass || null,
+    floorReached: state.floor,
+    cause: cause,
+    kills: state.stats.totalKills,
+    goldEarned: state.stats.totalGoldEarned,
+    level: state.player.level || 1,
+    turns: state.turnCount,
+  };
+  state.runHistory.unshift(record);
+  if (state.runHistory.length > 50) state.runHistory.length = 50;
+}
+
+export function toggleRunHistory() {
+  state.showRunHistory = !state.showRunHistory;
+}
+
+export function closeRunHistory() {
+  state.showRunHistory = false;
+}
+
+export function getRunHistory() {
+  return state.runHistory;
+}
+
 // ── Restart ──────────────────────────────────
 
 export function restartGame() {
   state.stats.deaths++;
   unlockAchievement('survivor');
-  // Preserve achievements, stats, boss skills, and prestige across restarts
+  // Preserve persistent data across restarts
   const savedAchievements = { ...state.achievements };
   const savedStats = { ...state.stats };
   const savedBossSkills = { ...state.bossSkills };
   const savedPrestige = state.prestigeLevel;
   const savedArenaBest = state.arenaBestWave;
+  const savedTownUpgrades = { ...state.townUpgrades };
+  const savedRunHistory = [...state.runHistory];
   state.player = null;
   state.pendingLevelUp = false;
   state.bestiary = {};
@@ -3474,6 +3777,8 @@ export function restartGame() {
   state.bossSkills = savedBossSkills;
   state.prestigeLevel = savedPrestige;
   state.arenaBestWave = savedArenaBest;
+  state.townUpgrades = savedTownUpgrades;
+  state.runHistory = savedRunHistory;
   // Reset fishing/arena
   closeFishing();
   state.showArena = false;
@@ -3499,6 +3804,7 @@ export function activatePrestige() {
 
   unlockAchievement('prestige_1');
   if (level === 5) unlockAchievement('prestige_5');
+  recordRun('Prestige ' + level);
 
   // Save persistent data
   const savedAchievements = { ...state.achievements };
@@ -3506,6 +3812,8 @@ export function activatePrestige() {
   const savedBossSkills = { ...state.bossSkills };
   const savedPrestige = state.prestigeLevel;
   const savedArmory = { ...state.armory };
+  const savedTownUpgrades = { ...state.townUpgrades };
+  const savedRunHistory = [...state.runHistory];
 
   // Reset player state
   state.player = null;
@@ -3521,6 +3829,8 @@ export function activatePrestige() {
   state.bossSkills = savedBossSkills;
   state.prestigeLevel = savedPrestige;
   state.armory = savedArmory;
+  state.townUpgrades = savedTownUpgrades;
+  state.runHistory = savedRunHistory;
 
   deleteSave();
 }

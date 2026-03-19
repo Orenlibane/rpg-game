@@ -1,11 +1,11 @@
-import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE, CRAFTING_RECIPES, MONSTER_CATEGORIES, BESTIARY_INFO, SUBCLASS, SUBCLASS_INFO } from './constants.js?v=25';
+import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE, CRAFTING_RECIPES, MONSTER_CATEGORIES, BESTIARY_INFO, SUBCLASS, SUBCLASS_INFO, TOWN_UPGRADES, PHASE_BOSSES } from './constants.js?v=26';
 import { t } from './i18n.js';
 
 // Lookups for bestiary
 const BASE_STATS_LOOKUP = BASE_STATS;
 const GOLD_LOOKUP = GOLD_REWARDS;
-import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js?v=25';
-import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith, selectSubclass, isSubclassBranchUnlocked } from './engine.js?v=25';
+import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js?v=26';
+import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith, selectSubclass, isSubclassBranchUnlocked, getTownUpgradeLevel, upgradeTownBuilding, getAvailableCraftingRecipes, getRunHistory, closeRunHistory } from './engine.js?v=26';
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
@@ -204,6 +204,23 @@ export function render() {
       ctx.font = '9px monospace';
       ctx.textAlign = 'center';
       ctx.fillText(enemy.elitePrefix || 'Elite', sx + ts / 2, barY - 2);
+      ctx.textAlign = 'start';
+    }
+
+    // Phase boss visual indicator
+    if (enemy.isPhaseBoss) {
+      const phase = (enemy.bossPhase || 0) + 1;
+      // Pulsing red border
+      const pulse = Math.sin(Date.now() / 200) * 0.3 + 0.7;
+      ctx.strokeStyle = enemy.phaseInvulnerable > 0 ? `rgba(255,255,255,${pulse})` : `rgba(255,40,40,${pulse})`;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(sx, sy, ts, ts);
+      ctx.lineWidth = 1;
+      // Phase label
+      ctx.fillStyle = '#ff4';
+      ctx.font = 'bold 9px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`P${phase}`, sx + ts / 2, barY - 2);
       ctx.textAlign = 'start';
     }
   }
@@ -450,6 +467,9 @@ function updateUI() {
   // Arena overlays
   updateArenaOverlay();
   updateArenaWaveOverlay();
+
+  // Run history overlay
+  updateRunHistoryOverlay();
 
   // Active effects display
   updateEffectsDisplay();
@@ -1223,8 +1243,54 @@ function updateArenaOverlay() {
     } else {
       bestWaveEl.style.display = 'none';
     }
+    // Town upgrade section
+    renderTownUpgradeSection(overlay, 'arena');
   } else {
     overlay.classList.add('hidden');
+  }
+}
+
+// ── Run History Overlay ────────────────────────
+function updateRunHistoryOverlay() {
+  const overlay = document.getElementById('history-overlay');
+  if (!overlay) return;
+  if (!state.showRunHistory) {
+    overlay.classList.add('hidden');
+    return;
+  }
+  overlay.classList.remove('hidden');
+
+  const list = document.getElementById('history-list');
+  if (!list) return;
+  list.innerHTML = '';
+
+  const history = getRunHistory();
+  if (history.length === 0) {
+    list.innerHTML = '<div class="history-empty">No runs recorded yet.</div>';
+    return;
+  }
+
+  for (const run of history) {
+    const div = document.createElement('div');
+    div.className = 'history-entry';
+    const date = new Date(run.timestamp);
+    const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const cls = run.playerClass ? run.playerClass.charAt(0).toUpperCase() + run.playerClass.slice(1) : '?';
+    const sub = run.subclass ? ` (${run.subclass})` : '';
+    div.innerHTML = `
+      <div class="history-header">
+        <span class="history-date">${dateStr}</span>
+        <span class="history-class">${cls}${sub} Lv.${run.level || 1}</span>
+      </div>
+      <div class="history-details">
+        <span>Floor ${run.floorReached}</span>
+        <span>${run.kills || 0} kills</span>
+        <span>${run.goldEarned || 0}g earned</span>
+        <span>${run.turns || 0} turns</span>
+      </div>
+      <div class="history-cause">${run.cause || 'Unknown'}</div>
+    `;
+    list.appendChild(div);
   }
 }
 
@@ -1810,6 +1876,38 @@ document.getElementById('armory-tab-consumables')?.addEventListener('click', () 
 
 // ── Healer Overlay ──────────────────────────
 
+// ── Town Upgrade Helper ────────────────────
+function renderTownUpgradeSection(overlay, building) {
+  let section = overlay.querySelector('.town-upgrade-section');
+  if (!section) {
+    section = document.createElement('div');
+    section.className = 'town-upgrade-section';
+    overlay.appendChild(section);
+  }
+  const info = TOWN_UPGRADES[building];
+  if (!info) { section.innerHTML = ''; return; }
+  const level = getTownUpgradeLevel(building);
+  const maxLevel = info.maxLevel;
+  const desc = info.descriptions[level - 1] || '';
+
+  if (level >= maxLevel) {
+    section.innerHTML = `<div class="upgrade-level">Level ${level}/${maxLevel} (MAX)</div><div class="upgrade-desc">${desc}</div>`;
+    return;
+  }
+  const nextCost = info.costs[level];
+  const canAfford = state.player && state.player.gold >= nextCost;
+  section.innerHTML = `
+    <div class="upgrade-level">Level ${level}/${maxLevel}</div>
+    <div class="upgrade-desc">${desc}</div>
+    <div class="upgrade-next">Next: ${info.descriptions[level]} — <strong>${nextCost}g</strong></div>
+    <button class="upgrade-btn" ${canAfford ? '' : 'disabled'}>Upgrade (${nextCost}g)</button>
+  `;
+  section.querySelector('.upgrade-btn')?.addEventListener('click', () => {
+    upgradeTownBuilding(building);
+    render();
+  });
+}
+
 function updateHealerOverlay() {
   const overlay = document.getElementById('healer-overlay');
   if (!state.showHealer) {
@@ -1821,13 +1919,20 @@ function updateHealerOverlay() {
   const p = state.player;
   const status = document.getElementById('healer-status');
   const goldEl = document.getElementById('healer-gold');
+  const healerLevel = getTownUpgradeLevel('healer');
+  const cost = healerLevel >= 3 ? 0 : healerLevel >= 2 ? 5 : 10;
 
   if (p.hp >= p.maxHp && p.mana >= p.maxMana) {
     status.textContent = 'You are already in perfect health!';
   } else {
-    status.textContent = `HP: ${p.hp}/${p.maxHp}` + (p.maxMana > 0 ? ` | Mana: ${p.mana}/${p.maxMana}` : '');
+    let statusText = `HP: ${p.hp}/${p.maxHp}` + (p.maxMana > 0 ? ` | Mana: ${p.mana}/${p.maxMana}` : '');
+    statusText += cost > 0 ? ` (Cost: ${cost}g)` : ' (Free!)';
+    status.textContent = statusText;
   }
   goldEl.textContent = `Your gold: ${p.gold}`;
+
+  // Town upgrade section
+  renderTownUpgradeSection(overlay, 'healer');
 }
 
 // ── Shop Overlay ────────────────────────────
@@ -1846,6 +1951,14 @@ function updateShopOverlay() {
   const shopTitle = overlay.querySelector('.title-shop');
   if (shopTitle) {
     shopTitle.textContent = state.isDungeonShop ? 'Wandering Trader' : 'Merchant';
+  }
+
+  // Town upgrade section (only in village shop)
+  if (!state.isDungeonShop) {
+    renderTownUpgradeSection(overlay, 'shop');
+  } else {
+    const existingSec = overlay.querySelector('.town-upgrade-section');
+    if (existingSec) existingSec.innerHTML = '';
   }
 
   const p = state.player;
@@ -1942,13 +2055,16 @@ function updateBlacksmithOverlay() {
   const list = document.getElementById('blacksmith-recipes');
   list.innerHTML = '';
 
-  for (let i = 0; i < CRAFTING_RECIPES.length; i++) {
-    const recipe = CRAFTING_RECIPES[i];
+  const bsLevel = getTownUpgradeLevel('blacksmith');
+  const allRecipes = getAvailableCraftingRecipes();
+  for (let i = 0; i < allRecipes.length; i++) {
+    const recipe = allRecipes[i];
     const outputItem = ITEMS[recipe.output];
     if (!outputItem) continue;
 
+    const goldCost = bsLevel >= 3 ? Math.floor(recipe.gold * 0.8) : recipe.gold;
     // Check if player can craft
-    let canCraft = p.gold >= recipe.gold && p.inventory.length < BACKPACK_SIZE;
+    let canCraft = p.gold >= goldCost && p.inventory.length < BACKPACK_SIZE;
     const matParts = [];
     for (const [matId, qty] of Object.entries(recipe.materials)) {
       const mat = ITEMS[matId];
@@ -1966,7 +2082,7 @@ function updateBlacksmithOverlay() {
         <div class="bs-recipe-name">${recipe.name}</div>
         <div class="bs-recipe-mats">${matParts.join(' + ')}</div>
       </div>
-      <div class="bs-recipe-cost">${recipe.gold}g</div>
+      <div class="bs-recipe-cost">${goldCost}g</div>
       <button class="bs-craft-btn" data-idx="${i}" ${canCraft ? '' : 'disabled'}>${t('blacksmith.craft')}</button>
     `;
     list.appendChild(div);
@@ -1980,6 +2096,9 @@ function updateBlacksmithOverlay() {
       render();
     });
   });
+
+  // Town upgrade section
+  renderTownUpgradeSection(overlay, 'blacksmith');
 }
 
 // ── Chest Overlay ───────────────────────────

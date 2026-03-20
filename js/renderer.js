@@ -5,7 +5,7 @@ import { t } from './i18n.js';
 const BASE_STATS_LOOKUP = BASE_STATS;
 const GOLD_LOOKUP = GOLD_REWARDS;
 import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js?v=28';
-import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, getSellPrice, isTrashItem, sellAllTrash, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith, selectSubclass, isSubclassBranchUnlocked, getTownUpgradeLevel, upgradeTownBuilding, getAvailableCraftingRecipes, getRunHistory, closeRunHistory } from './engine.js?v=28';
+import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, getSellPrice, isTrashItem, sellAllTrash, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith, selectSubclass, isSubclassBranchUnlocked, getTownUpgradeLevel, upgradeTownBuilding, getAvailableCraftingRecipes, getRunHistory, closeRunHistory, SAVE_SLOTS, saveToSlot, loadFromSlot, deleteSlot, getSlotInfo } from './engine.js?v=28';
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
@@ -616,6 +616,52 @@ function updateUI() {
     if (gm) {
       gm.textContent = state.godMode ? t('settings.godmode_on') : t('settings.godmode_off');
       gm.style.color = state.godMode ? '#60e060' : '#888';
+    }
+    // Render save slots
+    const slotsList = document.getElementById('save-slots-list');
+    if (slotsList) {
+      slotsList.innerHTML = '';
+      for (let slot = 1; slot <= SAVE_SLOTS; slot++) {
+        const info = getSlotInfo(slot);
+        const row = document.createElement('div');
+        row.className = 'save-slot-row';
+        const classIcon = { warrior: '⚔️', mage: '🔮', archer: '🏹' }[info?.playerClass] || '🎮';
+        const dateStr = info?.savedAt
+          ? new Date(info.savedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+          : null;
+        row.innerHTML = info
+          ? `<div class="save-slot-info">
+               <span class="save-slot-num">Slot ${slot}</span>
+               <span class="save-slot-char">${classIcon} ${info.name} <em>(${info.playerClass})</em></span>
+               <span class="save-slot-meta">Lv ${info.level} · Floor ${info.floor} · ${info.gold}g</span>
+               ${dateStr ? `<span class="save-slot-date">${dateStr}</span>` : ''}
+             </div>
+             <div class="save-slot-btns">
+               <button class="save-slot-btn save-btn" data-slot="${slot}">Save</button>
+               <button class="save-slot-btn load-btn" data-slot="${slot}">Load</button>
+               <button class="save-slot-btn del-btn" data-slot="${slot}">🗑</button>
+             </div>`
+          : `<div class="save-slot-info">
+               <span class="save-slot-num">Slot ${slot}</span>
+               <span class="save-slot-empty">— Empty —</span>
+             </div>
+             <div class="save-slot-btns">
+               <button class="save-slot-btn save-btn" data-slot="${slot}">Save</button>
+             </div>`;
+        // Wire events
+        row.querySelectorAll('.save-btn').forEach(btn => btn.addEventListener('click', () => {
+          if (state.player) { saveToSlot(+btn.dataset.slot); render(); }
+        }));
+        row.querySelectorAll('.load-btn').forEach(btn => btn.addEventListener('click', () => {
+          if (confirm(`Load slot ${btn.dataset.slot}? Unsaved progress will be lost.`)) {
+            if (loadFromSlot(+btn.dataset.slot)) { state.showSettings = false; render(); }
+          }
+        }));
+        row.querySelectorAll('.del-btn').forEach(btn => btn.addEventListener('click', () => {
+          if (confirm(`Delete slot ${btn.dataset.slot}?`)) { deleteSlot(+btn.dataset.slot); render(); }
+        }));
+        slotsList.appendChild(row);
+      }
     }
   } else {
     settingsOverlay.classList.add('hidden');

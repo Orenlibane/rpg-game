@@ -114,6 +114,9 @@ export const state = {
   // Floor warp system: floors unlocked for teleport (every 5 floors reached)
   unlockedFloorWarps: [],
   showFloorWarp: false,
+  // Persistent floor cache: each floor is generated once per run and remembered
+  // Key = floor number, value = { map, enemies, items, chests, dens, stairsPos, portalPos, floorTheme, isDungeonShop, revealed }
+  floorCache: {},
 };
 
 // ── Game Settings (persisted separately) ────
@@ -336,17 +339,107 @@ function weightedRandomPick(weights) {
   return entries[entries.length - 1][0];
 }
 
+// ── Floor Cache ──────────────────────────────
+// Save the current dungeon floor state so revisiting it looks identical
+
+function saveCurrentFloorToCache() {
+  if (state.mode !== 'dungeon' || !state.floor) return;
+  // Deep-copy map (array of Uint8Array rows)
+  const mapCopy = state.map.map(row => new Uint8Array(row));
+  // Deep-copy revealed fog-of-war
+  const revealedCopy = state.revealed
+    ? state.revealed.map(row => new Uint8Array(row))
+    : null;
+  state.floorCache[state.floor] = {
+    map: mapCopy,
+    mapW: state.mapW,
+    mapH: state.mapH,
+    enemies: JSON.parse(JSON.stringify(state.enemies)),
+    items: JSON.parse(JSON.stringify(state.items)),
+    chests: JSON.parse(JSON.stringify(state.chests)),
+    dens: JSON.parse(JSON.stringify(state.dens || [])),
+    stairsPos: state.stairsPos,
+    portalPos: state.portalPos,
+    floorTheme: state.floorTheme,
+    isDungeonShop: state.isDungeonShop,
+    revealed: revealedCopy,
+    playerStart: { x: state.player.x, y: state.player.y }, // entry point from below
+  };
+}
+
+function restoreFloorFromCache(floor) {
+  const snap = state.floorCache[floor];
+  if (!snap) return false;
+  state.map = snap.map.map(row => new Uint8Array(row));
+  state.mapW = snap.mapW;
+  state.mapH = snap.mapH;
+  state.enemies = JSON.parse(JSON.stringify(snap.enemies));
+  state.items = JSON.parse(JSON.stringify(snap.items));
+  state.chests = JSON.parse(JSON.stringify(snap.chests));
+  state.dens = JSON.parse(JSON.stringify(snap.dens));
+  state.stairsPos = snap.stairsPos;
+  state.portalPos = snap.portalPos;
+  state.floorTheme = snap.floorTheme;
+  state.isDungeonShop = snap.isDungeonShop;
+  state.revealed = snap.revealed
+    ? snap.revealed.map(row => new Uint8Array(row))
+    : Array.from({ length: state.mapH }, () => new Uint8Array(state.mapW));
+  return true;
+}
+
+export function clearFloorCache() {
+  state.floorCache = {};
+}
+
 export function enterDungeon(floor = 1) {
-  // Clear any saved dungeon snapshot since we're generating fresh
+  // Save the current floor before leaving it, so we can restore it if the player returns
+  const comingFromFloor = state.floor;
+  saveCurrentFloorToCache();
   state.savedDungeon = null;
+  state.mode = 'dungeon';
+  state.floor = floor;
+  state.projectiles = [];
+  state.showChest = false;
+  state.activeChest = null;
+
+  // ── Restore cached floor if already visited ──────────────────────────────
+  if (state.floorCache[floor]) {
+    restoreFloorFromCache(floor);
+    const themeKey = state.floorTheme;
+    const theme = FLOOR_THEMES[themeKey] || {};
+    // Place player at correct entry point based on direction of travel
+    if (floor < comingFromFloor) {
+      // Came back UP — appear near the down-stairs (CAVE_STAIRS)
+      state.player.x = state.stairsPos.x;
+      state.player.y = state.stairsPos.y + 1;
+    } else {
+      // Went DOWN — appear at the up-stairs entry (stored as playerStart)
+      const snap = state.floorCache[floor]; // already restored, but playerStart was saved
+      // playerStart was overwritten during restoreFloorFromCache, re-read from the snapshot
+      // Actually we can search for UP_STAIRS tile as the canonical entry
+      let px = -1, py = -1;
+      outer: for (let y = 0; y < state.mapH; y++) {
+        for (let x = 0; x < state.mapW; x++) {
+          if (state.map[y][x] === TILE.UP_STAIRS) { px = x; py = y; break outer; }
+        }
+      }
+      if (px !== -1) { state.player.x = px; state.player.y = py + 1; }
+      else { state.player.x = 1; state.player.y = 1; }
+    }
+    updateQuestProgress('reach', floor);
+    checkAchievements();
+    updateFOV();
+    log(`You return to floor ${floor} — the dungeon feels familiar.`, 'info');
+    return;
+  }
+
+  // ── Generate a brand-new floor ───────────────────────────────────────────
   // Pick a random theme appropriate for this floor
   const themeKey = pickFloorTheme(floor);
   const theme = FLOOR_THEMES[themeKey];
   state.floorTheme = themeKey;
 
   const dungeon = generateDungeon(floor, themeKey);
-  state.mode = 'dungeon';
-  state.floor = floor;
   state.map = dungeon.map;
   if (floor > state.stats.highestFloor) {
     state.stats.highestFloor = floor;
@@ -363,7 +456,6 @@ export function enterDungeon(floor = 1) {
   state.mapW = dungeon.map[0].length;
   state.mapH = dungeon.map.length;
   state.stairsPos = dungeon.stairsPos;
-  state.projectiles = [];
 
   state.player.x = dungeon.playerStart.x;
   state.player.y = dungeon.playerStart.y;
@@ -4238,6 +4330,8 @@ export function restartGame() {
   state.arenaRewards = { gold: 0, items: [] };
   state.arenaWaveCleared = false;
   state.savedDungeon = null;
+  state.floorCache = {};  // New character = fresh floors
+  state.unlockedFloorWarps = [];
   deleteSave();
 }
 
@@ -4274,6 +4368,8 @@ export function activatePrestige() {
   state.phase = 'class_select';
   state.showPrestige = false;
   state.lastDungeonFloor = 0;
+  state.floorCache = {};  // Prestige = new run, fresh floors
+  state.unlockedFloorWarps = [];
 
   // Restore persistent data
   state.achievements = savedAchievements;
@@ -4387,7 +4483,7 @@ export async function checkDbStatus() {
 // ── Save / Load System ──────────────────────────
 
 function serializeState() {
-  const snap = {};
+  const snap = { savedAt: Date.now() };
   for (const key of Object.keys(state)) {
     if (key === 'visibility' || key === 'achievementToast' || key === 'fishingTimer') continue; // transient
     const val = state[key];
@@ -4396,6 +4492,17 @@ function serializeState() {
     } else if (Array.isArray(val) && val.length > 0 && val[0] instanceof Uint8Array) {
       // 2D Uint8Array (map, revealed)
       snap[key] = val.map(row => Array.from(row));
+    } else if (key === 'floorCache') {
+      // Floor cache: each value has map/revealed as 2D Uint8Arrays
+      const serialized = {};
+      for (const [floorNum, floorSnap] of Object.entries(val)) {
+        serialized[floorNum] = {
+          ...floorSnap,
+          map: floorSnap.map ? floorSnap.map.map(row => Array.from(row)) : null,
+          revealed: floorSnap.revealed ? floorSnap.revealed.map(row => Array.from(row)) : null,
+        };
+      }
+      snap[key] = serialized;
     } else {
       snap[key] = val;
     }
@@ -4416,6 +4523,17 @@ function deserializeState(snap) {
     if (Array.isArray(val) && val.length > 0 && Array.isArray(val[0]) &&
         (key === 'map' || key === 'revealed')) {
       state[key] = val.map(row => new Uint8Array(row));
+    } else if (key === 'floorCache' && val && typeof val === 'object') {
+      // Restore floor cache: convert map/revealed back to Uint8Arrays
+      const restored = {};
+      for (const [floorNum, floorSnap] of Object.entries(val)) {
+        restored[floorNum] = {
+          ...floorSnap,
+          map: floorSnap.map ? floorSnap.map.map(row => new Uint8Array(row)) : null,
+          revealed: floorSnap.revealed ? floorSnap.revealed.map(row => new Uint8Array(row)) : null,
+        };
+      }
+      state[key] = restored;
     } else {
       state[key] = val;
     }
@@ -4492,6 +4610,58 @@ export function hasSaveGame() {
 
 export function deleteSave() {
   localStorage.removeItem('rpg_save');
+}
+
+// ── Save Slots (3 slots for multiple characters) ──────────────────────────
+export const SAVE_SLOTS = 3;
+
+export function saveToSlot(slot) {
+  try {
+    const json = JSON.stringify(serializeState());
+    localStorage.setItem(`rpg_save_slot_${slot}`, json);
+    log(`Game saved to slot ${slot}.`, 'info');
+    return true;
+  } catch (_) {
+    log('Save failed.', 'combat');
+    return false;
+  }
+}
+
+export function loadFromSlot(slot) {
+  const raw = localStorage.getItem(`rpg_save_slot_${slot}`);
+  if (!raw) return false;
+  try {
+    const snap = JSON.parse(raw);
+    deserializeState(snap);
+    log(`Slot ${slot} loaded.`, 'info');
+    return true;
+  } catch (_) {
+    localStorage.removeItem(`rpg_save_slot_${slot}`);
+    log('Load failed — save corrupted.', 'combat');
+    return false;
+  }
+}
+
+export function deleteSlot(slot) {
+  localStorage.removeItem(`rpg_save_slot_${slot}`);
+}
+
+export function getSlotInfo(slot) {
+  const raw = localStorage.getItem(`rpg_save_slot_${slot}`);
+  if (!raw) return null;
+  try {
+    const snap = JSON.parse(raw);
+    if (!snap || !snap.player) return null;
+    const p = snap.player;
+    return {
+      name: p.name || 'Unknown',
+      playerClass: snap.playerClass || '?',
+      level: p.level || 1,
+      floor: snap.floor || 0,
+      gold: p.gold || 0,
+      savedAt: snap.savedAt || null,
+    };
+  } catch (_) { return null; }
 }
 
 export function fullResetGame() {

@@ -986,6 +986,44 @@ button:hover, .choice-btn:hover {
 }
 .start-over-no:hover { background: #2a2a3a; }
 
+/* Save Slots */
+.save-slot-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #12121e;
+  border: 1px solid #2a2a3a;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  gap: 8px;
+}
+.save-slot-info { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.save-slot-num { font-size: 10px; color: #556; text-transform: uppercase; letter-spacing: 1px; }
+.save-slot-char { font-size: 12px; color: #c8a84e; font-weight: bold; }
+.save-slot-char em { color: #888; font-style: normal; }
+.save-slot-meta { font-size: 11px; color: #777; }
+.save-slot-date { font-size: 10px; color: #555; }
+.save-slot-empty { font-size: 12px; color: #444; font-style: italic; }
+.save-slot-btns { display: flex; gap: 4px; flex-shrink: 0; }
+.save-slot-btn {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  border: 1px solid #333;
+  background: #1a1a2a;
+  color: #aaa;
+  transition: background 0.15s;
+}
+.save-slot-btn:hover { background: #2a2a3a; }
+.save-slot-btn.save-btn { border-color: #3a5a3a; color: #6c6; }
+.save-slot-btn.save-btn:hover { background: #1a3a1a; }
+.save-slot-btn.load-btn { border-color: #3a4a6a; color: #68c; }
+.save-slot-btn.load-btn:hover { background: #1a2a3a; }
+.save-slot-btn.del-btn { border-color: #4a2a2a; color: #c44; font-size: 13px; padding: 4px 6px; }
+.save-slot-btn.del-btn:hover { background: #2a1a1a; }
+
 .settings-row {
   display: flex;
   gap: 6px;
@@ -2558,7 +2596,7 @@ body.rtl .blacksmith-panel {
 
 /* ── Achievement Toast ─────────────────────── */
 .achievement-toast {
-  position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+  position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
   background: linear-gradient(135deg, #2a1a00, #3a2a00);
   border: 2px solid #ffd700; color: #ffd700;
   padding: 10px 24px; border-radius: 8px;
@@ -2570,7 +2608,7 @@ body.rtl .blacksmith-panel {
 .achievement-toast.hidden { display: none; }
 .toast-icon { font-size: 20px; }
 @keyframes toast-slide-in {
-  from { transform: translateX(-50%) translateY(-40px); opacity: 0; }
+  from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
   to { transform: translateX(-50%) translateY(0); opacity: 1; }
 }
 

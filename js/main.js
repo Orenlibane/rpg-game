@@ -23,9 +23,9 @@ import {
   setHeroName, setHeroColor, enterBeach, enterTown, exitBeach, exitTown,
   toggleAutoExplore, addMapNote, getMapNote, toggleTalentTree, closeTalentTree,
   unlockTalent, getTalentPoints, getUnlockedTalents,
-} from './engine.js?v=42';
-import { render, resizeCanvas } from './renderer.js?v=42';
-import { PLAYER_CLASS, PRESTIGE, DIFFICULTY, TALENT_TREES } from './constants.js?v=42';
+} from './engine.js?v=43';
+import { render, resizeCanvas } from './renderer.js?v=43';
+import { PLAYER_CLASS, PRESTIGE, DIFFICULTY, TALENT_TREES } from './constants.js?v=43';
 import { initI18n, setLanguage, applyStaticTranslations, t } from './i18n.js';
 
 // ── Initialize i18n ─────────────────────────
@@ -60,8 +60,60 @@ function hideLoginOverlay() {
 
 function updateUserBadge() {
   const el = document.getElementById('game-version');
-  if (el && isLoggedIn()) {
-    el.textContent = `v37 | ${getAuthUsername()}`;
+  if (el) {
+    el.textContent = isLoggedIn() ? `v43 | ${getAuthUsername()}` : 'v43';
+  }
+}
+
+// ── Continue-or-New-Game flow ─────────────────
+const continueOrNewOverlay = document.getElementById('continue-or-new-overlay');
+const btnContinueGame = document.getElementById('btn-continue-game');
+const btnNewGame = document.getElementById('btn-new-game');
+
+function showContinueOrNew() {
+  // Populate save info line
+  const infoEl = document.getElementById('continue-save-info');
+  if (infoEl) {
+    try {
+      const raw = localStorage.getItem('rpg_save');
+      if (raw) {
+        const snap = JSON.parse(raw);
+        const p = snap.player;
+        const cls = snap.playerClass || '';
+        const lvl = p?.level || 1;
+        const floor = snap.floor || 0;
+        const name = p?.name || 'Hero';
+        infoEl.textContent = `${name} · ${cls} · Level ${lvl} · Floor ${floor}`;
+      }
+    } catch (_) {}
+  }
+  continueOrNewOverlay?.classList.remove('hidden');
+}
+
+function hideContinueOrNew() {
+  continueOrNewOverlay?.classList.add('hidden');
+}
+
+btnContinueGame?.addEventListener('click', () => {
+  if (loadGame()) {
+    hideContinueOrNew();
+    if (state.playerClass === PLAYER_CLASS.MAGE) addManaLevelUpBtn();
+    render();
+  }
+});
+
+btnNewGame?.addEventListener('click', () => {
+  hideContinueOrNew();
+  classSelectEl.classList.remove('hidden');
+});
+
+// Called after login overlay is dismissed — route to continue-or-new or class select
+function afterLogin() {
+  updateUserBadge();
+  if (hasSaveGame()) {
+    showContinueOrNew();
+  } else {
+    classSelectEl.classList.remove('hidden');
   }
 }
 
@@ -79,22 +131,21 @@ async function handleLogin() {
     setAuth(res.token, res.username);
     startCloudSync();
     hideLoginOverlay();
-    updateUserBadge();
 
-    // Try to load cloud save
+    // Try to load cloud save first; fall back to local save prompt
     const cloudLoaded = await loadGameFromCloud();
     if (cloudLoaded) {
       classSelectEl.classList.add('hidden');
       if (state.playerClass === PLAYER_CLASS.MAGE) addManaLevelUpBtn();
       render();
-    } else if (hasSaveGame()) {
-      continueSaveBtn.style.display = '';
+    } else {
+      afterLogin();
     }
   } catch (e) {
     showLoginError('Connection failed');
   } finally {
     btnLogin.disabled = false;
-    btnLogin.textContent = 'Login';
+    btnLogin.textContent = 'Enter Dungeon';
   }
 }
 
@@ -112,12 +163,12 @@ async function handleRegister() {
     setAuth(res.token, res.username);
     startCloudSync();
     hideLoginOverlay();
-    updateUserBadge();
+    afterLogin();
   } catch (e) {
     showLoginError('Connection failed');
   } finally {
     btnRegister.disabled = false;
-    btnRegister.textContent = 'Register';
+    btnRegister.textContent = 'Create Hero';
   }
 }
 
@@ -125,6 +176,7 @@ btnLogin?.addEventListener('click', handleLogin);
 btnRegister?.addEventListener('click', handleRegister);
 btnPlayOffline?.addEventListener('click', () => {
   hideLoginOverlay();
+  afterLogin();
 });
 
 // Allow Enter key in login form
@@ -137,28 +189,33 @@ loginUsernameInput?.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') loginPasswordInput?.focus();
 });
 
-// On load: always show login screen, handle DB availability transparently
+// On load: always show login screen first, handle DB availability transparently
 (async () => {
   const dbReady = await checkDbStatus();
 
   if (dbReady && isLoggedIn()) {
-    // Already have a session token (page refresh) — skip login, load cloud save
+    // Already have a session token (page refresh) — try to skip login
     startCloudSync();
-    updateUserBadge();
     const cloudLoaded = await loadGameFromCloud();
     if (cloudLoaded) {
+      // Cloud save loaded directly — go straight to game
       classSelectEl.classList.add('hidden');
       if (state.playerClass === PLAYER_CLASS.MAGE) addManaLevelUpBtn();
+      updateUserBadge();
       render();
       return;
     } else if (!isLoggedIn()) {
       // Token was invalidated — fall through to show login
-    } else if (hasSaveGame()) {
-      continueSaveBtn.style.display = '';
+    } else {
+      // Logged in but no cloud save — show login UI briefly then route
+      hideLoginOverlay();
+      updateUserBadge();
+      afterLogin();
+      return;
     }
   }
 
-  // Always show the login screen (it has Play Offline for offline users)
+  // Show the login screen (has Play Offline for offline users)
   showLoginOverlay();
 
   // Hide login/register inputs if no DB available
@@ -259,11 +316,10 @@ document.querySelectorAll('.build-btn').forEach(btn => {
   });
 });
 
-// ── Continue (Load Save) ────────────────────
+// ── Continue (Load Save) — kept for settings panel ─
 const continueSaveBtn = document.getElementById('continue-save');
-if (hasSaveGame() && continueSaveBtn) {
-  continueSaveBtn.style.display = '';
-}
+// The main continue flow is now handled by the continue-or-new overlay;
+// this button still lives in the settings panel as a fallback.
 continueSaveBtn?.addEventListener('click', () => {
   if (loadGame()) {
     classSelectEl.classList.add('hidden');

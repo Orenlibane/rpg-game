@@ -19,10 +19,10 @@ import {
   DIFFICULTY, CLASS_UNLOCK_CONDITIONS, VILLAGE_BUILDINGS,
   ALCHEMY_RECIPES, HERO_COLORS, BESTIARY_BONUSES,
   TALENT_TREES, ENEMY_REACTIONS,
-} from './constants.js?v=42';
+} from './constants.js?v=43';
 import { t } from './i18n.js';
-import { generateVillage, generateDungeon, generateArenaMap, generateCave, generateMiniDungeon, generateBeach, generateTown, generateBossCave } from './mapgen.js?v=42';
-import { computeFOV } from './fov.js?v=42';
+import { generateVillage, generateDungeon, generateArenaMap, generateCave, generateMiniDungeon, generateBeach, generateTown, generateBossCave } from './mapgen.js?v=43';
+import { computeFOV } from './fov.js?v=43';
 
 function randInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));

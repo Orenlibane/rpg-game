@@ -111,6 +111,9 @@ export const state = {
   savedDungeon: null,
   // Monster breeding dens
   dens: [],
+  // Floor warp system: floors unlocked for teleport (every 5 floors reached)
+  unlockedFloorWarps: [],
+  showFloorWarp: false,
 };
 
 // ── Game Settings (persisted separately) ────
@@ -345,7 +348,15 @@ export function enterDungeon(floor = 1) {
   state.mode = 'dungeon';
   state.floor = floor;
   state.map = dungeon.map;
-  if (floor > state.stats.highestFloor) state.stats.highestFloor = floor;
+  if (floor > state.stats.highestFloor) {
+    state.stats.highestFloor = floor;
+    // Unlock floor warp checkpoint every 5 floors
+    if (floor % 5 === 0 && !state.unlockedFloorWarps.includes(floor)) {
+      state.unlockedFloorWarps.push(floor);
+      state.unlockedFloorWarps.sort((a, b) => a - b);
+      log(`⬆ Floor ${floor} warp unlocked! Return to the village warp stone to use it.`, 'level');
+    }
+  }
   // Quest: reach floor
   updateQuestProgress('reach', floor);
   checkAchievements();
@@ -2036,7 +2047,74 @@ export function applyCheatCode(code) {
     unlockAchievement('godlike');
     return true;
   }
+
+  if (code.toLowerCase() === 'perfectwarrior') {
+    const p = state.player;
+    // Set class to warrior if not already playing
+    if (!state.playerClass) state.playerClass = PLAYER_CLASS.WARRIOR;
+    // Level 50 with full stats
+    p.level = 50;
+    p.xp = 0;
+    p.xpToNext = 9999;
+    p.maxHp = 250;
+    p.hp = 250;
+    p.statPoints = 0;
+    p.skillPoints = 0;
+    p.gold = 9999;
+    // Max all warrior attributes
+    p.attrs = { str: 20, vit: 20, agi: 15, int: 5, cha: 5 };
+    // Give best warrior gear (Tier 5 + Dragonscale set)
+    const bestGear = ['excalibur', 'crown_of_ages', 'aegis_plate', 'dragon_gauntlets', 'boots_of_hermes', 'phoenix_cloak'];
+    for (const id of bestGear) {
+      if (ITEMS[id]) {
+        const item = { ...ITEMS[id] };
+        p.equipment[item.slot] = item;
+        registerArmoryItem(id);
+      }
+    }
+    // Max all warrior skills (both trees, skip subclass branches)
+    const tree = SKILL_TREES[PLAYER_CLASS.WARRIOR];
+    if (tree) {
+      for (const branch of Object.values(tree)) {
+        if (branch.subclass) continue; // skip subclass-locked branches
+        for (const skill of branch.skills) {
+          p.skills[skill.id] = skill.maxRank;
+        }
+      }
+    }
+    // Set berserker subclass and max its skills too
+    p.subclass = 'berserker';
+    if (tree) {
+      for (const branch of Object.values(tree)) {
+        if (branch.subclass && branch.subclass === 'berserker') {
+          for (const skill of branch.skills) {
+            p.skills[skill.id] = skill.maxRank;
+          }
+        }
+      }
+    }
+    // Unlock all floor warps up to floor 50
+    for (let f = 5; f <= 50; f += 5) state.unlockedFloorWarps = state.unlockedFloorWarps || [];
+    state.unlockedFloorWarps = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
+    log('⚔ Perfect Warrior activated! Level 50, best gear, all skills maxed.', 'level');
+    return true;
+  }
+
   return false;
+}
+
+export function closeFloorWarp() {
+  state.showFloorWarp = false;
+}
+
+export function warpToFloor(floor) {
+  if (!state.unlockedFloorWarps.includes(floor)) {
+    log('That floor warp is not unlocked yet.', 'info');
+    return;
+  }
+  state.showFloorWarp = false;
+  log(`⬆ Warping to floor ${floor}...`, 'level');
+  enterDungeon(floor);
 }
 
 export function closeHealer() {
@@ -3656,6 +3734,12 @@ export function playerMove(dx, dy) {
         enterDungeon(returnFloor);
       }
     }
+    return;
+  }
+
+  // Floor Warp
+  if (state.mode === 'village' && state.map[ny][nx] === TILE.FLOOR_WARP) {
+    state.showFloorWarp = true;
     return;
   }
 

@@ -14,6 +14,7 @@ import {
   closeArena, enterArena, nextArenaWave, leaveArena,
   closeBlacksmith, craftItem,
   toggleRunHistory, closeRunHistory,
+  closeFloorWarp, warpToFloor,
   gameSettings, updateSetting, pickupItem,
   apiRegister, apiLogin, setAuth, isLoggedIn, getAuthUsername,
   startCloudSync, checkDbStatus,
@@ -55,7 +56,7 @@ function hideLoginOverlay() {
 function updateUserBadge() {
   const el = document.getElementById('game-version');
   if (el && isLoggedIn()) {
-    el.textContent = `v30 | ${getAuthUsername()}`;
+    el.textContent = `v31 | ${getAuthUsername()}`;
   }
 }
 
@@ -312,6 +313,7 @@ document.addEventListener('keydown', (e) => {
     if (state.showFishing) { closeFishing(); render(); return; }
     if (state.showArena) { closeArena(); render(); return; }
     if (state.showChest) { closeChest(); render(); return; }
+    if (state.showFloorWarp) { closeFloorWarp(); render(); return; }
     if (state.showHealer) { closeHealer(); render(); return; }
     if (state.showShop) { closeShop(); render(); return; }
     if (state.showBlacksmith) { closeBlacksmith(); render(); return; }
@@ -340,6 +342,7 @@ document.addEventListener('keydown', (e) => {
   if (state.showBestiary) return;
   if (state.showArmory) return;
   if (state.showMinimap) return;
+  if (state.showFloorWarp) return;
   if (state.showHealer) return;
   if (state.showShop) return;
   if (state.showBlacksmith) return;
@@ -356,10 +359,10 @@ document.addEventListener('keydown', (e) => {
   if (state.throwMode) {
     e.preventDefault();
     switch (e.key) {
-      case 'ArrowUp': case 'w': case 'W':    throwInDirection(0, -1); break;
-      case 'ArrowDown': case 's': case 'S':   throwInDirection(0, 1);  break;
-      case 'ArrowLeft': case 'a': case 'A':   throwInDirection(-1, 0); break;
-      case 'ArrowRight': case 'd': case 'D':  throwInDirection(1, 0);  break;
+      case 'ArrowUp': case 'w': case 'W':                    throwInDirection(0, -1); break;
+      case 'ArrowDown': case 's': case 'S': case 'x': case 'X': throwInDirection(0, 1);  break;
+      case 'ArrowLeft': case 'a': case 'A':                   throwInDirection(-1, 0); break;
+      case 'ArrowRight': case 'd': case 'D':                  throwInDirection(1, 0);  break;
       case 'Escape': case 't': case 'T':      cancelThrowMode(); break;
     }
     render();
@@ -378,10 +381,10 @@ document.addEventListener('keydown', (e) => {
   }
 
   switch (e.key) {
-    case 'ArrowUp':    case 'w': case 'W': e.preventDefault(); playerMove(0, -1); break;
-    case 'ArrowDown':  case 's': case 'S': e.preventDefault(); playerMove(0, 1);  break;
-    case 'ArrowLeft':  case 'a': case 'A': e.preventDefault(); playerMove(-1, 0); break;
-    case 'ArrowRight': case 'd': case 'D': e.preventDefault(); playerMove(1, 0);  break;
+    case 'ArrowUp':    case 'w': case 'W':                     e.preventDefault(); playerMove(0, -1); break;
+    case 'ArrowDown':  case 's': case 'S': case 'x': case 'X': e.preventDefault(); playerMove(0, 1);  break;
+    case 'ArrowLeft':  case 'a': case 'A':                     e.preventDefault(); playerMove(-1, 0); break;
+    case 'ArrowRight': case 'd': case 'D':                     e.preventDefault(); playerMove(1, 0);  break;
     case ' ':          e.preventDefault(); playerWait();       break;
     case 't': case 'T':
       e.preventDefault();
@@ -510,6 +513,12 @@ document.getElementById('close-armory')?.addEventListener('click', () => {
 const closeMinimapBtn = document.getElementById('close-minimap');
 closeMinimapBtn?.addEventListener('click', () => {
   toggleMinimap();
+  render();
+});
+
+// Floor Warp
+document.getElementById('close-floor-warp')?.addEventListener('click', () => {
+  closeFloorWarp();
   render();
 });
 

@@ -63,6 +63,9 @@ export function generateVillage() {
   // Blacksmith (north-east area, near huts)
   map[5][20] = TILE.BLACKSMITH;
 
+  // Floor Warp (north of center crossroads — easy to find)
+  map[5][12] = TILE.FLOOR_WARP;
+
   // Player start position
   const playerStart = { x: 11, y: 9 };
 

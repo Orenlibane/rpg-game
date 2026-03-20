@@ -976,6 +976,37 @@ function buildTileSprite(tileType, variant) {
       g.stroke();
       break;
 
+    case TILE.FLOOR_WARP: {
+      // Green grass base
+      fillRect(g, 0, 0, 32, 32, '#2d5a1e');
+      // Stone plinth
+      fillRect(g, 8, 10, 16, 14, '#5a5a6a');
+      fillRect(g, 9, 11, 14, 12, '#3a3a4a');
+      // Swirling portal circle
+      g.strokeStyle = '#44aaff';
+      g.lineWidth = 2;
+      g.beginPath();
+      g.arc(16, 17, 7, 0, Math.PI * 2);
+      g.stroke();
+      g.strokeStyle = '#88ddff';
+      g.lineWidth = 1;
+      g.beginPath();
+      g.arc(16, 17, 4, 0, Math.PI * 1.3);
+      g.stroke();
+      // Glow dot in center
+      g.fillStyle = '#aaeeff';
+      g.beginPath();
+      g.arc(16, 17, 2, 0, Math.PI * 2);
+      g.fill();
+      // Up-arrow above plinth
+      g.fillStyle = '#44aaff';
+      g.beginPath();
+      g.moveTo(16, 3); g.lineTo(21, 8); g.lineTo(11, 8);
+      g.closePath();
+      g.fill();
+      break;
+    }
+
     default:
       fillRect(g, 0, 0, 32, 32, '#1a1a2a');
       break;

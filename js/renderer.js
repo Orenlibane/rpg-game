@@ -590,6 +590,9 @@ function updateUI() {
   // Minimap overlay
   updateMinimap();
 
+  // Floor Warp overlay
+  updateFloorWarpOverlay();
+
   // Healer overlay
   updateHealerOverlay();
 
@@ -2008,6 +2011,39 @@ function renderTownUpgradeSection(overlay, building) {
     upgradeTownBuilding(building);
     render();
   });
+}
+
+// ── Floor Warp Overlay ───────────────────────
+
+function updateFloorWarpOverlay() {
+  const overlay = document.getElementById('floor-warp-overlay');
+  if (!overlay) return;
+  if (!state.showFloorWarp) {
+    overlay.classList.add('hidden');
+    return;
+  }
+  overlay.classList.remove('hidden');
+
+  const list = document.getElementById('floor-warp-list');
+  if (!list) return;
+  list.innerHTML = '';
+
+  const warps = state.unlockedFloorWarps || [];
+  if (warps.length === 0) {
+    list.innerHTML = '<p class="warp-empty">No floors unlocked yet.<br>Reach floor 5, 10, 15... to unlock warp points.</p>';
+    return;
+  }
+
+  for (const floor of warps) {
+    const btn = document.createElement('button');
+    btn.className = 'warp-floor-btn';
+    btn.innerHTML = `<span class="warp-floor-num">Floor ${floor}</span><span class="warp-floor-icon">⬆</span>`;
+    btn.addEventListener('click', () => {
+      import('./engine.js?v=28').then(({ warpToFloor }) => { warpToFloor(floor); });
+      overlay.classList.add('hidden');
+    });
+    list.appendChild(btn);
+  }
 }
 
 function updateHealerOverlay() {

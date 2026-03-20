@@ -46,6 +46,7 @@ export const TILE = {
   SWAMP_FLOOR:      40,
   SHADOW_WALL:      41,
   SHADOW_FLOOR:     42,
+  FLOOR_WARP:       43,
 };
 
 
@@ -94,6 +95,7 @@ export const TILE_PROPS = {
   [TILE.SWAMP_FLOOR]:      { name: 'Muddy Ground',    walkable: true,  transparent: true  },
   [TILE.SHADOW_WALL]:      { name: 'Void Barrier',    walkable: false, transparent: false },
   [TILE.SHADOW_FLOOR]:     { name: 'Shadow Stone',    walkable: true,  transparent: true  },
+  [TILE.FLOOR_WARP]:       { name: 'Floor Warp',      walkable: true,  transparent: true  },
 };
 
 // ── Item Features ────────────────────────────────

@@ -44,7 +44,7 @@
     <div id="ui-panel">
       <!-- Player Stats -->
       <div id="stats-panel" class="panel">
-        <h2>Dungeon Diver <span id="game-version" style="font-size:10px;color:#555;font-weight:normal;">v30</span></h2>
+        <h2>Dungeon Diver <span id="game-version" style="font-size:10px;color:#555;font-weight:normal;">v31</span></h2>
         <div id="class-display" class="class-badge">Warrior</div>
         <div id="prestige-badge" style="display: none;"></div>
         <div id="floor-display" class="stat-row">Village</div>
@@ -100,7 +100,7 @@
       <!-- Controls Help -->
       <div id="controls-panel" class="panel">
         <h3 data-i18n="ui.controls">Controls</h3>
-        <div class="control-row"><kbd>Arrows</kbd> / <kbd>WASD</kbd> <span data-i18n="ctrl.move">Move</span></div>
+        <div class="control-row"><kbd>Arrows</kbd> / <kbd>WASD</kbd> / <kbd>AWDX</kbd> <span data-i18n="ctrl.move">Move</span></div>
         <div class="control-row"><kbd>1-0</kbd> <span data-i18n="ctrl.use_item">Use item</span></div>
         <div class="control-row"><kbd>Space</kbd> <span data-i18n="ctrl.wait">Wait a turn</span></div>
         <div class="control-row"><kbd>T</kbd> <span data-i18n="ctrl.throw">Throw item</span></div>
@@ -142,7 +142,7 @@
         <div class="login-logo-icon">&#9876;</div>
         <h1 class="title-login-v2">Dungeon Diver</h1>
         <p class="login-tagline">Descend. Fight. Survive.</p>
-        <span class="login-version-badge">v30</span>
+        <span class="login-version-badge">v31</span>
       </div>
 
       <!-- Login Form -->
@@ -169,6 +169,10 @@
         <h3 class="changelog-title">&#128220; Changelog</h3>
         <div class="changelog-scroll" id="changelog-scroll">
           <div class="changelog-entry changelog-new">
+            <span class="changelog-version">v31</span>
+            <span class="changelog-text">AWDX movement, floor warp teleport in town, perfectWarrior cheat, mobile UI overhaul</span>
+          </div>
+          <div class="changelog-entry">
             <span class="changelog-version">v30</span>
             <span class="changelog-text">Renamed to Dungeon Diver, redesigned login screen, changelog added</span>
           </div>
@@ -594,6 +598,18 @@
         <button id="next-wave-btn" class="choice-btn arena-enter-btn" data-i18n="arena.next_wave">Next Wave</button>
         <button id="leave-arena-btn" class="choice-btn" data-i18n="arena.leave_arena">Leave Arena</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Floor Warp Overlay -->
+  <div id="floor-warp-overlay" class="overlay hidden">
+    <div class="overlay-content floor-warp-panel">
+      <div class="floor-warp-header">
+        <h1 class="title-floor-warp">⬆ Warp Stone</h1>
+        <button id="close-floor-warp" class="floor-warp-close-btn">X</button>
+      </div>
+      <p class="floor-warp-desc">Teleport directly to a previously reached checkpoint floor. Unlock new warps by reaching every 5th floor.</p>
+      <div id="floor-warp-list" class="floor-warp-list"></div>
     </div>
   </div>
 

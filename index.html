@@ -44,7 +44,7 @@
     <div id="ui-panel">
       <!-- Player Stats -->
       <div id="stats-panel" class="panel">
-        <h2>Dungeon Diver <span id="game-version" style="font-size:10px;color:#555;font-weight:normal;">v39</span></h2>
+        <h2>Dungeon Diver <span id="game-version" style="font-size:10px;color:#555;font-weight:normal;">v42</span></h2>
         <div id="class-display" class="class-badge">Warrior</div>
         <div id="prestige-badge" style="display: none;"></div>
         <div id="floor-display" class="stat-row">Village</div>
@@ -142,7 +142,7 @@
         <div class="login-logo-icon">&#9876;</div>
         <h1 class="title-login-v2">Dungeon Diver</h1>
         <p class="login-tagline">Descend. Fight. Survive.</p>
-        <span class="login-version-badge">v39</span>
+        <span class="login-version-badge">v42</span>
       </div>
 
       <!-- Login Form -->
@@ -169,8 +169,16 @@
         <h3 class="changelog-title">&#128220; Changelog</h3>
         <div class="changelog-scroll" id="changelog-scroll">
           <div class="changelog-entry changelog-new">
+            <span class="changelog-version">v42</span>
+            <span class="changelog-text">🗿 Boss Trial Cave — 5-room dungeon in the village with 5 unique multi-phase epic bosses (Stone Colossus, Flame Tyrant, Lich Queen, Karg the War Machine, The Ancient One). Each boss has 3 stages, unique abilities, summons &amp; dramatic phase messages. Boss HP banner &amp; phase indicator UI. New achievement: Cave Champion 🏆. Fix: crash on game end / prestige.</span>
+          </div>
+          <div class="changelog-entry">
+            <span class="changelog-version">v40</span>
+            <span class="changelog-text">Fix: mini dungeon exit now correctly restores the real dungeon floor instead of crashing</span>
+          </div>
+          <div class="changelog-entry">
             <span class="changelog-version">v39</span>
-            <span class="changelog-text">Map notes, auto-explore, enemy speech bubbles, talent trees, hero name/color. Fix: cave entrance now enters the dungeon; floor 1 gets up-stairs back to village; beach/town no longer crash; beach tile sprite no longer throws ReferenceError</span>
+            <span class="changelog-text">Map notes (N), auto-explore (Tab), enemy speech bubbles, talent trees (U), bigger log. Fix: cave entrance enters dungeon; floor 1 has up-stairs; beach/town no longer crash; beach tile ReferenceError fixed; mobile controls fixed; floor cache restored correctly</span>
           </div>
           <div class="changelog-entry">
             <span class="changelog-version">v38</span>
@@ -822,9 +830,9 @@
       document.body.appendChild(d);
     };
   </script>
-  <script type="module" src="js/main.js?v=39"></script>
+  <script type="module" src="js/main.js?v=42"></script>
   <script type="module">
-    import('./js/main.js?v=39').catch(function(e) {
+    import('./js/main.js?v=42').catch(function(e) {
       var d = document.createElement('div');
       d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:red;color:white;padding:10px;z-index:9999;font-size:14px';
       d.textContent = 'MODULE LOAD ERROR: ' + e.message;

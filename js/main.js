@@ -23,9 +23,9 @@ import {
   setHeroName, setHeroColor, enterBeach, enterTown, exitBeach, exitTown,
   toggleAutoExplore, addMapNote, getMapNote, toggleTalentTree, closeTalentTree,
   unlockTalent, getTalentPoints, getUnlockedTalents,
-} from './engine.js?v=39';
-import { render, resizeCanvas } from './renderer.js?v=39';
-import { PLAYER_CLASS, PRESTIGE, DIFFICULTY, TALENT_TREES } from './constants.js?v=39';
+} from './engine.js?v=42';
+import { render, resizeCanvas } from './renderer.js?v=42';
+import { PLAYER_CLASS, PRESTIGE, DIFFICULTY, TALENT_TREES } from './constants.js?v=42';
 import { initI18n, setLanguage, applyStaticTranslations, t } from './i18n.js';
 
 // ── Initialize i18n ─────────────────────────

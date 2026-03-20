@@ -1,5 +1,5 @@
-import { TILE, TILE_SIZE, ENTITY } from './constants.js?v=39';
-import { gameSettings } from './engine.js?v=39';
+import { TILE, TILE_SIZE, ENTITY } from './constants.js?v=42';
+import { gameSettings } from './engine.js?v=42';
 
 const cache = {};
 const tileSeedCache = {};
@@ -1217,6 +1217,129 @@ function buildTileSprite(tileType, variant) {
       // Text
       g.fillStyle = '#60c0a0';
       g.font = `${8 * SC}px monospace`;
+      g.textAlign = 'center';
+      g.fillText('EXIT', 16 * SC, 31 * SC);
+      break;
+    }
+
+    // ── Boss Cave Tiles ───────────────────────────────
+    case TILE.BOSS_CAVE_ENTRANCE: {
+      // Imposing skull-carved archway in village grass
+      fillRect(g, 0, 0, 32, 32, '#3a5a28');
+      // Archway stone
+      fillRect(g, 4, 4, 24, 28, '#383028');
+      fillRect(g, 6, 6, 20, 24, '#282018');
+      // Door arch opening
+      fillRect(g, 8, 10, 16, 20, '#0a0808');
+      // Skull carvings
+      fillRect(g, 10, 6, 5, 5, '#504030');
+      fillRect(g, 17, 6, 5, 5, '#504030');
+      fillRect(g, 11, 7, 3, 2, '#383020');
+      fillRect(g, 18, 7, 3, 2, '#383020');
+      // Eye sockets in skulls
+      fillRect(g, 11, 7, 1, 1, '#cc2200');
+      fillRect(g, 13, 7, 1, 1, '#cc2200');
+      fillRect(g, 18, 7, 1, 1, '#cc2200');
+      fillRect(g, 20, 7, 1, 1, '#cc2200');
+      // "TRIALS" text effect using small blocks
+      fillRect(g, 9, 4, 14, 2, '#705040');
+      // Red glow from entrance
+      g.fillStyle = 'rgba(200,30,10,0.25)';
+      g.fillRect(8 * SC, 10 * SC, 16 * SC, 22 * SC);
+      // Skull at top center
+      fillRect(g, 13, 2, 6, 5, '#686050');
+      fillRect(g, 14, 3, 4, 3, '#787060');
+      fillRect(g, 14, 3, 1, 1, '#101010');
+      fillRect(g, 17, 3, 1, 1, '#101010');
+      break;
+    }
+
+    case TILE.BOSS_FLOOR: {
+      // Dark hallowed stone with arcane rune pattern
+      const floorBase = ['#1c1418', '#201618', '#1e1618'][variant];
+      const runeColor = ['#3a2840', '#382640', '#3c2a42'][variant];
+      fillRect(g, 0, 0, 32, 32, floorBase);
+      // Stone tile grid
+      g.fillStyle = '#160e12';
+      g.fillRect(0, 0, 32 * SC, 1 * SC);
+      g.fillRect(0, 0, 1 * SC, 32 * SC);
+      // Subtle rune markings
+      if (variant === 0) {
+        fillRect(g, 12, 12, 8, 1, runeColor);
+        fillRect(g, 16, 8, 1, 8, runeColor);
+        fillRect(g, 12, 20, 4, 1, runeColor);
+        fillRect(g, 19, 16, 4, 1, runeColor);
+      } else if (variant === 1) {
+        fillRect(g, 14, 10, 4, 12, runeColor);
+        fillRect(g, 10, 14, 12, 4, runeColor);
+      }
+      break;
+    }
+
+    case TILE.BOSS_DOOR: {
+      // Sealed iron gate with glowing red lock rune — impassable
+      fillRect(g, 0, 0, 32, 32, '#1a1010');
+      // Iron frame
+      fillRect(g, 2, 0, 4, 32, '#484040');
+      fillRect(g, 26, 0, 4, 32, '#484040');
+      fillRect(g, 2, 0, 28, 3, '#484040');
+      fillRect(g, 2, 29, 28, 3, '#484040');
+      // Gate bars (vertical)
+      for (let bx = 8; bx <= 24; bx += 4) {
+        fillRect(g, bx, 3, 2, 26, '#565050');
+        fillRect(g, bx, 3, 2, 1, '#686060');
+      }
+      // Horizontal crossbar
+      fillRect(g, 2, 14, 28, 4, '#565050');
+      fillRect(g, 2, 14, 28, 1, '#686060');
+      // Lock — glowing red rune
+      fillRect(g, 13, 12, 6, 8, '#1a0808');
+      fillRect(g, 14, 13, 4, 6, '#cc1010');
+      fillRect(g, 15, 14, 2, 4, '#ff4040');
+      fillRect(g, 15, 15, 2, 2, '#ffaaaa');
+      // Skull emblem above lock
+      fillRect(g, 14, 8, 4, 4, '#484040');
+      fillRect(g, 15, 9, 2, 1, '#202020');
+      fillRect(g, 15, 9, 1, 1, '#cc0000');
+      break;
+    }
+
+    case TILE.BOSS_DOOR_OPEN: {
+      // Open gateway — stone arch, passage visible
+      fillRect(g, 0, 0, 32, 32, '#1a1418');
+      // Stone pillars on sides
+      fillRect(g, 0, 0, 6, 32, '#3a3028');
+      fillRect(g, 26, 0, 6, 32, '#3a3028');
+      fillRect(g, 1, 0, 5, 32, '#4a4038');
+      fillRect(g, 26, 0, 5, 32, '#4a4038');
+      // Open passage floor continuation
+      fillRect(g, 6, 0, 20, 32, '#1c1418');
+      // Gold rune trim on pillars
+      fillRect(g, 3, 6, 2, 20, '#c8a020');
+      fillRect(g, 27, 6, 2, 20, '#c8a020');
+      // Green glow (boss defeated)
+      g.fillStyle = 'rgba(30,180,80,0.12)';
+      g.fillRect(6 * SC, 0, 20 * SC, 32 * SC);
+      // Checkmark / victory symbol
+      fillRect(g, 14, 14, 4, 2, '#40cc60');
+      fillRect(g, 12, 16, 4, 2, '#40cc60');
+      break;
+    }
+
+    case TILE.BOSS_CAVE_EXIT: {
+      // Exit archway back to village — green arrow
+      fillRect(g, 0, 0, 32, 32, '#1a1418');
+      fillRect(g, 4, 4, 24, 24, '#282018');
+      fillRect(g, 8, 8, 16, 18, '#0a0808');
+      // Green exit arrow
+      g.fillStyle = '#40e080';
+      g.beginPath();
+      g.moveTo(16 * SC, 4 * SC); g.lineTo(24 * SC, 16 * SC); g.lineTo(19 * SC, 16 * SC);
+      g.lineTo(19 * SC, 26 * SC); g.lineTo(13 * SC, 26 * SC); g.lineTo(13 * SC, 16 * SC);
+      g.lineTo(8 * SC, 16 * SC);
+      g.closePath(); g.fill();
+      g.fillStyle = '#20c060';
+      g.font = `${7 * SC}px monospace`;
       g.textAlign = 'center';
       g.fillText('EXIT', 16 * SC, 31 * SC);
       break;
@@ -2641,6 +2764,239 @@ function buildEnemySprite(entityType) {
       fillRect(g, 2, 18, 4, 2, '#2a0040');
       fillRect(g, 26, 18, 4, 2, '#2a0040');
       break;
+
+    // ── Boss Cave Bosses ──────────────────────────────────
+    case ENTITY.STONE_COLOSSUS: {
+      // Massive stone golem — grey/brown with cracks and glowing core
+      // Outer silhouette
+      fillRect(g, 4, 0, 24, 32, '#6a6060');
+      fillRect(g, 2, 4, 28, 24, '#6a6060');
+      // Stone texture/shading
+      fillRect(g, 5, 1, 22, 30, '#7a7070');
+      fillRect(g, 6, 2, 20, 28, '#847878');
+      // Head boulder
+      fillRect(g, 8, 2, 16, 12, '#909090');
+      fillRect(g, 9, 3, 14, 10, '#a0a0a0');
+      // Eyes — glowing amber
+      fillRect(g, 10, 6, 4, 3, '#e08020');
+      fillRect(g, 18, 6, 4, 3, '#e08020');
+      fillRect(g, 11, 7, 2, 1, '#ffcc44');
+      fillRect(g, 19, 7, 2, 1, '#ffcc44');
+      // Body
+      fillRect(g, 6, 14, 20, 14, '#808080');
+      // Glowing lava cracks
+      fillRect(g, 8, 16, 2, 8, '#ff6600');
+      fillRect(g, 14, 18, 4, 2, '#ff8800');
+      fillRect(g, 20, 15, 2, 6, '#ff6600');
+      fillRect(g, 10, 24, 6, 2, '#ff8800');
+      // Arms
+      fillRect(g, 0, 14, 6, 10, '#707070');
+      fillRect(g, 26, 14, 6, 10, '#707070');
+      // Fist details
+      fillRect(g, 0, 22, 7, 4, '#888080');
+      fillRect(g, 25, 22, 7, 4, '#888080');
+      // Dark outline
+      g.fillStyle = 'rgba(0,0,0,0.3)';
+      g.fillRect(4, 0, 24, 1); g.fillRect(4, 31, 24, 1);
+      g.fillRect(2, 2, 2, 28); g.fillRect(28, 2, 2, 28);
+      break;
+    }
+
+    case ENTITY.FLAME_TYRANT: {
+      // Fire dragon — deep red/orange with wing membranes and flame crown
+      // Wing shadows
+      fillRect(g, 0, 4, 10, 20, '#6a1a0a');
+      fillRect(g, 22, 4, 10, 20, '#6a1a0a');
+      // Body
+      fillRect(g, 8, 4, 16, 24, '#aa2010');
+      fillRect(g, 9, 5, 14, 22, '#cc3020');
+      // Belly scales
+      fillRect(g, 11, 10, 10, 14, '#e84828');
+      fillRect(g, 12, 11, 8, 12, '#f86040');
+      // Head
+      fillRect(g, 9, 2, 14, 10, '#bb2814');
+      fillRect(g, 10, 3, 12, 8, '#dd3820');
+      // Snout
+      fillRect(g, 11, 8, 10, 4, '#cc3020');
+      fillRect(g, 12, 10, 8, 3, '#e04030');
+      // Eyes — burning gold
+      fillRect(g, 10, 4, 3, 2, '#ffd700');
+      fillRect(g, 19, 4, 3, 2, '#ffd700');
+      fillRect(g, 11, 5, 1, 1, '#fff');
+      fillRect(g, 20, 5, 1, 1, '#fff');
+      // Flame crown
+      fillRect(g, 10, 0, 3, 4, '#ff8800');
+      fillRect(g, 14, 0, 4, 3, '#ffaa00');
+      fillRect(g, 19, 0, 3, 4, '#ff8800');
+      fillRect(g, 12, 0, 2, 2, '#ffee00');
+      fillRect(g, 18, 0, 2, 2, '#ffee00');
+      // Wing veins
+      fillRect(g, 2, 8, 6, 1, '#882010');
+      fillRect(g, 2, 12, 8, 1, '#882010');
+      fillRect(g, 2, 16, 6, 1, '#882010');
+      fillRect(g, 24, 8, 6, 1, '#882010');
+      fillRect(g, 22, 12, 8, 1, '#882010');
+      fillRect(g, 24, 16, 6, 1, '#882010');
+      // Fire breath glow
+      g.fillStyle = 'rgba(255,100,0,0.18)';
+      g.beginPath(); g.arc(16, 18, 14, 0, Math.PI * 2); g.fill();
+      break;
+    }
+
+    case ENTITY.LICH_QUEEN: {
+      // Ethereal undead sorceress — dark robes, bone crown, glowing orb
+      // Robe
+      fillRect(g, 8, 14, 16, 18, '#1a0a2a');
+      fillRect(g, 7, 16, 18, 14, '#220a38');
+      fillRect(g, 9, 15, 14, 16, '#2a1040');
+      // Robe trim — gold
+      fillRect(g, 8, 14, 16, 1, '#c8a820');
+      fillRect(g, 7, 16, 1, 14, '#c8a820');
+      fillRect(g, 24, 16, 1, 14, '#c8a820');
+      // Body beneath robe
+      fillRect(g, 12, 10, 8, 6, '#2a1840');
+      // Head — pale with hollow eyes
+      fillRect(g, 10, 2, 12, 10, '#c8b8d8');
+      fillRect(g, 11, 3, 10, 8, '#dcc8e8');
+      // Hollow eyes — purple/void
+      fillRect(g, 11, 4, 3, 3, '#6020a0');
+      fillRect(g, 18, 4, 3, 3, '#6020a0');
+      fillRect(g, 12, 5, 1, 1, '#cc44ff');
+      fillRect(g, 19, 5, 1, 1, '#cc44ff');
+      // Bone crown
+      fillRect(g, 10, 0, 2, 3, '#e8e0d0');
+      fillRect(g, 14, 0, 4, 2, '#e8e0d0');
+      fillRect(g, 20, 0, 2, 3, '#e8e0d0');
+      fillRect(g, 12, 1, 8, 2, '#d8d0c0');
+      // Staff
+      fillRect(g, 4, 6, 3, 22, '#4a3020');
+      fillRect(g, 5, 5, 2, 2, '#6a5030');
+      // Skull orb atop staff
+      fillRect(g, 3, 2, 6, 5, '#d0c8b8');
+      fillRect(g, 4, 3, 4, 3, '#e0d8c8');
+      fillRect(g, 4, 3, 2, 1, '#8040c0'); // eye
+      fillRect(g, 3, 4, 1, 1, '#6020a0'); // nostril
+      // Glowing aura
+      g.fillStyle = 'rgba(120,0,200,0.15)';
+      g.beginPath(); g.arc(16, 16, 15, 0, Math.PI * 2); g.fill();
+      break;
+    }
+
+    case ENTITY.KARG_WAR_MACHINE: {
+      // Mechanical construct — steel grey with glowing red lens and cannon barrel
+      // Main chassis
+      fillRect(g, 6, 4, 20, 24, '#707880');
+      fillRect(g, 7, 5, 18, 22, '#808890');
+      fillRect(g, 8, 6, 16, 20, '#8890a0');
+      // Bolts and panels
+      fillRect(g, 8, 6, 3, 3, '#606870');
+      fillRect(g, 21, 6, 3, 3, '#606870');
+      fillRect(g, 8, 24, 3, 3, '#606870');
+      fillRect(g, 21, 24, 3, 3, '#606870');
+      fillRect(g, 9, 7, 1, 1, '#aab0b8');
+      fillRect(g, 22, 7, 1, 1, '#aab0b8');
+      fillRect(g, 9, 25, 1, 1, '#aab0b8');
+      fillRect(g, 22, 25, 1, 1, '#aab0b8');
+      // Head unit
+      fillRect(g, 9, 4, 14, 9, '#6a7280');
+      fillRect(g, 10, 5, 12, 7, '#80909a');
+      // Main cannon barrel (left arm)
+      fillRect(g, 0, 13, 10, 6, '#5a6268');
+      fillRect(g, 1, 14, 8, 4, '#6a7278');
+      fillRect(g, 0, 15, 2, 2, '#404850');
+      // Right claw arm
+      fillRect(g, 22, 14, 10, 8, '#5a6268');
+      fillRect(g, 24, 16, 7, 4, '#6a7278');
+      fillRect(g, 29, 15, 3, 2, '#404850');
+      fillRect(g, 29, 18, 3, 2, '#404850');
+      // Glowing red targeting eye
+      fillRect(g, 13, 7, 6, 4, '#300000');
+      fillRect(g, 14, 8, 4, 2, '#ff2000');
+      fillRect(g, 15, 8, 2, 2, '#ff8080');
+      // Steam vents
+      fillRect(g, 10, 12, 3, 2, '#909aa8');
+      fillRect(g, 19, 12, 3, 2, '#909aa8');
+      // Danger stripes
+      for (let si = 0; si < 4; si++) {
+        fillRect(g, 8 + si * 4, 27, 2, 4, '#ffcc00');
+        fillRect(g, 10 + si * 4, 27, 2, 4, '#333');
+      }
+      break;
+    }
+
+    case ENTITY.THE_ANCIENT_ONE: {
+      // Eldritch void entity — shapeless mass of tentacles and eyes
+      // Void aura
+      g.fillStyle = 'rgba(0,20,40,0.5)';
+      g.beginPath(); g.arc(16, 16, 16, 0, Math.PI * 2); g.fill();
+      // Core mass — deep teal/black
+      fillRect(g, 6, 6, 20, 20, '#081820');
+      fillRect(g, 5, 8, 22, 16, '#0a2030');
+      fillRect(g, 8, 5, 16, 22, '#0c1a28');
+      // Tentacles
+      fillRect(g, 2, 10, 6, 3, '#082018');
+      fillRect(g, 0, 14, 6, 3, '#082018');
+      fillRect(g, 2, 18, 6, 3, '#082018');
+      fillRect(g, 24, 10, 6, 3, '#082018');
+      fillRect(g, 26, 14, 6, 3, '#082018');
+      fillRect(g, 24, 18, 6, 3, '#082018');
+      fillRect(g, 10, 0, 3, 6, '#082018');
+      fillRect(g, 19, 0, 3, 6, '#082018');
+      fillRect(g, 10, 26, 3, 6, '#082018');
+      fillRect(g, 19, 26, 3, 6, '#082018');
+      // Tentacle suckers
+      fillRect(g, 3, 11, 1, 1, '#204040'); fillRect(g, 1, 15, 1, 1, '#204040');
+      fillRect(g, 3, 19, 1, 1, '#204040'); fillRect(g, 25, 11, 1, 1, '#204040');
+      fillRect(g, 27, 15, 1, 1, '#204040'); fillRect(g, 25, 19, 1, 1, '#204040');
+      // Many eyes — glowing cyan/yellow
+      const eyePositions = [[10,10],[18,10],[13,14],[20,14],[11,18],[17,18],[15,9],[14,19]];
+      for (const [ex, ey] of eyePositions) {
+        fillRect(g, ex, ey, 3, 2, '#001a1a');
+        fillRect(g, ex+1, ey, 1, 2, '#00ffee');
+      }
+      // Central lidless eye
+      fillRect(g, 13, 14, 6, 4, '#001010');
+      fillRect(g, 14, 14, 4, 4, '#00ccaa');
+      fillRect(g, 15, 15, 2, 2, '#ffffff');
+      fillRect(g, 15, 15, 2, 2, '#0a0a0a');
+      // Void glow
+      g.fillStyle = 'rgba(0,200,180,0.12)';
+      g.beginPath(); g.arc(16, 16, 13, 0, Math.PI * 2); g.fill();
+      break;
+    }
+
+    // Boss Cave Minions
+    case ENTITY.STONE_SHARD: {
+      // Small spiky rock fragment
+      fillRect(g, 10, 6, 12, 18, '#909090');
+      fillRect(g, 8, 10, 16, 12, '#808080');
+      fillRect(g, 12, 4, 8, 4, '#a0a0a0');
+      fillRect(g, 13, 2, 6, 4, '#b0b0b0');
+      // Crack lines
+      fillRect(g, 14, 10, 1, 8, '#606060');
+      fillRect(g, 18, 8, 1, 10, '#606060');
+      // Orange core glow
+      fillRect(g, 15, 14, 2, 2, '#ff8800');
+      break;
+    }
+
+    case ENTITY.TURRET_DRONE: {
+      // Small mechanical turret ball with red targeting dot
+      fillRect(g, 8, 8, 16, 16, '#6a7280');
+      fillRect(g, 9, 9, 14, 14, '#808898');
+      fillRect(g, 12, 12, 8, 8, '#9099a8');
+      // Barrel
+      fillRect(g, 0, 14, 12, 4, '#505860');
+      fillRect(g, 0, 15, 12, 2, '#404850');
+      // Red targeting eye
+      fillRect(g, 13, 14, 6, 4, '#cc0000');
+      fillRect(g, 14, 15, 4, 2, '#ff4040');
+      fillRect(g, 15, 15, 2, 2, '#ffaaaa');
+      // Legs
+      fillRect(g, 10, 23, 4, 6, '#505860');
+      fillRect(g, 18, 23, 4, 6, '#505860');
+      break;
+    }
 
     default:
       // Generic enemy

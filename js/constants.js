@@ -61,6 +61,12 @@ export const TILE = {
   TOWN_ENTRANCE:  51,
   BEACH_SAND:     52,
   BEACH_WALL:     53,
+  // Boss Cave
+  BOSS_CAVE_ENTRANCE: 54,
+  BOSS_FLOOR:         55,
+  BOSS_DOOR:          56,
+  BOSS_DOOR_OPEN:     57,
+  BOSS_CAVE_EXIT:     58,
 };
 
 
@@ -118,8 +124,13 @@ export const TILE_PROPS = {
   [TILE.VILLAGE_CAVE_EXIT]:{ name: 'Cave Exit',         walkable: true,  transparent: true  },
   [TILE.BEACH_ENTRANCE]:   { name: 'Beach Path',   walkable: true,  transparent: true  },
   [TILE.TOWN_ENTRANCE]:    { name: 'Town Gate',    walkable: true,  transparent: true  },
-  [TILE.BEACH_SAND]:       { name: 'Sandy Beach',  walkable: true,  transparent: true  },
-  [TILE.BEACH_WALL]:       { name: 'Rocky Shore',  walkable: false, transparent: false },
+  [TILE.BEACH_SAND]:          { name: 'Sandy Beach',       walkable: true,  transparent: true  },
+  [TILE.BEACH_WALL]:          { name: 'Rocky Shore',       walkable: false, transparent: false },
+  [TILE.BOSS_CAVE_ENTRANCE]:  { name: 'Trial Cave',        walkable: true,  transparent: true  },
+  [TILE.BOSS_FLOOR]:          { name: 'Hallowed Stone',    walkable: true,  transparent: true  },
+  [TILE.BOSS_DOOR]:           { name: 'Sealed Gate',       walkable: false, transparent: false },
+  [TILE.BOSS_DOOR_OPEN]:      { name: 'Open Gate',         walkable: true,  transparent: true  },
+  [TILE.BOSS_CAVE_EXIT]:      { name: 'Cave Exit',         walkable: true,  transparent: true  },
 };
 
 // ── Item Features ────────────────────────────────
@@ -238,6 +249,15 @@ export const ENTITY = {
   GUARDIAN_KEEPER:   'guardian_keeper',
   // Dragon's Lair minion
   KOBOLD:           'kobold',
+  // Boss Cave Bosses
+  STONE_COLOSSUS:   'stone_colossus',
+  FLAME_TYRANT:     'flame_tyrant',
+  LICH_QUEEN:       'lich_queen',
+  KARG_WAR_MACHINE: 'karg_war_machine',
+  THE_ANCIENT_ONE:  'the_ancient_one',
+  // Boss Cave Minions
+  STONE_SHARD:      'stone_shard',
+  TURRET_DRONE:     'turret_drone',
 };
 
 // ── Player Classes ────────────────────────────────
@@ -504,6 +524,15 @@ export const BASE_STATS = {
   [ENTITY.GUARDIAN_HOARDER]:  { maxHp: 60, hp: 60, power: 10, armor: 4, xpReward: 80 },
   [ENTITY.GUARDIAN_SENTINEL]: { maxHp: 70, hp: 70, power: 8,  armor: 6, xpReward: 90 },
   [ENTITY.GUARDIAN_KEEPER]:   { maxHp: 55, hp: 55, power: 12, armor: 3, xpReward: 85 },
+  // Boss Cave — bosses (base stats; actual HP/power comes from BOSS_CAVE_BOSSES)
+  [ENTITY.STONE_COLOSSUS]:    { maxHp: 200, hp: 200, power: 18, armor: 6,  xpReward: 500 },
+  [ENTITY.FLAME_TYRANT]:      { maxHp: 220, hp: 220, power: 20, armor: 4,  xpReward: 600 },
+  [ENTITY.LICH_QUEEN]:        { maxHp: 180, hp: 180, power: 22, armor: 2,  xpReward: 700 },
+  [ENTITY.KARG_WAR_MACHINE]:  { maxHp: 240, hp: 240, power: 16, armor: 8,  xpReward: 800 },
+  [ENTITY.THE_ANCIENT_ONE]:   { maxHp: 280, hp: 280, power: 25, armor: 3,  xpReward: 1000 },
+  // Boss Cave — minions
+  [ENTITY.STONE_SHARD]:       { maxHp: 20,  hp: 20,  power: 8,  armor: 3,  xpReward: 25 },
+  [ENTITY.TURRET_DRONE]:      { maxHp: 18,  hp: 18,  power: 10, armor: 2,  xpReward: 20 },
 };
 
 // ── Equipment Slots ──────────────────────────────
@@ -1852,6 +1881,141 @@ export const PHASE_BOSSES = {
   },
 };
 
+// ── Boss Cave: 5-Room Trial Cave ────────────────────────────────
+// Each entry mirrors PHASE_BOSSES format + extra boss-cave fields.
+// Bosses are indexed 0-4 matching room order.
+export const BOSS_CAVE_BOSSES = [
+  {
+    type: ENTITY.STONE_COLOSSUS,
+    name: '🗿 The Stone Colossus',
+    roomName: 'Hall of Earth',
+    bossSize: 2,
+    baseHp: 200, basePower: 18, baseArmor: 6,
+    reward: { gold: 120, items: 2 },
+    phases: [
+      {
+        threshold: 1.0, mods: {},
+        abilities: ['melee', 'ground_stomp'],
+        msg: '🗿 The Stone Colossus awakens! The very cave trembles!',
+      },
+      {
+        threshold: 0.66, mods: { power: 4 },
+        abilities: ['melee', 'ground_stomp', 'rock_throw'],
+        summon: { type: ENTITY.STONE_SHARD, count: 3 },
+        msg: '🗿 CRACKS SHATTER ACROSS THE COLOSSUS! Stone Shards erupt from its body!',
+      },
+      {
+        threshold: 0.33, mods: { power: 6, armor: -2 },
+        abilities: ['melee', 'ground_stomp', 'rock_throw', 'double_attack'],
+        msg: '🗿 THE COLOSSUS CRUMBLES INTO FURY — every impact now hits twice!',
+      },
+    ],
+  },
+  {
+    type: ENTITY.FLAME_TYRANT,
+    name: '🔥 Vorthas the Flame Tyrant',
+    roomName: 'Chamber of Embers',
+    bossSize: 2,
+    baseHp: 220, basePower: 20, baseArmor: 4,
+    reward: { gold: 150, items: 2 },
+    phases: [
+      {
+        threshold: 1.0, mods: {},
+        abilities: ['ranged_fire'],
+        msg: '🔥 VORTHAS RISES FROM THE MAGMA! The air itself ignites!',
+      },
+      {
+        threshold: 0.60, mods: { power: 4 },
+        abilities: ['ranged_fire', 'fire_aura'],
+        msg: '🔥 VORTHAS ERUPTS! A ring of searing flame surrounds him — don\'t stand close!',
+      },
+      {
+        threshold: 0.30, mods: { power: 6 },
+        abilities: ['ranged_fire', 'fire_aura', 'breath_weapon'],
+        msg: '🔥 THE SKY BURNS! VORTHAS UNLEASHES HIS INFERNO BREATH!',
+      },
+    ],
+  },
+  {
+    type: ENTITY.LICH_QUEEN,
+    name: '💀 The Lich Queen',
+    roomName: 'Crypt of Eternals',
+    bossSize: 1,
+    baseHp: 180, basePower: 22, baseArmor: 2,
+    reward: { gold: 180, items: 2 },
+    phases: [
+      {
+        threshold: 1.0, mods: {},
+        abilities: ['shadow_bolt'],
+        summon: { type: ENTITY.SKELETON, count: 3 },
+        msg: '💀 THE LICH QUEEN RISES FROM HER THRONE OF BONE! The dead obey her command!',
+      },
+      {
+        threshold: 0.60, mods: { power: 4, dodge: 30 },
+        abilities: ['shadow_bolt', 'drain_life'],
+        msg: '💀 I AM ETERNAL! The Lich Queen becomes spectral — your strikes may pass through her!',
+      },
+      {
+        threshold: 0.30, mods: { power: 7 },
+        abilities: ['shadow_bolt', 'drain_life', 'death_coil'],
+        msg: '💀 DEATH ITSELF BENDS TO MY WILL! The Lich Queen channels a Death Coil!',
+      },
+    ],
+  },
+  {
+    type: ENTITY.KARG_WAR_MACHINE,
+    name: '⚙️ Karg the War Machine',
+    roomName: 'The Iron Forge',
+    bossSize: 2,
+    baseHp: 240, basePower: 16, baseArmor: 8,
+    reward: { gold: 200, items: 3 },
+    phases: [
+      {
+        threshold: 1.0, mods: {},
+        abilities: ['cannon_shot'],
+        msg: '⚙️ KARG ACTIVATES — DANGER LEVEL: EXTREME. TARGET ACQUISITION IN PROGRESS.',
+      },
+      {
+        threshold: 0.60, mods: { power: 4 },
+        abilities: ['cannon_shot', 'double_attack'],
+        summon: { type: ENTITY.TURRET_DRONE, count: 2 },
+        msg: '⚙️ SYSTEMS OVERHEATING — DEPLOYING TURRET DRONES. RUNNING AT 140% CAPACITY.',
+      },
+      {
+        threshold: 0.30, mods: { power: 10, armor: -4 },
+        abilities: ['cannon_shot', 'double_attack', 'enrage'],
+        msg: '⚙️ CRITICAL FAILURE — SELF-DESTRUCT SEQUENCE INITIATED. 💣 EVACUATE NOW!',
+      },
+    ],
+  },
+  {
+    type: ENTITY.THE_ANCIENT_ONE,
+    name: '🌀 The Ancient One',
+    roomName: 'The Void Rift',
+    bossSize: 2,
+    baseHp: 280, basePower: 25, baseArmor: 3,
+    reward: { gold: 300, items: 3 },
+    phases: [
+      {
+        threshold: 1.0, mods: {},
+        abilities: ['melee', 'shadow_bolt'],
+        msg: '🌀 REALITY TEARS OPEN... THE ANCIENT ONE STIRS FROM BEYOND ALL WORLDS.',
+      },
+      {
+        threshold: 0.60, mods: { power: 6 },
+        abilities: ['shadow_bolt', 'double_attack'],
+        summon: { type: ENTITY.VOID_TOUCHED, count: 3 },
+        msg: '🌀 THE VEIL RUPTURES! Void creatures pour through the rift!',
+      },
+      {
+        threshold: 0.25, mods: { power: 9, armor: 5 },
+        abilities: ['shadow_bolt', 'double_attack', 'death_coil', 'drain_life'],
+        msg: '🌀 ITS TRUE FORM IS REVEALED — STARS DIE IN ITS GAZE. You feel reality dissolve.',
+      },
+    ],
+  },
+];
+
 // ── Talent Trees (permanent prestige progression) ──────────────
 // Three small trees: Offense, Defense, Utility
 // Each prestige level grants 3 talent points
@@ -2486,6 +2650,7 @@ export const ACHIEVEMENTS = {
   goblin_bane:    { name: 'Goblin Bane',     desc: 'Kill 20 goblins',              icon: '👺', category: 'combat' },
   undead_purger:  { name: 'Undead Purger',   desc: 'Kill 20 undead creatures',      icon: '☠', category: 'combat' },
   dragon_slayer:  { name: 'Dragon Slayer',   desc: 'Defeat a dragon-type boss',     icon: '🐉', category: 'combat' },
+  cave_champion:  { name: 'Cave Champion',   desc: 'Defeat all 5 Trial Cave bosses', icon: '🏆', category: 'combat' },
 
   // Exploration
   spelunker:      { name: 'Spelunker',       desc: 'Reach floor 5',                icon: '🕳', category: 'exploration' },

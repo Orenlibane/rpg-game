@@ -1,11 +1,11 @@
-import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE, CRAFTING_RECIPES, MONSTER_CATEGORIES, BESTIARY_INFO, SUBCLASS, SUBCLASS_INFO, TOWN_UPGRADES, PHASE_BOSSES, DIFFICULTY, CLASS_UNLOCK_CONDITIONS, CLASS_STATS, VILLAGE_BUILDINGS, ALCHEMY_RECIPES, HERO_COLORS, BESTIARY_BONUSES } from './constants.js?v=39';
+import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE, CRAFTING_RECIPES, MONSTER_CATEGORIES, BESTIARY_INFO, SUBCLASS, SUBCLASS_INFO, TOWN_UPGRADES, PHASE_BOSSES, BOSS_CAVE_BOSSES, DIFFICULTY, CLASS_UNLOCK_CONDITIONS, CLASS_STATS, VILLAGE_BUILDINGS, ALCHEMY_RECIPES, HERO_COLORS, BESTIARY_BONUSES } from './constants.js?v=42';
 import { t } from './i18n.js';
 
 // Lookups for bestiary
 const BASE_STATS_LOOKUP = BASE_STATS;
 const GOLD_LOOKUP = GOLD_REWARDS;
-import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite, clearPlayerSpriteCache } from './sprites.js?v=39';
-import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, getSellPrice, isTrashItem, sellAllTrash, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, toggleSkillTree, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith, selectSubclass, isSubclassBranchUnlocked, getTownUpgradeLevel, upgradeTownBuilding, getAvailableCraftingRecipes, getRunHistory, closeRunHistory, SAVE_SLOTS, saveToSlot, loadFromSlot, deleteSlot, getSlotInfo, setDifficulty, purchaseBuilding, closeVillageExpansion, setHeroName, setHeroColor, enterBeach, enterTown, exitBeach, exitTown, alchemyCraft, getBestiaryDamageBonus, cleanSpeechBubbles, getFloorMapNotes } from './engine.js?v=39';
+import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite, clearPlayerSpriteCache } from './sprites.js?v=42';
+import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, getSellPrice, isTrashItem, sellAllTrash, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, toggleSkillTree, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith, selectSubclass, isSubclassBranchUnlocked, getTownUpgradeLevel, upgradeTownBuilding, getAvailableCraftingRecipes, getRunHistory, closeRunHistory, SAVE_SLOTS, saveToSlot, loadFromSlot, deleteSlot, getSlotInfo, setDifficulty, purchaseBuilding, closeVillageExpansion, setHeroName, setHeroColor, enterBeach, enterTown, exitBeach, exitTown, alchemyCraft, getBestiaryDamageBonus, cleanSpeechBubbles, getFloorMapNotes } from './engine.js?v=42';
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
@@ -294,18 +294,51 @@ export function render() {
     // Phase boss visual indicator
     if (enemy.isPhaseBoss) {
       const phase = (enemy.bossPhase || 0) + 1;
-      // Pulsing red border
+      // Pulsing border — white when transitioning, red/gold otherwise
       const pulse = Math.sin(Date.now() / 200) * 0.3 + 0.7;
-      ctx.strokeStyle = enemy.phaseInvulnerable > 0 ? `rgba(255,255,255,${pulse})` : `rgba(255,40,40,${pulse})`;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(sx, sy, ts, ts);
+      const borderColor = enemy.phaseInvulnerable > 0
+        ? `rgba(255,255,255,${pulse})`
+        : enemy.isBossCaveBoss ? `rgba(255,180,20,${pulse})` : `rgba(255,40,40,${pulse})`;
+      ctx.strokeStyle = borderColor;
+      ctx.lineWidth = enemy.isBossCaveBoss ? 3 : 2;
+      ctx.strokeRect(sx, sy, drawW, drawH);
       ctx.lineWidth = 1;
+
+      // Phase indicator dots (one dot per phase, filled = current)
+      const totalPhases = enemy.isBossCaveBoss
+        ? (BOSS_CAVE_BOSSES[enemy.bossCaveIndex]?.phases?.length || 3)
+        : 3;
+      const dotSpacing = 8;
+      const dotsW = (totalPhases - 1) * dotSpacing + 6;
+      const dotStartX = sx + drawW / 2 - dotsW / 2;
+      for (let pi = 0; pi < totalPhases; pi++) {
+        ctx.fillStyle = pi < phase ? (enemy.isBossCaveBoss ? '#ffa020' : '#ff4040') : '#333';
+        ctx.beginPath();
+        ctx.arc(dotStartX + pi * dotSpacing + 3, barY - 5, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = pi < phase ? '#fff' : '#666';
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+        ctx.lineWidth = 1;
+      }
+
       // Phase label
-      ctx.fillStyle = '#ff4';
-      ctx.font = 'bold 9px monospace';
+      ctx.fillStyle = enemy.isBossCaveBoss ? '#ffd040' : '#ff4';
+      ctx.font = `bold ${enemy.isBossCaveBoss ? 10 : 9}px monospace`;
       ctx.textAlign = 'center';
-      ctx.fillText(`P${phase}`, sx + ts / 2, barY - 2);
+      ctx.fillText(`PHASE ${phase}`, sx + drawW / 2, barY - 10);
       ctx.textAlign = 'start';
+
+      // Boss Cave: show boss name above the phase label
+      if (enemy.isBossCaveBoss && enemy.phaseName) {
+        ctx.font = 'bold 8px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#000';
+        ctx.fillText(enemy.phaseName, sx + drawW / 2 + 1, barY - 21);
+        ctx.fillStyle = '#ffd040';
+        ctx.fillText(enemy.phaseName, sx + drawW / 2, barY - 22);
+        ctx.textAlign = 'start';
+      }
     }
   }
 
@@ -370,6 +403,59 @@ export function render() {
 
   // Draw speech bubbles as DOM overlay
   renderSpeechBubbles(camX, camY, ts);
+
+  // Boss Cave: room name banner when a boss cave boss is visible on screen
+  if (state.inBossCave) {
+    const visibleBoss = state.enemies.find(e => e.isBossCaveBoss && e.hp > 0);
+    if (visibleBoss) {
+      const bossData = BOSS_CAVE_BOSSES[visibleBoss.bossCaveIndex];
+      const phaseIdx = visibleBoss.bossPhase || 0;
+      const roomName = bossData?.roomName || '';
+      const bossName = bossData?.name || '';
+      const totalPhases = bossData?.phases?.length || 3;
+      // Draw boss banner at bottom of canvas
+      const bw = canvas.width, bh = 48;
+      const by = canvas.height - bh - 2;
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(0, by, bw, bh);
+      ctx.strokeStyle = '#c08020';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(0, by, bw, bh);
+      // Room name
+      ctx.fillStyle = '#a08030';
+      ctx.font = 'bold 11px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(roomName.toUpperCase(), bw / 2, by + 13);
+      // Boss name
+      ctx.fillStyle = '#ffd040';
+      ctx.font = 'bold 14px monospace';
+      ctx.fillText(bossName, bw / 2, by + 30);
+      // Phase pip bar
+      const pipW = 10, pipGap = 4;
+      const totalPipW = totalPhases * (pipW + pipGap) - pipGap;
+      const pipStartX = bw / 2 - totalPipW / 2;
+      for (let pi = 0; pi < totalPhases; pi++) {
+        ctx.fillStyle = pi <= phaseIdx ? '#ff6020' : '#333';
+        ctx.fillRect(pipStartX + pi * (pipW + pipGap), by + 38, pipW, 6);
+        if (pi <= phaseIdx) {
+          ctx.fillStyle = 'rgba(255,160,60,0.5)';
+          ctx.fillRect(pipStartX + pi * (pipW + pipGap), by + 38, pipW, 3);
+        }
+      }
+      // HP bar
+      const hpPct = Math.max(0, visibleBoss.hp / visibleBoss.maxHp);
+      const hpBarW = Math.min(bw - 100, 300);
+      const hpBarX = bw / 2 - hpBarW / 2;
+      ctx.fillStyle = '#400';
+      ctx.fillRect(hpBarX, by + 38, hpBarW, 6);
+      ctx.fillStyle = hpPct > 0.5 ? '#cc4000' : hpPct > 0.25 ? '#ee6000' : '#ff2000';
+      ctx.fillRect(hpBarX, by + 38, hpBarW * hpPct, 6);
+      ctx.strokeStyle = '#800';
+      ctx.strokeRect(hpBarX, by + 38, hpBarW, 6);
+      ctx.textAlign = 'start';
+      ctx.lineWidth = 1;
+    }
+  }
 
   // Show talent tree overlay based on state
   const talentOverlay = document.getElementById('talent-tree-overlay');
@@ -2260,7 +2346,7 @@ function updateFloorWarpOverlay() {
     btn.className = 'warp-floor-btn';
     btn.innerHTML = `<span class="warp-floor-num">Floor ${floor}</span><span class="warp-floor-icon">⬆</span>`;
     btn.addEventListener('click', () => {
-      import('./engine.js?v=39').then(({ warpToFloor }) => { warpToFloor(floor); });
+      import('./engine.js?v=42').then(({ warpToFloor }) => { warpToFloor(floor); });
       overlay.classList.add('hidden');
     });
     list.appendChild(btn);

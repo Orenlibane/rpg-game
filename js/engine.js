@@ -13,16 +13,16 @@ import {
   SUBCLASS, SUBCLASS_INFO,
   TOWN_UPGRADES, SHOP_UPGRADE_ITEMS, SHOP_EPIC_ITEMS,
   CRAFTING_RECIPES_T2, CRAFTING_RECIPES_T3,
-  PHASE_BOSSES,
+  PHASE_BOSSES, BOSS_CAVE_BOSSES,
   ROOM_TYPE, DEN_TYPES, GUARDIAN_NAMES, GUARDIAN_FOR_THEME,
   ENTITY_FACTION, areFactionsHostile,
   DIFFICULTY, CLASS_UNLOCK_CONDITIONS, VILLAGE_BUILDINGS,
   ALCHEMY_RECIPES, HERO_COLORS, BESTIARY_BONUSES,
   TALENT_TREES, ENEMY_REACTIONS,
-} from './constants.js?v=39';
+} from './constants.js?v=42';
 import { t } from './i18n.js';
-import { generateVillage, generateDungeon, generateArenaMap, generateCave, generateMiniDungeon, generateBeach, generateTown } from './mapgen.js?v=39';
-import { computeFOV } from './fov.js?v=39';
+import { generateVillage, generateDungeon, generateArenaMap, generateCave, generateMiniDungeon, generateBeach, generateTown, generateBossCave } from './mapgen.js?v=42';
+import { computeFOV } from './fov.js?v=42';
 
 function randInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -149,6 +149,11 @@ export const state = {
   inMiniDungeon: false,
   miniDungeonReturnFloor: 0,
   miniDungeonReturnPos: null,
+  // Boss Cave
+  inBossCave: false,
+  bossCaveDefeated: [false, false, false, false, false], // one per boss
+  bossCaveMap: null,     // persisted map so doors stay open
+  bossCaveReturnPos: null,
 };
 
 // ── Game Settings (persisted separately) ────
@@ -540,6 +545,8 @@ export function exitCave() {
 // ── Mini Dungeons ─────────────────────────────
 
 export function enterMiniDungeon() {
+  // Save the real floor to cache BEFORE overwriting state, so we can restore it on exit
+  saveCurrentFloorToCache();
   state.inMiniDungeon = true;
   state.miniDungeonReturnFloor = state.floor;
   state.miniDungeonReturnPos = { x: state.player.x, y: state.player.y };
@@ -572,8 +579,129 @@ export function exitMiniDungeon() {
   state.inMiniDungeon = false;
   const returnFloor = state.miniDungeonReturnFloor;
   state.miniDungeonReturnFloor = 0;
-  enterDungeon(returnFloor);
+  // Restore the real floor directly from cache — do NOT call enterDungeon() which
+  // would run saveCurrentFloorToCache() first, overwriting the real floor with mini-dungeon state
+  state.floor = returnFloor;
+  restoreFloorFromCache(returnFloor);
+  if (state.miniDungeonReturnPos) {
+    state.player.x = state.miniDungeonReturnPos.x;
+    state.player.y = state.miniDungeonReturnPos.y;
+    state.miniDungeonReturnPos = null;
+  }
+  updateFOV();
   log('You step back through the gate, richer and wiser.', 'info');
+}
+
+// ── Boss Cave ─────────────────────────────────
+export function enterBossCave() {
+  state.bossCaveReturnPos = { x: state.player.x, y: state.player.y };
+  state.inBossCave = true;
+  state.mode = 'dungeon'; // reuse dungeon rendering
+
+  // Generate or reuse persisted map (doors stay open between visits)
+  let cave;
+  if (state.bossCaveMap) {
+    // Restore persisted map (already has open/closed doors)
+    cave = { map: state.bossCaveMap.map.map(r => new Uint8Array(r)), playerStart: { x: 3, y: 7 }, bossPositions: state.bossCaveMap.bossPositions, doorPositions: state.bossCaveMap.doorPositions };
+  } else {
+    cave = generateBossCave();
+  }
+
+  state.map = cave.map;
+  state.mapW = cave.map[0].length;
+  state.mapH = cave.map.length;
+  state.items = [];
+  state.chests = [];
+  state.dens = [];
+  state.projectiles = [];
+  state.stairsPos = null;
+  state.portalPos = null;
+  state.floorTheme = 'cave';
+
+  // Spawn bosses that are still alive (not yet defeated in this run)
+  state.enemies = [];
+  for (let i = 0; i < BOSS_CAVE_BOSSES.length; i++) {
+    if (state.bossCaveDefeated[i]) continue;
+    const bossData = BOSS_CAVE_BOSSES[i];
+    const pos = cave.bossPositions[i];
+    const boss = createEntity(bossData.type, pos.x, pos.y);
+    boss.isBoss = true;
+    boss.isPhaseBoss = true;
+    boss.isBossCaveBoss = true;
+    boss.bossCaveIndex = i;
+    boss.bossPhase = 0;
+    boss.phaseName = bossData.name;
+    boss.bossSize = bossData.bossSize || 1;
+    // Apply base stats from definition
+    boss.maxHp = bossData.baseHp;
+    boss.hp = bossData.baseHp;
+    boss.power = bossData.basePower;
+    boss.armor = bossData.baseArmor;
+    // 1-turn phase invulnerability at start (dramatic entrance)
+    boss.phaseInvulnerable = 0;
+    state.enemies.push(boss);
+  }
+
+  state.player.x = cave.playerStart.x;
+  state.player.y = cave.playerStart.y;
+  state.revealed = Array.from({ length: state.mapH }, () => new Uint8Array(state.mapW));
+
+  // Persist cave layout (doors are stored in the map array)
+  state.bossCaveMap = { map: cave.map.map(r => new Uint8Array(r)), bossPositions: cave.bossPositions, doorPositions: cave.doorPositions };
+
+  updateFOV();
+  log('⚔️ You enter the Trial Cave. Five ancient horrors await within.', 'level');
+}
+
+export function exitBossCave() {
+  state.inBossCave = false;
+  state.mode = 'village';
+  // Restore village
+  const village = generateVillage();
+  state.map = village.map;
+  state.mapW = village.map[0].length;
+  state.mapH = village.map.length;
+  state.enemies = [];
+  state.items = [];
+  state.chests = [];
+  state.dens = [];
+  state.stairsPos = null;
+  state.portalPos = null;
+  state.floorTheme = null;
+  // Place player back where they entered from
+  if (state.bossCaveReturnPos) {
+    state.player.x = state.bossCaveReturnPos.x;
+    state.player.y = state.bossCaveReturnPos.y;
+    state.bossCaveReturnPos = null;
+  }
+  state.revealed = Array.from({ length: state.mapH }, () => new Uint8Array(state.mapW));
+  // Re-apply village building tiles
+  for (const [key, built] of Object.entries(state.townBuildings)) {
+    if (built && VILLAGE_BUILDINGS[key]) {
+      const { tile, mapPos: { x: bx, y: by } } = VILLAGE_BUILDINGS[key];
+      if (by < state.mapH && bx < state.mapW) state.map[by][bx] = tile;
+    }
+  }
+  updateFOV();
+  log('You leave the Trial Cave.', 'info');
+}
+
+// Open the boss door for room index i (called when boss i is defeated)
+function openBossCaveDoor(bossIndex) {
+  if (!state.bossCaveMap) return;
+  const door = state.bossCaveMap.doorPositions[bossIndex];
+  if (!door) return;
+  const { x, yTop, yBot } = door;
+  // Open on live map
+  for (let y = yTop; y <= yBot; y++) {
+    if (state.map[y] && x < state.map[y].length) {
+      state.map[y][x] = TILE.BOSS_DOOR_OPEN;
+    }
+  }
+  // Persist open state
+  for (let y = yTop; y <= yBot; y++) {
+    if (state.bossCaveMap.map[y]) state.bossCaveMap.map[y][x] = TILE.BOSS_DOOR_OPEN;
+  }
 }
 
 // ── Class Selection ──────────────────────────
@@ -784,7 +912,7 @@ function weightedRandomPick(weights) {
 // Save the current dungeon floor state so revisiting it looks identical
 
 function saveCurrentFloorToCache() {
-  if (state.mode !== 'dungeon' || !state.floor) return;
+  if (state.mode !== 'dungeon' || !state.floor || !state.player) return;
   // Deep-copy map (array of Uint8Array rows)
   const mapCopy = state.map.map(row => new Uint8Array(row));
   // Deep-copy revealed fog-of-war
@@ -1392,6 +1520,15 @@ const ENEMY_NAMES = {
   [ENTITY.GUARDIAN_KEEPER]:   'Arcane Keeper',
   // Kobold
   [ENTITY.KOBOLD]:           'Kobold',
+  // Boss Cave Bosses
+  [ENTITY.STONE_COLOSSUS]:   'Stone Colossus',
+  [ENTITY.FLAME_TYRANT]:     'Flame Tyrant',
+  [ENTITY.LICH_QUEEN]:       'Lich Queen',
+  [ENTITY.KARG_WAR_MACHINE]: 'Karg',
+  [ENTITY.THE_ANCIENT_ONE]:  'The Ancient One',
+  // Boss Cave Minions
+  [ENTITY.STONE_SHARD]:      'Stone Shard',
+  [ENTITY.TURRET_DRONE]:     'Turret Drone',
 };
 
 export function getEnemyName(entity) {
@@ -3351,9 +3488,10 @@ function attack(attacker, defender) {
     }
   }
 
-  // Dodge check (AGI-based + Evasion skill) for the defender
-  if (defender.attrs) {
-    let dodgeChance = ATTR_BONUSES.agi.dodgeChance(defender.attrs.agi);
+  // Dodge check (AGI-based + Evasion skill + enemy dodgeChance field) for the defender
+  if (defender.attrs || defender.dodgeChance) {
+    let dodgeChance = defender.attrs ? ATTR_BONUSES.agi.dodgeChance(defender.attrs.agi) : 0;
+    if (defender.dodgeChance) dodgeChance += defender.dodgeChance;
     const evRank = defender.type === ENTITY.PLAYER ? getSkillRank('evasion_skill') : 0;
     if (evRank > 0) dodgeChance += [5, 10, 15][evRank - 1];
     if (Math.random() * 100 < dodgeChance) {
@@ -3502,6 +3640,38 @@ function attack(attacker, defender) {
       grantGold(defender);
       dropLoot(defender);
       if (attacker.type === ENTITY.PLAYER) onKillEffects();
+      // Boss Cave: mark boss as defeated, open door to next room, grant reward
+      if (defender.isBossCaveBoss) {
+        const idx = defender.bossCaveIndex;
+        state.bossCaveDefeated[idx] = true;
+        openBossCaveDoor(idx);
+        const bossData = BOSS_CAVE_BOSSES[idx];
+        const goldReward = bossData.reward?.gold || 100;
+        state.player.gold += goldReward;
+        state.stats.totalGoldEarned += goldReward;
+        log(`⚔️ ${bossData.name} has been slain! You gain ${goldReward} gold!`, 'level');
+        log(`🚪 The sealed gate to the next room opens...`, 'info');
+        // Drop extra high-tier items for boss cave bosses
+        const extraItems = bossData.reward?.items || 2;
+        const tierMin = idx >= 3 ? 4 : idx >= 1 ? 3 : 2; // higher index = higher tier
+        const allItemIds = Object.keys(ITEMS);
+        const bossPool = allItemIds.filter(id => {
+          const it = ITEMS[id];
+          return it && it.type !== ITEM_TYPE.CONSUMABLE && (it.tier || 0) >= tierMin;
+        });
+        const fallbackPool = allItemIds.filter(id => ITEMS[id] && ITEMS[id].type !== ITEM_TYPE.CONSUMABLE);
+        const usePool = bossPool.length > 0 ? bossPool : fallbackPool;
+        for (let di = 0; di < extraItems; di++) {
+          const itemId = usePool[randInt(0, usePool.length - 1)];
+          if (itemId && ITEMS[itemId]) {
+            state.items.push({ x: defender.x + di, y: defender.y, item: { ...ITEMS[itemId] } });
+          }
+        }
+        if (state.bossCaveDefeated.every(Boolean)) {
+          log('🏆 ALL FIVE TRIALS COMPLETE! You are the Champion of the Cave!', 'level');
+          unlockAchievement('cave_champion');
+        }
+      }
     }
   }
   if (attacker.hp <= 0) {
@@ -4153,12 +4323,32 @@ function getEnemySightRange(enemy) {
   return SIGHT_RANGES[enemy.type] || GOBLIN_SIGHT_RANGE;
 }
 
+// Returns ability array for current phase of a phase boss (regular or boss cave)
+function getPhaseBossAbilities(enemy) {
+  if (!enemy.isPhaseBoss) return null;
+  const phases = enemy.isBossCaveBoss
+    ? BOSS_CAVE_BOSSES[enemy.bossCaveIndex]?.phases
+    : PHASE_BOSSES[enemy.phaseFloor]?.phases;
+  if (!phases) return null;
+  return phases[enemy.bossPhase || 0]?.abilities || null;
+}
+
 // ── Phase Boss Transitions ─────────────────────
 function checkBossPhaseTransition(enemy) {
-  if (!enemy.isPhaseBoss || !enemy.phaseFloor) return false;
-  const pbData = PHASE_BOSSES[enemy.phaseFloor];
-  if (!pbData) return false;
-  const phases = pbData.phases;
+  if (!enemy.isPhaseBoss) return false;
+
+  // Boss Cave bosses use BOSS_CAVE_BOSSES array
+  const phases = enemy.isBossCaveBoss
+    ? BOSS_CAVE_BOSSES[enemy.bossCaveIndex]?.phases
+    : PHASE_BOSSES[enemy.phaseFloor]?.phases;
+
+  if (!phases) return false;
+
+  if (!enemy.isBossCaveBoss && !enemy.phaseFloor) return false;
+  if (!enemy.isBossCaveBoss) {
+    const pbData = PHASE_BOSSES[enemy.phaseFloor];
+    if (!pbData) return false;
+  }
   const currentPhase = enemy.bossPhase || 0;
   const nextPhase = currentPhase + 1;
   if (nextPhase >= phases.length) return false;
@@ -4177,6 +4367,7 @@ function checkBossPhaseTransition(enemy) {
   // Apply stat mods
   if (phaseData.mods.power) enemy.power += phaseData.mods.power;
   if (phaseData.mods.armor) enemy.armor = (enemy.armor || 0) + phaseData.mods.armor;
+  if (phaseData.mods.dodge) enemy.dodgeChance = (enemy.dodgeChance || 0) + phaseData.mods.dodge;
 
   // 1-turn invulnerability
   enemy.phaseInvulnerable = 1;
@@ -4328,11 +4519,10 @@ function moveEnemies() {
         log(t('log.frost_slam', { n: slamDmg }), 'combat');
         if (state.player.hp <= 0) checkPlayerDeath('You have been slain!');
       }
-      // Phase boss: double_attack ability (Void Emperor phase 3)
+      // Phase boss melee-range abilities (adjacent)
       if (enemy.isPhaseBoss && state.player.hp > 0) {
-        const pbData = PHASE_BOSSES[enemy.phaseFloor];
-        if (pbData) {
-          const abilities = pbData.phases[enemy.bossPhase || 0].abilities;
+        const abilities = getPhaseBossAbilities(enemy);
+        if (abilities) {
           if (abilities.includes('double_attack')) {
             log(`${enemy.phaseName || 'Boss'} attacks again!`, 'combat');
             attack(enemy, state.player);
@@ -4343,6 +4533,35 @@ function moveEnemies() {
             log(`${enemy.phaseName || 'Boss'} rages for ${rageDmg} bonus damage!`, 'combat');
             if (state.player.hp <= 0) checkPlayerDeath('You have been slain!');
           }
+          // ground_stomp (Stone Colossus): AoE shockwave hurts if adjacent
+          if (abilities.includes('ground_stomp') && Math.random() < 0.4 && state.player.hp > 0) {
+            const stompDmg = Math.max(1, Math.floor(enemy.power * 0.7) - getEffectiveArmor(state.player));
+            state.player.hp -= stompDmg;
+            log(`💥 ${enemy.phaseName || 'Boss'} STOMPS! The shockwave hits for ${stompDmg}!`, 'combat');
+            spawnDamageNumber(state.player.x, state.player.y, stompDmg, '#cc8844');
+            if (state.player.hp <= 0) checkPlayerDeath('You have been slain!');
+          }
+          // fire_aura (Flame Tyrant phase 2): damages player every adjacent turn
+          if (abilities.includes('fire_aura') && state.player.hp > 0) {
+            const auraDmg = Math.max(1, Math.floor(enemy.power * 0.4) - Math.floor(getEffectiveArmor(state.player) / 2));
+            state.player.hp -= auraDmg;
+            log(`🔥 ${enemy.phaseName || 'Boss'}'s fire aura scorches you for ${auraDmg}!`, 'combat');
+            if (state.player.hp <= 0) checkPlayerDeath('You have been slain!');
+          }
+          // drain_life (Lich Queen): heals boss on hit
+          if (abilities.includes('drain_life') && state.player.hp > 0) {
+            const drainHeal = Math.floor(enemy.power * 0.3);
+            enemy.hp = Math.min(enemy.maxHp, enemy.hp + drainHeal);
+            log(`💀 ${enemy.phaseName || 'Boss'} drains your life! (+${drainHeal} HP)`, 'combat');
+          }
+          // death_coil (Lich Queen phase 3 / Ancient One phase 3): bypasses armor, 30% chance
+          if (abilities.includes('death_coil') && Math.random() < 0.3 && state.player.hp > 0) {
+            const coilDmg = Math.max(2, Math.floor(enemy.power * 0.6));
+            state.player.hp -= coilDmg;
+            log(`💀 DEATH COIL! ${coilDmg} unavoidable damage!`, 'combat');
+            spawnDamageNumber(state.player.x, state.player.y, coilDmg, '#8844cc');
+            if (state.player.hp <= 0) checkPlayerDeath('You have been slain!');
+          }
         }
       }
       continue;
@@ -4350,9 +4569,8 @@ function moveEnemies() {
 
     // Phase boss ranged abilities (non-adjacent)
     if (enemy.isPhaseBoss && dist > 1) {
-      const pbData = PHASE_BOSSES[enemy.phaseFloor];
-      if (pbData) {
-        const abilities = pbData.phases[enemy.bossPhase || 0].abilities;
+      const abilities = getPhaseBossAbilities(enemy);
+      if (abilities) {
         // fire_attack (Demon Lord phase 2+, range 3)
         if (abilities.includes('fire_attack') && dist <= 3 && hasLineOfSight(enemy.x, enemy.y, state.player.x, state.player.y)) {
           const fDmg = Math.max(1, enemy.power - getEffectiveArmor(state.player) + randInt(-1, 2));
@@ -4362,13 +4580,38 @@ function moveEnemies() {
           if (state.player.hp <= 0) checkPlayerDeath('You have been slain!');
           continue;
         }
-        // ranged_fire (Ancient Dragon, range 6)
+        // rock_throw (Stone Colossus, range 5)
+        if (abilities.includes('rock_throw') && dist <= 5 && hasLineOfSight(enemy.x, enemy.y, state.player.x, state.player.y)) {
+          const rDmg = Math.max(1, Math.floor(enemy.power * 1.2) - getEffectiveArmor(state.player) + randInt(-1, 2));
+          state.player.hp -= rDmg;
+          state.projectiles.push({ x: state.player.x, y: state.player.y, type: 'arrow', ttl: 2 });
+          log(`🪨 ${enemy.phaseName || 'Boss'} hurls a boulder for ${rDmg} damage!`, 'combat');
+          if (state.player.hp <= 0) checkPlayerDeath('You have been slain!');
+          continue;
+        }
+        // cannon_shot (Karg, range 8, ignores half armor)
+        if (abilities.includes('cannon_shot') && dist <= 8 && hasLineOfSight(enemy.x, enemy.y, state.player.x, state.player.y)) {
+          const halfArm = Math.floor(getEffectiveArmor(state.player) / 2);
+          const cDmg = Math.max(2, Math.floor(enemy.power * 1.4) - halfArm + randInt(-2, 3));
+          state.player.hp -= cDmg;
+          state.projectiles.push({ x: state.player.x, y: state.player.y, type: 'fire', ttl: 2 });
+          log(`⚙️ CANNON FIRE! ${cDmg} damage! (armor partially ignored)`, 'combat');
+          if (state.player.hp <= 0) checkPlayerDeath('You have been slain!');
+          continue;
+        }
+        // ranged_fire (Ancient Dragon / Flame Tyrant, range 6)
         if (abilities.includes('ranged_fire') && dist <= 6 && hasLineOfSight(enemy.x, enemy.y, state.player.x, state.player.y)) {
           const rDmg = Math.max(1, enemy.power - getEffectiveArmor(state.player) + randInt(-1, 2));
           state.player.hp -= rDmg;
           state.projectiles.push({ x: state.player.x, y: state.player.y, type: 'fire', ttl: 2 });
           log(`${enemy.phaseName || 'Boss'} breathes fire for ${rDmg} damage!`, 'combat');
           if (state.player.hp <= 0) checkPlayerDeath('You have been slain!');
+          if (abilities.includes('breath_weapon') && Math.random() < 0.4 && state.player.hp > 0) {
+            const bDmg = Math.max(1, Math.floor(enemy.power * 1.6) - getEffectiveArmor(state.player));
+            state.player.hp -= bDmg;
+            log(`🔥 INFERNO BREATH! ${bDmg} devastating fire damage!`, 'combat');
+            if (state.player.hp <= 0) checkPlayerDeath('You have been slain!');
+          }
           // ground_slam (Dragon phase 2+, AoE 1.5x)
           if (abilities.includes('ground_slam') && Math.random() < 0.3) {
             const gDmg = Math.max(1, Math.floor(enemy.power * 1.5) - getEffectiveArmor(state.player));
@@ -4378,7 +4621,7 @@ function moveEnemies() {
           }
           continue;
         }
-        // shadow_bolt (Void Emperor, range 7, half armor)
+        // shadow_bolt (Void Emperor / Ancient One, range 7, half armor)
         if (abilities.includes('shadow_bolt') && dist <= 7 && hasLineOfSight(enemy.x, enemy.y, state.player.x, state.player.y)) {
           const halfArm = Math.floor(getEffectiveArmor(state.player) / 2);
           const sDmg = Math.max(1, enemy.power - halfArm + randInt(-1, 2));
@@ -4565,6 +4808,16 @@ export function playerMove(dx, dy) {
     } else {
       enterMiniDungeon();
     }
+    return;
+  }
+
+  // Boss Cave entrance (village) and exit (inside cave)
+  if (state.mode === 'village' && state.map[ny][nx] === TILE.BOSS_CAVE_ENTRANCE) {
+    enterBossCave();
+    return;
+  }
+  if (state.inBossCave && state.map[ny][nx] === TILE.BOSS_CAVE_EXIT) {
+    exitBossCave();
     return;
   }
 
@@ -5120,6 +5373,10 @@ export function restartGame() {
   state.floorCache = {};  // New character = fresh floors
   state.unlockedFloorWarps = [];
   state.inMiniDungeon = false;
+  state.inBossCave = false;
+  state.bossCaveDefeated = [false, false, false, false, false];
+  state.bossCaveMap = null;
+  state.bossCaveReturnPos = null;
   state.mode_cave = false;
   state.mode_beach = false;
   state.mode_town = false;

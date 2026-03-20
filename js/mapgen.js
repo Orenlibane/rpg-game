@@ -3,8 +3,8 @@ import {
   DUNGEON_W, DUNGEON_H,
   MIN_ROOM_SIZE, MAX_ROOM_SIZE, MAX_ROOMS,
   FLOOR_THEMES, ROOM_TYPE,
-  ENTITY, BASE_STATS,
-} from './constants.js?v=39';
+  ENTITY, BASE_STATS, BOSS_CAVE_BOSSES,
+} from './constants.js?v=42';
 
 // ── Village (fixed layout) ───────────────────────
 
@@ -39,6 +39,9 @@ export function generateVillage() {
   const caveX = 17;
   const caveY = 7;
   map[caveY][caveX] = TILE.CAVE_ENTRANCE;
+
+  // Boss Cave entrance (west side, near town gate — clearly visible)
+  map[4][3] = TILE.BOSS_CAVE_ENTRANCE;
 
   // Healer (south-west area, near a hut)
   const healerX = 4;
@@ -1100,4 +1103,68 @@ export function generateTown() {
   const playerStart = { x: W - 3, y: 8 };
 
   return { map, playerStart, enemies: [], chests: [], items: [] };
+}
+
+// ── Boss Cave (5 epic boss rooms) ────────────────────────────────
+// Layout: entry room → 5 boss rooms connected by corridors with BOSS_DOORs
+// Map: 76 wide × 16 tall
+export function generateBossCave() {
+  const W = 76, H = 16;
+  const map = Array.from({ length: H }, () => new Uint8Array(W).fill(TILE.CAVE_WALL));
+
+  // Helper: fill a rectangle with a tile
+  function fill(x1, y1, x2, y2, tile) {
+    for (let y = y1; y <= y2; y++)
+      for (let x = x1; x <= x2; x++)
+        if (y >= 0 && y < H && x >= 0 && x < W) map[y][x] = tile;
+  }
+
+  // Entry room (cols 1-6, rows 2-13) — player starts here, exit tile on west wall
+  fill(1, 2, 6, 13, TILE.BOSS_FLOOR);
+  map[7][1] = TILE.BOSS_CAVE_EXIT;  // exit back to village
+
+  // 5 boss rooms, each 12 wide × 12 tall (interior 10×10), connected by 3-wide corridors
+  const ROOM_W = 12;
+  const ROOM_H = 12;
+  const CORRIDOR_W = 3;
+  const ROOM_Y1 = 2;
+  const ROOM_Y2 = ROOM_Y1 + ROOM_H - 1; // 13
+  const MID_Y = Math.floor((ROOM_Y1 + ROOM_Y2) / 2); // 7 — corridor centre row
+
+  const bossPositions = [];
+  const doorPositions = [];
+
+  for (let i = 0; i < 5; i++) {
+    const corStartX = 7 + i * (ROOM_W + CORRIDOR_W);
+    const roomX1 = corStartX + CORRIDOR_W;      // room left wall
+    const roomX2 = roomX1 + ROOM_W - 1;         // room right wall
+
+    // Corridor connecting previous room (or entry) to this boss room
+    fill(corStartX, MID_Y - 1, corStartX + CORRIDOR_W - 1, MID_Y + 1, TILE.BOSS_FLOOR);
+
+    // Boss door in the middle of the corridor (initially sealed)
+    const doorX = corStartX + 1;
+    map[MID_Y - 1][doorX] = TILE.BOSS_DOOR;
+    map[MID_Y][doorX]     = TILE.BOSS_DOOR;
+    map[MID_Y + 1][doorX] = TILE.BOSS_DOOR;
+    doorPositions.push({ x: doorX, yTop: MID_Y - 1, yBot: MID_Y + 1 });
+
+    // Boss room interior
+    fill(roomX1 + 1, ROOM_Y1 + 1, roomX2 - 1, ROOM_Y2 - 1, TILE.BOSS_FLOOR);
+
+    // Boss position: centre of room
+    const cx = Math.floor((roomX1 + roomX2) / 2);
+    const cy = Math.floor((ROOM_Y1 + ROOM_Y2) / 2);
+    bossPositions.push({ x: cx, y: cy });
+
+    // Add some atmosphere: corner pillars
+    if (roomX1 + 2 < W && ROOM_Y1 + 2 < H) map[ROOM_Y1 + 2][roomX1 + 2] = TILE.PILLAR;
+    if (roomX2 - 2 >= 0 && ROOM_Y1 + 2 < H) map[ROOM_Y1 + 2][roomX2 - 2] = TILE.PILLAR;
+    if (roomX1 + 2 < W && ROOM_Y2 - 2 >= 0) map[ROOM_Y2 - 2][roomX1 + 2] = TILE.PILLAR;
+    if (roomX2 - 2 >= 0 && ROOM_Y2 - 2 >= 0) map[ROOM_Y2 - 2][roomX2 - 2] = TILE.PILLAR;
+  }
+
+  const playerStart = { x: 3, y: 7 };
+
+  return { map, playerStart, bossPositions, doorPositions, mapW: W, mapH: H };
 }

@@ -1174,15 +1174,15 @@ function buildTileSprite(tileType, variant) {
       break;
     }
     case TILE.BEACH_SAND: {
-      // Sandy beach ground
-      const sandSeed = (tileX * 7 + tileY * 13) % 6;
+      // Sandy beach ground — use variant (derived from tile coords) for visual variety
+      const sandSeed = variant % 6;
       const sandColors = ['#d4b86a', '#c8a858', '#dcc070', '#c4a048', '#cbb060', '#d0b462'];
       fillRect(g, 0, 0, 32, 32, sandColors[sandSeed]);
       // Sand texture dots
       g.fillStyle = sandColors[(sandSeed + 3) % 6];
       for (let i = 0; i < 12; i++) {
-        const dx = (i * 7 + tileX * 3) % 28 + 2;
-        const dy = (i * 11 + tileY * 5) % 28 + 2;
+        const dx = (i * 7 + (variant >> 3)) % 28 + 2;
+        const dy = (i * 11 + (variant & 7)) % 28 + 2;
         fillRect(g, dx, dy, 2, 1, sandColors[(sandSeed + 2) % 6]);
       }
       break;

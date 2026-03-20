@@ -1044,11 +1044,11 @@ window._renderTalentTree = renderTalentTree;
     if (!dirMap[dir]) return;
     btn.addEventListener('touchstart', (e) => {
       e.preventDefault();
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: dirMap[dir].key, bubbles: true }));
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: dirMap[dir].key, bubbles: true }));
     });
     btn.addEventListener('click', (e) => {
       e.preventDefault();
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: dirMap[dir].key, bubbles: true }));
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: dirMap[dir].key, bubbles: true }));
     });
   });
 
@@ -1067,11 +1067,11 @@ window._renderTalentTree = renderTalentTree;
     if (!actionMap[action]) return;
     btn.addEventListener('touchstart', (e) => {
       e.preventDefault();
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: actionMap[action], bubbles: true }));
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: actionMap[action], bubbles: true }));
     });
     btn.addEventListener('click', (e) => {
       e.preventDefault();
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: actionMap[action], bubbles: true }));
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: actionMap[action], bubbles: true }));
     });
   });
 })();

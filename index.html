@@ -44,7 +44,7 @@
     <div id="ui-panel">
       <!-- Player Stats -->
       <div id="stats-panel" class="panel">
-        <h2>Dungeon Diver <span id="game-version" style="font-size:10px;color:#555;font-weight:normal;">v38</span></h2>
+        <h2>Dungeon Diver <span id="game-version" style="font-size:10px;color:#555;font-weight:normal;">v39</span></h2>
         <div id="class-display" class="class-badge">Warrior</div>
         <div id="prestige-badge" style="display: none;"></div>
         <div id="floor-display" class="stat-row">Village</div>
@@ -142,7 +142,7 @@
         <div class="login-logo-icon">&#9876;</div>
         <h1 class="title-login-v2">Dungeon Diver</h1>
         <p class="login-tagline">Descend. Fight. Survive.</p>
-        <span class="login-version-badge">v38</span>
+        <span class="login-version-badge">v39</span>
       </div>
 
       <!-- Login Form -->
@@ -169,8 +169,12 @@
         <h3 class="changelog-title">&#128220; Changelog</h3>
         <div class="changelog-scroll" id="changelog-scroll">
           <div class="changelog-entry changelog-new">
+            <span class="changelog-version">v39</span>
+            <span class="changelog-text">Map notes, auto-explore, enemy speech bubbles, talent trees, hero name/color. Fix: cave entrance now properly enters the dungeon, floor 1 gets up-stairs back to village</span>
+          </div>
+          <div class="changelog-entry">
             <span class="changelog-version">v38</span>
-            <span class="changelog-text">Hardship difficulty (4 funny modes), 3 unlockable classes (Bard/Holy Knight/Plague Doctor), Village Expansion (build structures), Village Cave, Mini Dungeons on floors 5/10</span>
+            <span class="changelog-text">Bestiary bonuses, alchemy tab, hero customization, beach/town areas, 4×4 Demon Lord boss, ingredient drops</span>
           </div>
           <div class="changelog-entry">
             <span class="changelog-version">v36</span>
@@ -754,6 +758,32 @@
   <div id="item-tooltip" class="item-tooltip hidden"></div>
   <div id="tile-tooltip" class="tile-tooltip hidden"></div>
 
+  <!-- Map Note Modal -->
+  <div id="map-note-modal" class="overlay hidden">
+    <div class="overlay-content map-note-panel">
+      <h3 class="map-note-title">📝 Map Note</h3>
+      <p class="map-note-hint">Leave a note on this tile (visible on minimap). Press Enter to save, Esc to cancel.</p>
+      <input id="map-note-input" class="map-note-input" type="text" maxlength="60" placeholder="Type a note..." />
+      <div class="map-note-actions">
+        <button id="map-note-save" class="btn-primary">Save</button>
+        <button id="map-note-cancel" class="btn-secondary">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Talent Tree Overlay -->
+  <div id="talent-tree-overlay" class="overlay hidden">
+    <div class="overlay-content talent-tree-panel">
+      <div class="talent-tree-header">
+        <h2 class="talent-tree-title">🌟 Talent Trees</h2>
+        <div class="talent-points-display">✨ Talent Points: 0</div>
+        <button id="talent-tree-close" class="overlay-close-btn">✕</button>
+      </div>
+      <p class="talent-tree-desc">Spend talent points on passive bonuses. Points are earned by prestiging. Press U to open.</p>
+      <div class="talent-tree-container"></div>
+    </div>
+  </div>
+
   <!-- Item Detail Popup -->
   <div id="item-popup" class="overlay hidden">
     <div class="overlay-content item-popup-panel">
@@ -792,9 +822,9 @@
       document.body.appendChild(d);
     };
   </script>
-  <script type="module" src="js/main.js?v=38"></script>
+  <script type="module" src="js/main.js?v=39"></script>
   <script type="module">
-    import('./js/main.js?v=38').catch(function(e) {
+    import('./js/main.js?v=39').catch(function(e) {
       var d = document.createElement('div');
       d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:red;color:white;padding:10px;z-index:9999;font-size:14px';
       d.textContent = 'MODULE LOAD ERROR: ' + e.message;

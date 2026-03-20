@@ -21,9 +21,11 @@ import {
   startCloudSync, checkDbStatus,
   setDifficulty, toggleVillageExpansion, closeVillageExpansion, purchaseBuilding,
   setHeroName, setHeroColor, enterBeach, enterTown, exitBeach, exitTown,
-} from './engine.js?v=38';
-import { render, resizeCanvas } from './renderer.js?v=38';
-import { PLAYER_CLASS, PRESTIGE, DIFFICULTY } from './constants.js?v=38';
+  toggleAutoExplore, addMapNote, getMapNote, toggleTalentTree, closeTalentTree,
+  unlockTalent, getTalentPoints, getUnlockedTalents,
+} from './engine.js?v=39';
+import { render, resizeCanvas } from './renderer.js?v=39';
+import { PLAYER_CLASS, PRESTIGE, DIFFICULTY, TALENT_TREES } from './constants.js?v=39';
 import { initI18n, setLanguage, applyStaticTranslations, t } from './i18n.js';
 
 // ── Initialize i18n ─────────────────────────
@@ -359,8 +361,28 @@ document.addEventListener('keydown', (e) => {
     }
   }
 
-  // Achievements toggle
+  // Map note toggle (N key) — only in dungeon/village on explored tiles
   if (e.key === 'n' || e.key === 'N') {
+    if (state.phase !== 'class_select') {
+      e.preventDefault();
+      openMapNoteModal();
+      return;
+    }
+  }
+
+  // Talent tree toggle
+  if (e.key === 'u' || e.key === 'U') {
+    if (state.phase !== 'class_select') {
+      e.preventDefault();
+      toggleTalentTree();
+      if (state.showTalentTree) renderTalentTree();
+      render();
+      return;
+    }
+  }
+
+  // Achievements toggle (moved to A key since N is now map notes)
+  if (e.key === 'y' || e.key === 'Y') {
     if (state.phase !== 'class_select') {
       e.preventDefault();
       toggleAchievements();
@@ -388,6 +410,7 @@ document.addEventListener('keydown', (e) => {
       itemPopup.classList.add('hidden');
       return;
     }
+    if (state.showTalentTree) { closeTalentTree(); render(); return; }
     if (state.showFishing) { closeFishing(); render(); return; }
     if (state.showArena) { closeArena(); render(); return; }
     if (state.showChest) { closeChest(); render(); return; }
@@ -433,6 +456,15 @@ document.addEventListener('keydown', (e) => {
   if (state.showRunHistory) return;
   if (state.showSubclassSelect) return;
   if (state.showChest) return;
+  if (state.showTalentTree) return;
+
+  // Tab: toggle auto-explore
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    toggleAutoExplore();
+    render();
+    return;
+  }
 
   // Throw mode: intercept direction keys
   if (state.throwMode) {
@@ -894,6 +926,93 @@ window.addEventListener('resize', () => {
   resizeCanvas();
   render();
 });
+
+// ── Map Note Modal ───────────────────────────
+function openMapNoteModal() {
+  if (state.phase === 'class_select' || state.gameOver) return;
+  const modal = document.getElementById('map-note-modal');
+  if (!modal) return;
+  const existing = getMapNote();
+  const input = document.getElementById('map-note-input');
+  if (input) input.value = existing || '';
+  modal.classList.remove('hidden');
+  if (input) { input.focus(); input.select(); }
+}
+
+document.getElementById('map-note-save')?.addEventListener('click', () => {
+  const input = document.getElementById('map-note-input');
+  const text = input ? input.value : '';
+  addMapNote(text);
+  document.getElementById('map-note-modal')?.classList.add('hidden');
+  render();
+});
+
+document.getElementById('map-note-cancel')?.addEventListener('click', () => {
+  document.getElementById('map-note-modal')?.classList.add('hidden');
+});
+
+document.getElementById('map-note-input')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    const text = e.target.value;
+    addMapNote(text);
+    document.getElementById('map-note-modal')?.classList.add('hidden');
+    render();
+    e.preventDefault();
+  } else if (e.key === 'Escape') {
+    document.getElementById('map-note-modal')?.classList.add('hidden');
+    e.preventDefault();
+  }
+});
+
+// ── Talent Tree Overlay ───────────────────────
+document.getElementById('talent-tree-close')?.addEventListener('click', () => {
+  closeTalentTree();
+  render();
+});
+
+document.getElementById('talent-tree-overlay')?.addEventListener('click', (e) => {
+  const node = e.target.closest('.talent-node');
+  if (node) {
+    const nodeId = node.dataset.nodeId;
+    if (nodeId) {
+      unlockTalent(nodeId);
+      renderTalentTree();
+      render();
+    }
+  }
+});
+
+function renderTalentTree() {
+  const overlay = document.getElementById('talent-tree-overlay');
+  if (!overlay) return;
+  const container = overlay.querySelector('.talent-tree-container');
+  if (!container) return;
+  const pts = getTalentPoints();
+  const unlocked = getUnlockedTalents();
+  const ptsDisplay = overlay.querySelector('.talent-points-display');
+  if (ptsDisplay) ptsDisplay.textContent = `✨ Talent Points: ${pts}`;
+  container.innerHTML = '';
+  for (const [treeKey, tree] of Object.entries(TALENT_TREES)) {
+    const col = document.createElement('div');
+    col.className = 'talent-tree-col';
+    const lbl = document.createElement('div');
+    lbl.className = 'talent-tree-label';
+    lbl.textContent = tree.label;
+    col.appendChild(lbl);
+    for (const node of tree.nodes) {
+      const isUnlocked = !!unlocked[node.id];
+      const prereqMet = !node.requires || !!unlocked[node.requires];
+      const canAfford = pts >= node.cost;
+      const btn = document.createElement('div');
+      btn.className = `talent-node ${isUnlocked ? 'unlocked' : prereqMet && canAfford ? 'available' : 'locked'}`;
+      btn.dataset.nodeId = isUnlocked ? '' : node.id;
+      btn.innerHTML = `<span class="tn-name">${node.name}</span><span class="tn-cost">${isUnlocked ? '✓' : node.cost + '✨'}</span><div class="tn-desc">${node.desc}</div>`;
+      col.appendChild(btn);
+    }
+    container.appendChild(col);
+  }
+}
+window._renderTalentTree = renderTalentTree;
 
 // ── Mobile Touch Controls ───────────────────
 (function initMobileControls() {

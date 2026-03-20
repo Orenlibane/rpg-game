@@ -1,11 +1,11 @@
-import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE, CRAFTING_RECIPES, MONSTER_CATEGORIES, BESTIARY_INFO, SUBCLASS, SUBCLASS_INFO, TOWN_UPGRADES, PHASE_BOSSES, DIFFICULTY, CLASS_UNLOCK_CONDITIONS, CLASS_STATS, VILLAGE_BUILDINGS, ALCHEMY_RECIPES, HERO_COLORS, BESTIARY_BONUSES } from './constants.js?v=38';
+import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE, CRAFTING_RECIPES, MONSTER_CATEGORIES, BESTIARY_INFO, SUBCLASS, SUBCLASS_INFO, TOWN_UPGRADES, PHASE_BOSSES, DIFFICULTY, CLASS_UNLOCK_CONDITIONS, CLASS_STATS, VILLAGE_BUILDINGS, ALCHEMY_RECIPES, HERO_COLORS, BESTIARY_BONUSES } from './constants.js?v=39';
 import { t } from './i18n.js';
 
 // Lookups for bestiary
 const BASE_STATS_LOOKUP = BASE_STATS;
 const GOLD_LOOKUP = GOLD_REWARDS;
-import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite, clearPlayerSpriteCache } from './sprites.js?v=38';
-import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, getSellPrice, isTrashItem, sellAllTrash, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, toggleSkillTree, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith, selectSubclass, isSubclassBranchUnlocked, getTownUpgradeLevel, upgradeTownBuilding, getAvailableCraftingRecipes, getRunHistory, closeRunHistory, SAVE_SLOTS, saveToSlot, loadFromSlot, deleteSlot, getSlotInfo, setDifficulty, purchaseBuilding, closeVillageExpansion, setHeroName, setHeroColor, enterBeach, enterTown, exitBeach, exitTown, alchemyCraft, getBestiaryDamageBonus } from './engine.js?v=38';
+import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite, clearPlayerSpriteCache } from './sprites.js?v=39';
+import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, getSellPrice, isTrashItem, sellAllTrash, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, toggleSkillTree, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith, selectSubclass, isSubclassBranchUnlocked, getTownUpgradeLevel, upgradeTownBuilding, getAvailableCraftingRecipes, getRunHistory, closeRunHistory, SAVE_SLOTS, saveToSlot, loadFromSlot, deleteSlot, getSlotInfo, setDifficulty, purchaseBuilding, closeVillageExpansion, setHeroName, setHeroColor, enterBeach, enterTown, exitBeach, exitTown, alchemyCraft, getBestiaryDamageBonus, cleanSpeechBubbles, getFloorMapNotes } from './engine.js?v=39';
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
@@ -377,7 +377,55 @@ export function render() {
     }
   }
 
+  // Draw speech bubbles as DOM overlay
+  renderSpeechBubbles(camX, camY, ts);
+
+  // Show talent tree overlay based on state
+  const talentOverlay = document.getElementById('talent-tree-overlay');
+  if (talentOverlay) talentOverlay.classList.toggle('hidden', !state.showTalentTree);
+
   updateUI();
+}
+
+// ── Speech Bubble DOM Overlay ───────────────
+let _bubbleContainer = null;
+function getSpeechBubbleContainer() {
+  if (!_bubbleContainer) {
+    _bubbleContainer = document.createElement('div');
+    _bubbleContainer.id = 'speech-bubble-layer';
+    _bubbleContainer.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:hidden;';
+    const wrapper = document.getElementById('canvas-wrapper');
+    if (wrapper) wrapper.style.position = 'relative';
+    if (wrapper) wrapper.appendChild(_bubbleContainer);
+  }
+  return _bubbleContainer;
+}
+
+function renderSpeechBubbles(camX, camY, ts) {
+  cleanSpeechBubbles();
+  const container = getSpeechBubbleContainer();
+  container.innerHTML = '';
+  if (!state.speechBubbles || state.speechBubbles.length === 0) return;
+  const rect = canvas.getBoundingClientRect();
+  const wrapperRect = (canvas.parentElement || canvas).getBoundingClientRect();
+  const now = Date.now();
+  for (const b of state.speechBubbles) {
+    if (b.expiresAt < now) continue;
+    // Convert world coords to canvas pixel coords
+    const px = (b.x - camX) * ts + ts / 2;
+    const py = (b.y - camY) * ts - 6;
+    if (px < -20 || px > canvas.width + 20 || py < -30 || py > canvas.height) continue;
+    // Scale to actual canvas display size
+    const scaleX = canvas.offsetWidth / canvas.width || 1;
+    const scaleY = canvas.offsetHeight / canvas.height || 1;
+    const el = document.createElement('div');
+    const typeClass = b.type === 'boss' ? 'boss' : 'enemy';
+    el.className = `speech-bubble ${typeClass}`;
+    el.textContent = b.text;
+    el.style.left = Math.round(px * scaleX) + 'px';
+    el.style.top  = Math.round(py * scaleY) + 'px';
+    container.appendChild(el);
+  }
 }
 
 // ── Equipment Slot Labels ───────────────────
@@ -2221,7 +2269,7 @@ function updateFloorWarpOverlay() {
     btn.className = 'warp-floor-btn';
     btn.innerHTML = `<span class="warp-floor-num">Floor ${floor}</span><span class="warp-floor-icon">⬆</span>`;
     btn.addEventListener('click', () => {
-      import('./engine.js?v=38').then(({ warpToFloor }) => { warpToFloor(floor); });
+      import('./engine.js?v=39').then(({ warpToFloor }) => { warpToFloor(floor); });
       overlay.classList.add('hidden');
     });
     list.appendChild(btn);
@@ -3239,6 +3287,22 @@ function updateMinimap() {
     mctx.fillRect(gi.x * SCALE, gi.y * SCALE, SCALE, SCALE);
   }
 
+  // Draw map notes (yellow dots)
+  const floorNotes = getFloorMapNotes();
+  if (floorNotes && Object.keys(floorNotes).length > 0) {
+    mctx.fillStyle = '#ffe060';
+    for (const key of Object.keys(floorNotes)) {
+      const [nx, ny] = key.split(',').map(Number);
+      if (!isNaN(nx) && !isNaN(ny)) {
+        mctx.fillRect(nx * SCALE, ny * SCALE, SCALE, SCALE);
+        // Draw a tiny marker border to differentiate from stairs
+        mctx.strokeStyle = '#ffa000';
+        mctx.lineWidth = 0.5;
+        mctx.strokeRect(nx * SCALE, ny * SCALE, SCALE, SCALE);
+      }
+    }
+  }
+
   // Draw player
   mctx.fillStyle = '#4080ff';
   mctx.fillRect(state.player.x * SCALE, state.player.y * SCALE, SCALE, SCALE);
@@ -3251,6 +3315,7 @@ function updateMinimap() {
     <div class="legend-item"><span class="legend-swatch" style="background:#e0c040"></span> Boss</div>
     <div class="legend-item"><span class="legend-swatch" style="background:#40c040"></span> Item</div>
     <div class="legend-item"><span class="legend-swatch" style="background:#e0c040;border-color:#e0c040"></span> Stairs</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:#ffe060;border-color:#ffa000"></span> Note (N)</div>
   `;
 
   // Monsters on this floor

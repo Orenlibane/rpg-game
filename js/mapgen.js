@@ -4,7 +4,7 @@ import {
   MIN_ROOM_SIZE, MAX_ROOM_SIZE, MAX_ROOMS,
   FLOOR_THEMES, ROOM_TYPE,
   ENTITY, BASE_STATS,
-} from './constants.js?v=38';
+} from './constants.js?v=39';
 
 // ── Village (fixed layout) ───────────────────────
 
@@ -437,9 +437,9 @@ function finalizeDungeon(map, rooms, floor, floorTile) {
   map[lastRoom.cy][lastRoom.cx] = TILE.CAVE_STAIRS;
   const stairsPos = { x: lastRoom.cx, y: lastRoom.cy };
 
-  // Up stairs: place near player start (floor > 1 only)
+  // Up stairs: place near player start (floor >= 1; on floor 1 it returns to village)
   let upStairsPos = null;
-  if (floor > 1) {
+  if (floor >= 1) {
     const offsets = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]];
     for (const [ox, oy] of offsets) {
       const ux = playerStart.x + ox, uy = playerStart.y + oy;

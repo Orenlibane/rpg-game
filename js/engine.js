@@ -18,10 +18,11 @@ import {
   ENTITY_FACTION, areFactionsHostile,
   DIFFICULTY, CLASS_UNLOCK_CONDITIONS, VILLAGE_BUILDINGS,
   ALCHEMY_RECIPES, HERO_COLORS, BESTIARY_BONUSES,
-} from './constants.js?v=38';
+  TALENT_TREES, ENEMY_REACTIONS,
+} from './constants.js?v=39';
 import { t } from './i18n.js';
-import { generateVillage, generateDungeon, generateArenaMap, generateCave, generateMiniDungeon, generateBeach, generateTown } from './mapgen.js?v=38';
-import { computeFOV } from './fov.js?v=38';
+import { generateVillage, generateDungeon, generateArenaMap, generateCave, generateMiniDungeon, generateBeach, generateTown } from './mapgen.js?v=39';
+import { computeFOV } from './fov.js?v=39';
 
 function randInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -138,6 +139,12 @@ export const state = {
   // Beach and town
   mode_beach: false,
   mode_town: false,
+  mapNotes: {},          // { [floorKey]: { [coordKey]: string } } — tile notes
+  speechBubbles: [],     // [{ x, y, text, expiresAt, type }]
+  autoExplore: false,    // Tab auto-explore mode
+  talentPoints: 0,       // earned from prestige, spent on talent tree
+  talents: {},           // { [nodeId]: true }
+  showTalentTree: false, // talent tree overlay visibility
   // Mini dungeon
   inMiniDungeon: false,
   miniDungeonReturnFloor: 0,
@@ -183,11 +190,37 @@ export function updateSetting(key, value) {
 // Load saved settings on startup
 loadSettings();
 // Load persisted unlocks and buildings
-setTimeout(() => { loadUnlockedClasses(); loadTownBuildings(); }, 0);
+setTimeout(() => { loadUnlockedClasses(); loadTownBuildings(); loadTalents(); loadMapNotes(); }, 0);
 
 export function spawnDamageNumber(x, y, amount, color = '#fff') {
   if (!gameSettings.showDamageNumbers) return;
   damageNumbers.push({ x, y, text: String(amount), color, age: 0, maxAge: 60 });
+}
+
+// ── Speech Bubbles & Reactions ───────────────
+
+export function addSpeechBubble(x, y, text, type = 'reaction') {
+  // Remove any existing bubble at same position
+  state.speechBubbles = state.speechBubbles.filter(b => !(b.x === x && b.y === y));
+  state.speechBubbles.push({ x, y, text, type, expiresAt: Date.now() + 2500 });
+}
+
+export function cleanSpeechBubbles() {
+  const now = Date.now();
+  state.speechBubbles = state.speechBubbles.filter(b => b.expiresAt > now);
+}
+
+export function triggerEnemyReaction(enemy, reactionType) {
+  const reactions = ENEMY_REACTIONS[enemy.type];
+  if (!reactions) return;
+  const pool = reactions[reactionType];
+  if (!pool || pool.length === 0) return;
+  // Random chance to react
+  const chance = reactionType === 'spot' ? 0.5 : reactionType === 'death' ? 0.4 : 0.25;
+  if (Math.random() > chance) return;
+  const text = pool[Math.floor(Math.random() * pool.length)];
+  addSpeechBubble(enemy.x, enemy.y, text, 'reaction');
+  log(`${getEnemyName(enemy)}: "${text}"`, 'reaction');
 }
 
 // ── Logging ──────────────────────────────────
@@ -300,6 +333,83 @@ export function loadTownBuildings() {
   } catch (_) {}
 }
 
+export function saveTalents() {
+  try { localStorage.setItem('rpg_talents', JSON.stringify({ points: state.talentPoints, unlocked: state.talents })); } catch(e) {}
+}
+
+export function loadTalents() {
+  try {
+    const raw = localStorage.getItem('rpg_talents');
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    state.talentPoints = saved.points || 0;
+    state.talents = saved.unlocked || {};
+  } catch(e) {}
+}
+
+export function unlockTalent(nodeId) {
+  // Find the node
+  let node = null;
+  for (const tree of Object.values(TALENT_TREES)) {
+    node = tree.nodes.find(n => n.id === nodeId);
+    if (node) break;
+  }
+  if (!node) return;
+  if (state.talents[nodeId]) { log('Already unlocked.', 'info'); return; }
+  if (state.talentPoints < node.cost) { log(`Need ${node.cost} talent points.`, 'info'); return; }
+  if (node.requires && !state.talents[node.requires]) { log('Prerequisite not met.', 'info'); return; }
+  state.talentPoints -= node.cost;
+  state.talents[nodeId] = true;
+  saveTalents();
+  log(`✨ Talent unlocked: ${node.name}!`, 'level');
+}
+
+export function getTalentPoints() { return state.talentPoints; }
+export function getUnlockedTalents() { return state.talents; }
+
+export function saveMapNotes() {
+  try { localStorage.setItem('rpg_map_notes', JSON.stringify(state.mapNotes)); } catch(e) {}
+}
+
+export function loadMapNotes() {
+  try {
+    const raw = localStorage.getItem('rpg_map_notes');
+    if (raw) state.mapNotes = JSON.parse(raw);
+  } catch(e) {}
+}
+
+export function addMapNote(text) {
+  const p = state.player;
+  const floorKey = state.mode === 'dungeon' ? `floor_${state.floor}` : state.mode;
+  const coordKey = `${p.x},${p.y}`;
+  if (!state.mapNotes[floorKey]) state.mapNotes[floorKey] = {};
+  if (text && text.trim()) {
+    state.mapNotes[floorKey][coordKey] = text.trim().slice(0, 60);
+    log(`📍 Note saved: "${text.trim().slice(0,30)}"`, 'info');
+  } else {
+    delete state.mapNotes[floorKey][coordKey];
+    log('📍 Note removed.', 'info');
+  }
+  saveMapNotes();
+}
+
+export function getMapNote() {
+  const p = state.player;
+  const floorKey = state.mode === 'dungeon' ? `floor_${state.floor}` : state.mode;
+  return (state.mapNotes[floorKey] || {})[`${p.x},${p.y}`] || null;
+}
+
+export function getFloorMapNotes() {
+  const floorKey = state.mode === 'dungeon' ? `floor_${state.floor}` : state.mode;
+  return state.mapNotes[floorKey] || {};
+}
+
+export function toggleAutoExplore() {
+  state.autoExplore = !state.autoExplore;
+  if (state.autoExplore) log('Auto-explore: ON (Tab to cancel)', 'info');
+  else log('Auto-explore: OFF', 'info');
+}
+
 export function purchaseBuilding(key) {
   const bld = VILLAGE_BUILDINGS[key];
   if (!bld) return;
@@ -336,19 +446,19 @@ export function enterBeach() {
   state.mapW = beach.map[0].length;
   state.mapH = beach.map.length;
   state.items = beach.items || [];
-  state.enemies = beach.enemies || [];
+  state.enemies = (beach.enemies || []).map(e => createEntity(e.type, e.x, e.y));
   state.chests = beach.chests || [];
   state.dens = [];
   state.projectiles = [];
   state.player.x = beach.playerStart.x;
   state.player.y = beach.playerStart.y;
   state.mode_beach = true;
-  computeFov();
+  state.revealed = Array.from({ length: state.mapH }, () => new Uint8Array(state.mapW));
+  updateFOV();
   log('You step onto a windswept beach...', 'explore');
 }
 
 export function exitBeach() {
-  const beach = generateBeach ? null : null;
   const returnPos = state.player.beachReturnPos || { x: 1, y: 8 };
   initVillage();
   state.player.x = returnPos.x;
@@ -364,14 +474,15 @@ export function enterTown() {
   state.mapW = town.map[0].length;
   state.mapH = town.map.length;
   state.items = town.items || [];
-  state.enemies = town.enemies || [];
+  state.enemies = (town.enemies || []).map(e => createEntity(e.type, e.x, e.y));
   state.chests = town.chests || [];
   state.dens = [];
   state.projectiles = [];
   state.player.x = town.playerStart.x;
   state.player.y = town.playerStart.y;
   state.mode_town = true;
-  computeFov();
+  state.revealed = Array.from({ length: state.mapH }, () => new Uint8Array(state.mapW));
+  updateFOV();
   log('You enter the bustling nearby town...', 'explore');
 }
 
@@ -524,6 +635,18 @@ function giveStartingGear(cls) {
       p.inventory.push({ ...ITEMS.minor_health_pot, count: 1 });
       registerArmoryItem('minor_health_pot');
       break;
+  }
+  // Talent bonuses at run start
+  if (state.talents?.keen_eye) {
+    if (!p.inventory.find(i => i.id === 'minor_health_pot')) {
+      p.inventory.push({ ...ITEMS.minor_health_pot, count: 1 });
+    } else {
+      const existing = p.inventory.find(i => i.id === 'minor_health_pot');
+      existing.count = (existing.count || 1) + 1;
+    }
+  }
+  if (state.talents?.lucky_start) {
+    p.gold = Math.floor(p.gold * 1.25);
   }
   log(t('log.starting_gear'), 'item');
 }
@@ -1324,6 +1447,15 @@ export function getBestiaryEntries() {
 
 export function toggleBestiary() {
   state.showBestiary = !state.showBestiary;
+}
+
+export function toggleTalentTree() {
+  state.showTalentTree = !state.showTalentTree;
+  if (state.showTalentTree) { state.showPrestige = false; state.showSettings = false; }
+}
+
+export function closeTalentTree() {
+  state.showTalentTree = false;
 }
 
 // ── Armory (Item Codex) ─────────────────────
@@ -3002,6 +3134,15 @@ function recalcDerivedStats() {
     p.power += PRESTIGE.PER_LEVEL.powerBonus * state.prestigeLevel;
   }
 
+  // Apply talent tree bonuses
+  const t = state.talents || {};
+  if (t.iron_fist)   p.power  += 1;
+  if (t.resilience)  p.armor  = (p.armor || 0) + 1;
+  if (t.tough_skin)  p.maxHp  += 8;
+  if (t.vitality_t)  p.maxHp  += 15;
+  if (t.berserker_t) p.power  += Math.min(5, state.floor || 0);
+  if (t.pack_rat)    { /* handled in BACKPACK_SIZE override */ }
+
   // Keep hp/mana within bounds, heal the difference if max increased
   if (p.maxHp > oldMaxHp) p.hp = Math.min(p.maxHp, p.hp + (p.maxHp - oldMaxHp));
   else p.hp = Math.min(p.hp, p.maxHp);
@@ -3284,6 +3425,12 @@ function attack(attacker, defender) {
   if (attacker.type === ENTITY.PLAYER) {
     log(t('log.you_hit', { name: dName, dmg: baseDmg, crit: critTag }), 'combat');
   } else {
+    // Trigger enemy attack reaction and spot reaction
+    if (defender.type === ENTITY.PLAYER && !attacker.hasSpotted) {
+      attacker.hasSpotted = true;
+      triggerEnemyReaction(attacker, 'spot');
+    }
+    triggerEnemyReaction(attacker, 'attack');
     log(t('log.enemy_hits_you', { attacker: aName, defender: dName, dmg: baseDmg, crit: critTag }), 'combat');
   }
 
@@ -3345,6 +3492,7 @@ function attack(attacker, defender) {
     if (defender.type === ENTITY.PLAYER) {
       checkPlayerDeath('You have been slain!');
     } else {
+      triggerEnemyReaction(defender, 'death');
       log(t('log.you_defeated', { name: getEnemyName(defender) }), 'combat');
       recordKill(defender.type, defender);
       let xpAward = defender.xpReward || 8;
@@ -3433,6 +3581,11 @@ function grantXP(amount) {
   let xpBoost = getXpBoostPercent(p);
   if (state.prestigeLevel > 0) xpBoost += PRESTIGE.PER_LEVEL.xpBoostPercent * state.prestigeLevel;
   if (state.townBuildings.library) xpBoost += 15;
+  // Talent XP bonuses
+  if (state.talents?.xp_hunter || state.talents?.scholar_t) {
+    const xpBonusPct = (state.talents.xp_hunter ? 10 : 0) + (state.talents.scholar_t ? 10 : 0);
+    xpBoost += xpBonusPct;
+  }
   if (xpBoost > 0) {
     amount = amount + Math.floor(amount * xpBoost / 100);
   }
@@ -3467,6 +3620,8 @@ function grantGold(enemy) {
     const chaBonus = ATTR_BONUSES.cha.goldBonus(state.player.attrs.cha);
     gold += Math.floor(gold * chaBonus / 100);
   }
+  // Talent: fortune tree gold bonus
+  if (state.talents?.fortune_t) gold = Math.floor(gold * 1.10);
   state.player.gold += gold;
   state.stats.totalGoldEarned += gold;
   log(t('log.gold_gain', { n: gold }), 'item');
@@ -3692,6 +3847,91 @@ function tryStackItem(item) {
     }
   }
   return false;
+}
+
+// BFS pathfind for auto-explore: find path to nearest unrevealed tile
+function autoExplorePath() {
+  const p = state.player;
+  const H = state.mapH, W = state.mapW;
+  // Find nearest unrevealed walkable-adjacent tile
+  const dist = Array.from({ length: H }, () => new Int32Array(W).fill(-1));
+  const prev = Array.from({ length: H }, () => Array(W).fill(null));
+  const queue = [[p.x, p.y]];
+  dist[p.y][p.x] = 0;
+  let target = null;
+
+  while (queue.length > 0) {
+    const [cx, cy] = queue.shift();
+    // Check if any adjacent tile is unrevealed
+    for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+      const nx = cx + dx, ny = cy + dy;
+      if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+      if (!state.revealed[ny] || !state.revealed[ny][nx]) {
+        target = { x: cx, y: cy }; // walk toward this
+        break;
+      }
+    }
+    if (target) break;
+    for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+      const nx = cx + dx, ny = cy + dy;
+      if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+      if (dist[ny][nx] !== -1) continue;
+      if (!canWalk(nx, ny)) continue;
+      if (state.enemies.find(e => e.x === nx && e.y === ny && e.hp > 0)) continue;
+      dist[ny][nx] = dist[cy][cx] + 1;
+      prev[ny][nx] = [cx, cy];
+      queue.push([nx, ny]);
+    }
+  }
+
+  if (!target) return null;
+
+  // Trace back the path from target to player
+  let cur = [target.x, target.y];
+  let step = null;
+  while (cur) {
+    const [cx, cy] = cur;
+    const [px_, py_] = prev[cy][cx] || [p.x, p.y];
+    if (px_ === p.x && py_ === p.y) { step = [cx, cy]; break; }
+    cur = prev[cy][cx];
+  }
+  return step; // [nx, ny] — next step toward unexplored area
+}
+
+export function doAutoExplore() {
+  if (!state.autoExplore) return false;
+  if (state.mode !== 'dungeon' && state.mode !== 'village') { state.autoExplore = false; return false; }
+  // Stop if any enemy is visible
+  for (const e of state.enemies) {
+    if (e.hp <= 0) continue;
+    if (state.visibility[e.y] && state.visibility[e.y][e.x]) {
+      state.autoExplore = false;
+      log('Auto-explore stopped: enemy nearby!', 'info');
+      return false;
+    }
+  }
+  // Stop if on interactive tile
+  const tile = state.map[state.player.y][state.player.x];
+  const interactiveTiles = [TILE.HEALER, TILE.MERCHANT, TILE.BLACKSMITH, TILE.QUEST_BOARD,
+                             TILE.ARENA, TILE.FISHING_SPOT, TILE.CAVE_STAIRS, TILE.PORTAL, TILE.FLOOR_WARP];
+  if (interactiveTiles.includes(tile)) {
+    state.autoExplore = false;
+    log('Auto-explore stopped: point of interest!', 'info');
+    return false;
+  }
+  const step = autoExplorePath();
+  if (!step) {
+    state.autoExplore = false;
+    log('Auto-explore: floor fully explored!', 'info');
+    return false;
+  }
+  const [nx, ny] = step;
+  // Actually perform the move
+  state.player.x = nx;
+  state.player.y = ny;
+  // Pickup if autoPickup
+  if (gameSettings.autoPickup) pickupItem();
+  return true;
 }
 
 export function pickupItem() {
@@ -4308,7 +4548,7 @@ export function playerMove(dx, dy) {
   }
 
   if (state.mode === 'village' && state.map[ny][nx] === TILE.CAVE_ENTRANCE) {
-    enterCave();
+    enterDungeon(1);
     return;
   }
 
@@ -4565,6 +4805,15 @@ function endTurn() {
       }
       return true;
     });
+  }
+
+  // Talent: passive regen every 8 turns
+  if (state.talents?.regenerator) {
+    const turnCount = (state.player._talentRegenTick || 0) + 1;
+    state.player._talentRegenTick = turnCount;
+    if (turnCount % 8 === 0 && state.player.hp < state.player.maxHp) {
+      state.player.hp = Math.min(state.player.maxHp, state.player.hp + 1);
+    }
   }
 
   // Tick monster breeding dens
@@ -4873,6 +5122,8 @@ export function restartGame() {
   state.mode_beach = false;
   state.mode_town = false;
   state.caveFloor = 0;
+  state.autoExplore = false;
+  state.speechBubbles = [];
   deleteSave();
 }
 
@@ -4888,6 +5139,10 @@ export function activatePrestige() {
   const level = state.prestigeLevel;
   const title = PRESTIGE.TITLES[level];
   log(t('log.prestige_up', { level: level, title: title }), 'level');
+
+  state.talentPoints += 3;
+  saveTalents();
+  log('🌟 Gained 3 Talent Points! Visit the Talent Tree (T) to spend them.', 'level');
 
   unlockAchievement('prestige_1');
   if (level === 5) unlockAchievement('prestige_5');

@@ -4592,3 +4592,183 @@ body.rtl .side-minimap-legend {
   font-size: 10px;
   color: #808090;
 }
+
+/* ── Map Note Modal (v39) ──────────────────────────────── */
+.map-note-panel {
+  max-width: 400px;
+  padding: 20px;
+  text-align: center;
+}
+.map-note-title {
+  font-size: 18px;
+  color: #e8d090;
+  margin: 0 0 8px;
+}
+.map-note-hint {
+  font-size: 12px;
+  color: #808090;
+  margin: 0 0 12px;
+}
+.map-note-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  font-size: 14px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 6px;
+  color: #e0e0e8;
+  outline: none;
+  margin-bottom: 12px;
+}
+.map-note-input:focus { border-color: #e8d090; }
+.map-note-actions { display: flex; gap: 8px; justify-content: center; }
+.btn-primary {
+  padding: 8px 20px;
+  background: #b07020;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+.btn-primary:hover { background: #d09030; }
+.btn-secondary {
+  padding: 8px 20px;
+  background: rgba(255,255,255,0.1);
+  color: #c0c0d0;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+.btn-secondary:hover { background: rgba(255,255,255,0.18); }
+
+/* ── Talent Tree Overlay (v39) ──────────────────────────── */
+.talent-tree-panel {
+  max-width: 700px;
+  width: 95vw;
+  padding: 20px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.talent-tree-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.talent-tree-title {
+  font-size: 20px;
+  color: #e8d090;
+  margin: 0;
+  flex: 1;
+}
+.talent-points-display {
+  font-size: 14px;
+  color: #ffe060;
+  font-weight: bold;
+}
+.talent-tree-desc {
+  font-size: 12px;
+  color: #707080;
+  margin: 0 0 14px;
+}
+.talent-tree-container {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.talent-tree-col {
+  flex: 1;
+  min-width: 180px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 8px;
+  padding: 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.talent-tree-label {
+  font-size: 14px;
+  color: #c090ff;
+  font-weight: bold;
+  margin-bottom: 10px;
+  text-align: center;
+}
+.talent-node {
+  padding: 8px 10px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border: 1px solid transparent;
+}
+.talent-node.unlocked {
+  background: rgba(40,120,40,0.3);
+  border-color: rgba(60,160,60,0.4);
+  cursor: default;
+}
+.talent-node.available {
+  background: rgba(100,60,20,0.4);
+  border-color: rgba(200,140,40,0.5);
+}
+.talent-node.available:hover {
+  background: rgba(150,90,20,0.5);
+  border-color: rgba(220,170,60,0.7);
+}
+.talent-node.locked {
+  background: rgba(30,30,40,0.4);
+  border-color: rgba(80,80,100,0.3);
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.tn-name {
+  display: block;
+  font-size: 13px;
+  color: #e0d0b0;
+  font-weight: bold;
+}
+.tn-cost {
+  display: block;
+  font-size: 11px;
+  color: #ffe060;
+  margin-bottom: 4px;
+}
+.tn-desc {
+  font-size: 11px;
+  color: #909090;
+  line-height: 1.3;
+}
+
+/* ── Speech Bubbles (v39) ────────────────────────────────── */
+.speech-bubble {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(0,0,0,0.85);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: #e8e8e0;
+  white-space: nowrap;
+  z-index: 200;
+  transform: translateX(-50%);
+  animation: bubble-fade 0.2s ease-out;
+  max-width: 160px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+.speech-bubble.enemy { border-color: rgba(200,80,80,0.5); color: #ffb0a0; }
+.speech-bubble.boss  { border-color: rgba(200,50,200,0.6); color: #e060ff; font-weight: bold; }
+@keyframes bubble-fade {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ── Log Panel improvements (v39) ─────────────────────────── */
+#message-log {
+  height: 120px !important;
+  border-color: #3a3a5a !important;
+  box-shadow: 0 0 6px rgba(100,100,200,0.15);
+}

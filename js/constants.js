@@ -1852,6 +1852,67 @@ export const PHASE_BOSSES = {
   },
 };
 
+// ── Talent Trees (permanent prestige progression) ──────────────
+// Three small trees: Offense, Defense, Utility
+// Each prestige level grants 3 talent points
+export const TALENT_TREES = {
+  offense: {
+    label: '⚔️ Offense',
+    nodes: [
+      { id: 'iron_fist',    name: 'Iron Fist',      cost: 1, desc: '+1 base Power permanently.',       requires: null,         effect: { stat: 'power', amount: 1 } },
+      { id: 'battle_hard',  name: 'Battle-Hardened', cost: 1, desc: '+4% crit chance.',                requires: null,         effect: { stat: 'critChance', amount: 4 } },
+      { id: 'executioner',  name: 'Executioner',     cost: 2, desc: '+3 Power vs enemies below 30% HP.', requires: 'iron_fist', effect: { stat: 'executioner', amount: 3 } },
+      { id: 'xp_hunter',    name: 'XP Hunter',       cost: 1, desc: '+10% XP from kills.',             requires: null,         effect: { stat: 'xpBonus', amount: 10 } },
+      { id: 'berserker_t',  name: 'Berserker',       cost: 2, desc: '+1 Power for each floor cleared (max +5).', requires: 'iron_fist', effect: { stat: 'floorPower', amount: 1 } },
+    ],
+  },
+  defense: {
+    label: '🛡️ Defense',
+    nodes: [
+      { id: 'tough_skin',   name: 'Tough Skin',      cost: 1, desc: '+8 max HP permanently.',          requires: null,          effect: { stat: 'maxHp', amount: 8 } },
+      { id: 'resilience',   name: 'Resilience',      cost: 1, desc: '+1 base Armor.',                  requires: null,          effect: { stat: 'armor', amount: 1 } },
+      { id: 'last_stand',   name: 'Last Stand',       cost: 2, desc: 'Take 20% less dmg below 25% HP.', requires: 'tough_skin', effect: { stat: 'lastStand', amount: 20 } },
+      { id: 'vitality_t',   name: 'Vitality',        cost: 2, desc: '+15 max HP.',                     requires: 'tough_skin', effect: { stat: 'maxHp', amount: 15 } },
+      { id: 'regenerator',  name: 'Regenerator',     cost: 1, desc: 'Passively regen 1 HP every 8 turns.', requires: null,     effect: { stat: 'passiveRegen', amount: 1 } },
+    ],
+  },
+  utility: {
+    label: '🎒 Utility',
+    nodes: [
+      { id: 'fortune_t',    name: 'Fortune',         cost: 1, desc: '+10% gold from enemies.',         requires: null,          effect: { stat: 'goldBonus', amount: 10 } },
+      { id: 'scholar_t',    name: 'Scholar',         cost: 1, desc: '+10% XP from all sources.',       requires: null,          effect: { stat: 'xpBonus', amount: 10 } },
+      { id: 'pack_rat',     name: 'Pack Rat',        cost: 2, desc: '+3 backpack slots.',               requires: null,          effect: { stat: 'backpackBonus', amount: 3 } },
+      { id: 'keen_eye',     name: 'Keen Eye',        cost: 1, desc: 'Start each run with 1 Health Potion.', requires: null,     effect: { stat: 'startPotion', amount: 1 } },
+      { id: 'lucky_start',  name: 'Lucky Start',     cost: 2, desc: 'Start with 25% more gold.',       requires: 'fortune_t',   effect: { stat: 'startGoldBonus', amount: 25 } },
+    ],
+  },
+};
+
+// ── Enemy Reactions (speech bubbles + log flavor) ──────────────
+// type keys: 'spot' (sees player), 'attack' (attacks player), 'low_hp' (below 30%), 'death'
+export const ENEMY_REACTIONS = {
+  [ENTITY.GOBLIN]:        { spot: ['Intruder!', 'Get \'em!', 'Yaaah!'], attack: ['Take that!', 'Gotcha!', 'Heh!'], low_hp: ['Ow...', 'You\'ll pay!'], death: ['Noooo...', 'Graaaah...'] },
+  [ENTITY.ORC]:           { spot: ['GRAAAHHH!', 'Crush you!'], attack: ['SMASH!', 'DIE!'], low_hp: ['Orc... strong!', 'Won\'t fall!'], death: ['Urgh...', 'Impossible...'] },
+  [ENTITY.SKELETON]:      { spot: ['*rattles*', 'Intruder...'], attack: ['*clack*', 'Die... again...'], low_hp: ['Still... standing...'], death: ['Finally... rest...', '*crumbles*'] },
+  [ENTITY.SPIDER]:        { spot: ['*hiss*', '*skitter*'], attack: ['*bite*', '*venom*'], low_hp: ['*squeals*'], death: ['*death rattle*'] },
+  [ENTITY.TROLL]:         { spot: ['TROLL SMASH!', 'Tiny human!'], attack: ['CRUSH!', 'BONK!'], low_hp: ['Troll... angry!'], death: ['Troll... fall down...'] },
+  [ENTITY.DARK_MAGE]:     { spot: ['Your soul is mine!', 'Fool, to enter here!'], attack: ['Taste darkness!', 'Arcane bolt!'], low_hp: ['This... can\'t be!'], death: ['The darkness... reclaims me...'] },
+  [ENTITY.BAT]:           { spot: ['*screech*', '*flap flap*'], attack: ['*screech*'], low_hp: ['*whimper*'], death: ['*thud*'] },
+  [ENTITY.WRAITH]:        { spot: ['You dare enter my domain?', 'Join the dead...'], attack: ['Feel the cold!', 'Wither!'], low_hp: ['Weakening...'], death: ['I... return to shadow...'] },
+  [ENTITY.SLIME]:         { spot: ['*blorp*', '*squelch*'], attack: ['*splat*'], low_hp: ['*blub blub*'], death: ['*splorp*'] },
+  [ENTITY.GOBLIN_SHAMAN]: { spot: ['Spirits, aid me!', 'You shall not pass!'], attack: ['Hex you!', 'Spirit bolt!'], low_hp: ['Ancestors... help!'], death: ['The spirits... abandon me...'] },
+  [ENTITY.MUSHROOM]:      { spot: ['*spore puff*', '*fungal screech*'], attack: ['*spore burst*'], low_hp: ['*wilting*'], death: ['*collapses into spores*'] },
+  [ENTITY.ZOMBIE]:        { spot: ['Braaaains...', '*groan*'], attack: ['Braaaaains!', '*lunge*'], low_hp: ['*ragged moan*'], death: ['Finally... peace...'] },
+  [ENTITY.DEATH_KNIGHT]:  { spot: ['Lay down your life!', 'Kneel!'], attack: ['For the undying!', 'Death stroke!'], low_hp: ['I cannot be defeated!'], death: ['I will return...'] },
+  [ENTITY.DEMON_LORD]:    { spot: ['YOU DARE ENTER MY SANCTUM?!', 'YOUR SOUL WILL BURN!'], attack: ['INFERNO STRIKE!', 'BEGONE!'], low_hp: ['IMPOSSIBLE!', 'You will NOT win!'], death: ['The darkness... retreats... for now...'] },
+  [ENTITY.GOBLIN_WARLORD]:{ spot: ['Kill the intruder!', 'GOBLINS, ATTACK!'], attack: ['For the horde!', 'Charge!'], low_hp: ['Fall back— no! FIGHT!'], death: ['The... horde... will remember...'] },
+  [ENTITY.SNOW_WOLF]:     { spot: ['*howl*', '*snarl*'], attack: ['*snap*', '*growl*'], low_hp: ['*whine*'], death: ['*howl fades*'] },
+  [ENTITY.TOXIC_TOAD]:    { spot: ['*CROAK*', '*puffs up*'], attack: ['*bile spit*', '*CROAK*'], low_hp: ['*croaks weakly*'], death: ['*deflates*'] },
+  [ENTITY.FIRE_IMP]:      { spot: ['Burn burn burn!', 'Hehe, fire!'], attack: ['FIRE!', 'Scorch!'], low_hp: ['So... hot...'], death: ['*fizzles out*'] },
+  [ENTITY.BLOOD_BAT]:     { spot: ['*shriek*', 'BLOOD!'], attack: ['*drain*', '*bite*'], low_hp: ['*screeches*'], death: ['*wet thud*'] },
+  [ENTITY.GOBLIN_SCOUT]:  { spot: ['Found one!', 'Calling backup!'], attack: ['Stab stab!'], low_hp: ['Help! HELP!'], death: ['Ugh... didn\'t see that...'] },
+};
+
 // ── Set Items ───────────────────────────────────
 export const ITEM_SETS = {
   shadow_set: {

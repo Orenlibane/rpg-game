@@ -5,7 +5,7 @@ import { t } from './i18n.js';
 const BASE_STATS_LOOKUP = BASE_STATS;
 const GOLD_LOOKUP = GOLD_REWARDS;
 import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js?v=28';
-import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith, selectSubclass, isSubclassBranchUnlocked, getTownUpgradeLevel, upgradeTownBuilding, getAvailableCraftingRecipes, getRunHistory, closeRunHistory } from './engine.js?v=28';
+import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, getSellPrice, isTrashItem, sellAllTrash, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith, selectSubclass, isSubclassBranchUnlocked, getTownUpgradeLevel, upgradeTownBuilding, getAvailableCraftingRecipes, getRunHistory, closeRunHistory } from './engine.js?v=28';
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
@@ -2140,30 +2140,77 @@ function updateShopOverlay() {
     document.getElementById('shop-tab-sell').classList.add('active');
 
     sellList.innerHTML = '';
+
+    // --- Filter bar + Sell All Trash button ---
+    const toolbar = document.createElement('div');
+    toolbar.className = 'sell-toolbar';
+
+    const filters = ['All', 'Gear', 'Potions', 'Trash'];
+    const filterBar = document.createElement('div');
+    filterBar.className = 'sell-filter-bar';
+    filters.forEach(f => {
+      const btn = document.createElement('button');
+      btn.className = 'sell-filter-btn' + (sellFilter === f ? ' active' : '');
+      btn.textContent = f;
+      btn.addEventListener('click', () => { sellFilter = f; render(); });
+      filterBar.appendChild(btn);
+    });
+
+    const sellAllBtn = document.createElement('button');
+    sellAllBtn.className = 'sell-all-trash-btn';
+    sellAllBtn.textContent = '🗑 Sell All Trash';
+    sellAllBtn.addEventListener('click', () => { sellAllTrash(); render(); });
+
+    toolbar.appendChild(filterBar);
+    toolbar.appendChild(sellAllBtn);
+    sellList.appendChild(toolbar);
+
+    // --- Item list ---
+    const itemsContainer = document.createElement('div');
+    itemsContainer.className = 'sell-items-container';
+    sellList.appendChild(itemsContainer);
+
+    // Apply filter
+    const filteredIndices = [];
+    for (let i = 0; i < p.inventory.length; i++) {
+      const item = p.inventory[i];
+      if (sellFilter === 'Gear' && (item.type === 'consumable' || item.type === 'material')) continue;
+      if (sellFilter === 'Potions' && item.type !== 'consumable') continue;
+      if (sellFilter === 'Trash' && !isTrashItem(item)) continue;
+      filteredIndices.push(i);
+    }
+
     if (p.inventory.length === 0) {
-      sellList.innerHTML = '<div class="shop-item"><span style="color:#666">No items to sell</span></div>';
+      itemsContainer.innerHTML = '<div class="shop-item sell-empty">Your backpack is empty.</div>';
+    } else if (filteredIndices.length === 0) {
+      itemsContainer.innerHTML = '<div class="shop-item sell-empty">No items match this filter.</div>';
     } else {
-      for (let i = 0; i < p.inventory.length; i++) {
+      filteredIndices.forEach(i => {
         const item = p.inventory[i];
         const div = document.createElement('div');
-        div.className = 'shop-item';
+        const trash = isTrashItem(item);
+        div.className = 'shop-item sell-item-row' + (trash ? ' sell-item-trash' : '');
         const count = item.count || 1;
-        const countStr = count > 1 ? ` (x${count})` : '';
+        const countStr = count > 1 ? ` ×${count}` : '';
+        const tierLabel = item.tier ? `<span class="sell-tier sell-tier-${item.tier}">T${item.tier}</span>` : '';
+        const sellPrice = getSellPrice(item); // includes stack
         div.innerHTML = `
-          <span class="shop-item-name">${item.icon} ${item.name}${countStr}</span>
+          <span class="shop-item-name">${item.icon} ${item.name}${countStr} ${tierLabel}</span>
           <span class="shop-item-desc">${item.desc}</span>
+          <span class="sell-price-tag">${sellPrice}g</span>
           <button class="shop-sell-btn">Sell</button>
         `;
-        const idx = i;
         div.querySelector('.shop-sell-btn').addEventListener('click', () => {
-          sellItem(idx);
+          sellItem(i);
           render();
         });
-        sellList.appendChild(div);
-      }
+        itemsContainer.appendChild(div);
+      });
     }
   }
 }
+
+let sellFilter = 'All';
 
 // Shop tab switching
 document.getElementById('shop-tab-buy')?.addEventListener('click', () => {

@@ -2364,15 +2364,30 @@ export function buyItem(shopIndex) {
   checkAchievements();
 }
 
+export function getSellPrice(item) {
+  const shopEntry = SHOP_INVENTORY.find(s => s.itemId === item.id) || DUNGEON_SHOP_INVENTORY.find(s => s.itemId === item.id);
+  let price = shopEntry ? Math.floor(shopEntry.price / 2) : 3;
+  if (item.tier === 2) price = Math.max(price, 10);
+  if (item.tier === 3) price = Math.max(price, 25);
+  if (item.tier === 4) price = Math.max(price, 60);
+  if (item.tier === 5) price = Math.max(price, 150);
+  if (item.count && item.count > 1) price *= item.count;
+  return price;
+}
+
+export function isTrashItem(item) {
+  // Trash = tier 1 gear, or consumables/materials (always sellable in bulk)
+  if (!item) return false;
+  if (item.type === 'material') return true;
+  if (item.type === 'consumable') return false; // potions are not trash
+  return (item.tier || 1) <= 1;
+}
+
 export function sellItem(invIndex) {
   const p = state.player;
   if (invIndex < 0 || invIndex >= p.inventory.length) return;
   const item = p.inventory[invIndex];
-  // Sell price = roughly half of shop price, or a base value
-  const shopEntry = SHOP_INVENTORY.find(s => s.itemId === item.id) || DUNGEON_SHOP_INVENTORY.find(s => s.itemId === item.id);
-  let sellPrice = shopEntry ? Math.floor(shopEntry.price / 2) : 3;
-  if (item.tier === 2) sellPrice = Math.max(sellPrice, 10);
-  if (item.tier === 3) sellPrice = Math.max(sellPrice, 25);
+  const sellPrice = getSellPrice({ ...item, count: 1 }); // per-unit price
   if (item.count && item.count > 1) {
     item.count--;
   } else {
@@ -2380,6 +2395,28 @@ export function sellItem(invIndex) {
   }
   p.gold += sellPrice;
   log(t('log.sold_item', { name: item.name, price: sellPrice }), 'item');
+}
+
+export function sellAllTrash() {
+  const p = state.player;
+  let totalGold = 0;
+  let count = 0;
+  // Iterate backwards to avoid index shifting issues
+  for (let i = p.inventory.length - 1; i >= 0; i--) {
+    const item = p.inventory[i];
+    if (!isTrashItem(item)) continue;
+    const perUnit = getSellPrice({ ...item, count: 1 });
+    const qty = item.count || 1;
+    totalGold += perUnit * qty;
+    count += qty;
+    p.inventory.splice(i, 1);
+  }
+  if (count === 0) {
+    log('No trash gear to sell.', 'info');
+  } else {
+    p.gold += totalGold;
+    log(`Sold ${count} trash item${count > 1 ? 's' : ''} for ${totalGold}g.`, 'item');
+  }
 }
 
 function getShopItems() {

@@ -2936,6 +2936,7 @@ export function getLightningSprite() {
 }
 
 export function getItemSprite(iconCode) {
+  if (!iconCode) iconCode = '??';
   const key = 'item_' + iconCode;
   if (!cache[key]) cache[key] = buildItemSprite(iconCode);
   return cache[key];

@@ -706,6 +706,8 @@ function openBossCaveDoor(bossIndex) {
   for (let y = yTop; y <= yBot; y++) {
     if (state.bossCaveMap.map[y]) state.bossCaveMap.map[y][x] = TILE.BOSS_DOOR_OPEN;
   }
+  // Immediately reveal newly opened corridor/door
+  updateFOV();
 }
 
 // ── Class Selection ──────────────────────────
@@ -3627,6 +3629,12 @@ function attack(attacker, defender) {
     if (pbData && (defender.bossPhase || 0) < pbData.phases.length - 1) {
       defender.hp = 1; // prevent death, transition will heal
       checkBossPhaseTransition(defender);
+    } else if (defender.isBossCaveBoss) {
+      const caveBossPhases = BOSS_CAVE_BOSSES[defender.bossCaveIndex]?.phases;
+      if (caveBossPhases && (defender.bossPhase || 0) < caveBossPhases.length - 1) {
+        defender.hp = 1; // prevent death, transition will heal
+        checkBossPhaseTransition(defender);
+      }
     }
   }
   if (defender.hp <= 0) {

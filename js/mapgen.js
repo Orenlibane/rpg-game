@@ -4,7 +4,7 @@ import {
   MIN_ROOM_SIZE, MAX_ROOM_SIZE, MAX_ROOMS,
   FLOOR_THEMES, ROOM_TYPE,
   ENTITY, BASE_STATS, BOSS_CAVE_BOSSES,
-} from './constants.js?v=44';
+} from './constants.js?v=45';
 
 // ── Village (fixed layout) ───────────────────────
 

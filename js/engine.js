@@ -19,10 +19,10 @@ import {
   DIFFICULTY, CLASS_UNLOCK_CONDITIONS, VILLAGE_BUILDINGS,
   ALCHEMY_RECIPES, HERO_COLORS, BESTIARY_BONUSES,
   TALENT_TREES, ENEMY_REACTIONS,
-} from './constants.js?v=44';
+} from './constants.js?v=45';
 import { t } from './i18n.js';
-import { generateVillage, generateDungeon, generateArenaMap, generateCave, generateMiniDungeon, generateBeach, generateTown, generateBossCave } from './mapgen.js?v=44';
-import { computeFOV } from './fov.js?v=44';
+import { generateVillage, generateDungeon, generateArenaMap, generateCave, generateMiniDungeon, generateBeach, generateTown, generateBossCave } from './mapgen.js?v=45';
+import { computeFOV } from './fov.js?v=45';
 
 function randInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -598,12 +598,16 @@ export function enterBossCave() {
   state.inBossCave = true;
   state.mode = 'dungeon'; // reuse dungeon rendering
 
-  // Generate or reuse persisted map (doors stay open between visits)
+  // Generate or reuse persisted map (doors stay open between visits).
+  // Discard cached map if dimensions don't match current layout (stale save).
+  const CAVE_EXPECTED_W = 83;
   let cave;
-  if (state.bossCaveMap) {
+  if (state.bossCaveMap && state.bossCaveMap.map[0]?.length === CAVE_EXPECTED_W) {
     // Restore persisted map (already has open/closed doors)
     cave = { map: state.bossCaveMap.map.map(r => new Uint8Array(r)), playerStart: { x: 3, y: 7 }, bossPositions: state.bossCaveMap.bossPositions, doorPositions: state.bossCaveMap.doorPositions };
   } else {
+    // Fresh generation (first visit, or stale cached map from old version)
+    state.bossCaveMap = null;
     cave = generateBossCave();
   }
 
@@ -1380,7 +1384,7 @@ function applyShrineBlessingNow() {
 // ── FOV ──────────────────────────────────────
 
 function updateFOV() {
-  const radius = state.mode === 'village' ? 20 : state.mode === 'arena' ? 20 : 7;
+  const radius = state.mode === 'village' ? 20 : state.mode === 'arena' ? 20 : state.inBossCave ? 12 : 7;
   state.visibility = computeFOV(state.map, state.player.x, state.player.y, radius);
 
   for (let y = 0; y < state.mapH; y++) {

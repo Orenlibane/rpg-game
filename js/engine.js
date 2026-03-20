@@ -252,6 +252,10 @@ export function initVillage() {
   state.mapH = village.map.length;
   state.enemies = [];
   state.items = [];
+  state.chests = [];
+  state.dens = [];
+  state.showChest = false;
+  state.activeChest = null;
   state.gameOver = false;
   state.turnCount = 0;
   state.messages = [];
@@ -2943,9 +2947,9 @@ function attack(attacker, defender) {
   }
 }
 
-function attackDen(den) {
-  const power = getPlayerPower();
-  const damage = Math.max(1, power + randInt(-1, 2));
+function attackDen(den, overrideDamage) {
+  const power = overrideDamage !== undefined ? overrideDamage : getPlayerPower();
+  const damage = Math.max(1, power + (overrideDamage !== undefined ? 0 : randInt(-1, 2)));
   den.hp -= damage;
   spawnDamageNumber(den.x, den.y, damage, '#ff8');
   log(`You strike the ${den.name} for ${damage} damage!`, 'combat');
@@ -3151,6 +3155,37 @@ function findNearestVisibleEnemy(range) {
   return nearest;
 }
 
+// Like findNearestVisibleEnemy but also considers monster dens as targets.
+// Returns { target, isDen } where isDen=true means attackDen() should be used.
+function findNearestVisibleTarget(range) {
+  const px = state.player.x, py = state.player.y;
+  let bestEnemy = null, bestEnemyDist = Infinity;
+  let bestDen = null, bestDenDist = Infinity;
+
+  for (const enemy of state.enemies) {
+    if (enemy.hp <= 0) continue;
+    const dist = Math.abs(enemy.x - px) + Math.abs(enemy.y - py);
+    if (dist > range) continue;
+    if (!state.visibility[enemy.y] || !state.visibility[enemy.y][enemy.x]) continue;
+    if (!hasLineOfSight(px, py, enemy.x, enemy.y)) continue;
+    if (dist < bestEnemyDist) { bestEnemyDist = dist; bestEnemy = enemy; }
+  }
+
+  for (const den of (state.dens || [])) {
+    if (den.destroyed) continue;
+    const dist = Math.abs(den.x - px) + Math.abs(den.y - py);
+    if (dist > range) continue;
+    if (!state.visibility[den.y] || !state.visibility[den.y][den.x]) continue;
+    if (!hasLineOfSight(px, py, den.x, den.y)) continue;
+    if (dist < bestDenDist) { bestDenDist = dist; bestDen = den; }
+  }
+
+  // Prefer enemies; fall back to dens
+  if (bestEnemy) return { target: bestEnemy, isDen: false };
+  if (bestDen)   return { target: bestDen,   isDen: true  };
+  return null;
+}
+
 export function castFireSpell() {
   if (state.gameOver || state.pendingLevelUp) return false;
   if (state.playerClass !== PLAYER_CLASS.MAGE) {
@@ -3163,16 +3198,18 @@ export function castFireSpell() {
   }
 
   const spellRange = FIRE_SPELL_RANGE + getRangeBonus(state.player);
-  const target = findNearestVisibleEnemy(spellRange);
-  if (!target) {
+  const result = findNearestVisibleTarget(spellRange);
+  if (!result) {
     log(t('log.no_enemies_in_range'), 'info');
     return false;
   }
+  const { target, isDen } = result;
 
   state.player.mana -= FIRE_SPELL_COST;
   state.projectiles.push({ x: target.x, y: target.y, type: 'fire', ttl: 3 });
   const spellDamage = FIRE_SPELL_POWER + getSpellBonus(state.player);
-  rangedAttack(target, spellDamage, 'fire spell');
+  if (isDen) attackDen(target, spellDamage);
+  else rangedAttack(target, spellDamage, 'fire spell');
   endTurn();
   return true;
 }
@@ -3185,15 +3222,17 @@ export function shootBow() {
   }
 
   const bowRange = BOW_RANGE + getRangeBonus(state.player);
-  const target = findNearestVisibleEnemy(bowRange);
-  if (!target) {
+  const result = findNearestVisibleTarget(bowRange);
+  if (!result) {
     log(t('log.no_enemies_in_range'), 'info');
     return false;
   }
+  const { target, isDen } = result;
 
   const bowPower = getEffectiveRangedPower(state.player);
   state.projectiles.push({ x: target.x, y: target.y, type: 'arrow', ttl: 3 });
-  rangedAttack(target, bowPower, 'arrow');
+  if (isDen) attackDen(target, bowPower);
+  else rangedAttack(target, bowPower, 'arrow');
   endTurn();
   return true;
 }
@@ -4231,22 +4270,27 @@ export function castSpell(spellId) {
 
   if (spell.type === 'ranged_single') {
     const spellRange = spell.range + getRangeBonus(state.player);
-    const target = findNearestVisibleEnemy(spellRange);
-    if (!target) {
+    const result = findNearestVisibleTarget(spellRange);
+    if (!result) {
       log(t('log.no_enemies_in_range'), 'info');
       return false;
     }
+    const { target, isDen } = result;
     state.player.mana -= manaCost;
     const projType = spellId === 'ice_shard' ? 'ice' : 'fire';
     state.projectiles.push({ x: target.x, y: target.y, type: projType, ttl: 3 });
     const spellDamage = spell.damage + getSpellBonus(state.player) + empBonus;
-    rangedAttack(target, spellDamage, spell.name.toLowerCase());
-    // Frost Mastery: ice shard slows
-    if (spellId === 'ice_shard' && target.hp > 0) {
-      const fmRank = getSkillRank('frost_mastery');
-      if (fmRank > 0) {
-        target.slowTurns = (target.slowTurns || 0) + fmRank;
-        log(t('log.enemy_slowed', { name: getEnemyName(target), n: fmRank }), 'combat');
+    if (isDen) {
+      attackDen(target, spellDamage);
+    } else {
+      rangedAttack(target, spellDamage, spell.name.toLowerCase());
+      // Frost Mastery: ice shard slows
+      if (spellId === 'ice_shard' && target.hp > 0) {
+        const fmRank = getSkillRank('frost_mastery');
+        if (fmRank > 0) {
+          target.slowTurns = (target.slowTurns || 0) + fmRank;
+          log(t('log.enemy_slowed', { name: getEnemyName(target), n: fmRank }), 'combat');
+        }
       }
     }
     endTurn();
@@ -4255,19 +4299,28 @@ export function castSpell(spellId) {
 
   if (spell.type === 'ranged_multi') {
     const spellRange = spell.range + getRangeBonus(state.player);
-    // Chain Master: extra targets
     const cmRank = getSkillRank('chain_master');
     const maxTargets = (spell.maxTargets || 3) + cmRank;
-    const targets = findMultipleVisibleEnemies(spellRange, maxTargets);
-    if (targets.length === 0) {
+    // Include dens as additional targets for chain lightning
+    const enemyTargets = findMultipleVisibleEnemies(spellRange, maxTargets);
+    const denTargets = (state.dens || [])
+      .filter(d => !d.destroyed && Math.abs(d.x - state.player.x) + Math.abs(d.y - state.player.y) <= spellRange
+        && state.visibility[d.y]?.[d.x] && hasLineOfSight(state.player.x, state.player.y, d.x, d.y))
+      .slice(0, maxTargets - enemyTargets.length);
+    const allTargets = [...enemyTargets, ...denTargets];
+    if (allTargets.length === 0) {
       log(t('log.no_enemies_in_range'), 'info');
       return false;
     }
     state.player.mana -= manaCost;
     const spellDamage = spell.damage + getSpellBonus(state.player) + empBonus;
-    for (const target of targets) {
+    for (const target of enemyTargets) {
       state.projectiles.push({ x: target.x, y: target.y, type: 'lightning', ttl: 3 });
       rangedAttack(target, spellDamage, spell.name.toLowerCase());
+    }
+    for (const den of denTargets) {
+      state.projectiles.push({ x: den.x, y: den.y, type: 'lightning', ttl: 3 });
+      attackDen(den, spellDamage);
     }
     endTurn();
     return true;

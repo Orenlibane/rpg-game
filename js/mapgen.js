@@ -1142,11 +1142,12 @@ export function generateBossCave() {
     // Corridor connecting previous room (or entry) to this boss room
     fill(corStartX, MID_Y - 1, corStartX + CORRIDOR_W - 1, MID_Y + 1, TILE.BOSS_FLOOR);
 
-    // Boss door in the middle of the corridor (initially sealed)
+    // First door starts open so the player can enter room 0; rest are sealed
     const doorX = corStartX + 1;
-    map[MID_Y - 1][doorX] = TILE.BOSS_DOOR;
-    map[MID_Y][doorX]     = TILE.BOSS_DOOR;
-    map[MID_Y + 1][doorX] = TILE.BOSS_DOOR;
+    const doorTile = i === 0 ? TILE.BOSS_DOOR_OPEN : TILE.BOSS_DOOR;
+    map[MID_Y - 1][doorX] = doorTile;
+    map[MID_Y][doorX]     = doorTile;
+    map[MID_Y + 1][doorX] = doorTile;
     doorPositions.push({ x: doorX, yTop: MID_Y - 1, yBot: MID_Y + 1 });
 
     // Boss room interior

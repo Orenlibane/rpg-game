@@ -3644,13 +3644,14 @@ function attack(attacker, defender) {
       if (defender.isBossCaveBoss) {
         const idx = defender.bossCaveIndex;
         state.bossCaveDefeated[idx] = true;
-        openBossCaveDoor(idx);
+        // Open the door AFTER this room (leading to the next boss), not this room's entry door
+        if (idx + 1 < 5) openBossCaveDoor(idx + 1);
         const bossData = BOSS_CAVE_BOSSES[idx];
         const goldReward = bossData.reward?.gold || 100;
         state.player.gold += goldReward;
         state.stats.totalGoldEarned += goldReward;
         log(`⚔️ ${bossData.name} has been slain! You gain ${goldReward} gold!`, 'level');
-        log(`🚪 The sealed gate to the next room opens...`, 'info');
+        if (idx + 1 < 5) log(`🚪 The gate to the next trial opens...`, 'info');
         // Drop extra high-tier items for boss cave bosses
         const extraItems = bossData.reward?.items || 2;
         const tierMin = idx >= 3 ? 4 : idx >= 1 ? 3 : 2; // higher index = higher tier

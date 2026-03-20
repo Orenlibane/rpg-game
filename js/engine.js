@@ -114,6 +114,8 @@ export const state = {
   // Floor warp system: floors unlocked for teleport (every 5 floors reached)
   unlockedFloorWarps: [],
   showFloorWarp: false,
+  // Spell book overlay
+  showSpellBook: false,
   // Persistent floor cache: each floor is generated once per run and remembered
   // Key = floor number, value = { map, enemies, items, chests, dens, stairsPos, portalPos, floorTheme, isDungeonShop, revealed }
   floorCache: {},
@@ -2207,6 +2209,13 @@ export function warpToFloor(floor) {
   state.showFloorWarp = false;
   log(`⬆ Warping to floor ${floor}...`, 'level');
   enterDungeon(floor);
+}
+
+export function toggleSpellBook() {
+  state.showSpellBook = !state.showSpellBook;
+}
+export function closeSpellBook() {
+  state.showSpellBook = false;
 }
 
 export function closeHealer() {

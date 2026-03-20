@@ -2721,17 +2721,36 @@ function buildItemSprite(iconCode) {
   }
 
   if (code === 'PT') {
-    // Portal Scroll — rolled scroll with magical glow
-    fillRect(g, 10, 6, 12, 20, '#d0c8a0');
-    fillRect(g, 8, 6, 16, 3, '#b0a880');
-    fillRect(g, 8, 23, 16, 3, '#b0a880');
-    // Text lines
-    fillRect(g, 12, 11, 8, 1, '#6a6040');
-    fillRect(g, 12, 14, 8, 1, '#6a6040');
-    fillRect(g, 12, 17, 8, 1, '#6a6040');
-    // Magic glow
-    g.fillStyle = '#4080e040';
-    g.beginPath(); g.arc(16, 16, 6, 0, Math.PI * 2); g.fill();
+    // Portal Scroll — proper rolled parchment with curl ends
+    // Main parchment body
+    fillRect(g, 11, 9, 10, 14, '#e8d8a0');       // cream body
+    fillRect(g, 12, 9, 8, 14, '#f0e4b0');         // lighter center highlight
+    // Rolled-up top end — thick cylinder look
+    fillRect(g, 9, 6, 14, 4, '#c8b870');          // top roll shadow
+    fillRect(g, 10, 6, 12, 3, '#deca80');         // top roll
+    fillRect(g, 11, 6, 10, 2, '#eed890');         // top roll highlight
+    // Rolled-up bottom end
+    fillRect(g, 9, 22, 14, 4, '#c8b870');         // bottom roll shadow
+    fillRect(g, 10, 22, 12, 3, '#deca80');        // bottom roll
+    fillRect(g, 11, 23, 10, 2, '#eed890');        // bottom roll highlight
+    // Parchment edge shadows (left/right of body)
+    fillRect(g, 11, 10, 1, 12, '#c8b870');        // left edge shadow
+    fillRect(g, 20, 10, 1, 12, '#c8b870');        // right edge shadow
+    // Tiny curl detail — top end curve hint
+    fillRect(g, 10, 8, 2, 1, '#b8a860');
+    fillRect(g, 20, 8, 2, 1, '#b8a860');
+    fillRect(g, 10, 24, 2, 1, '#b8a860');
+    fillRect(g, 20, 24, 2, 1, '#b8a860');
+    // Ink lines (text on parchment)
+    fillRect(g, 13, 12, 6, 1, '#6a5820');
+    fillRect(g, 13, 15, 6, 1, '#6a5820');
+    fillRect(g, 13, 18, 4, 1, '#6a5820');
+    // Magic portal glow (blue-purple, overlaid)
+    g.fillStyle = 'rgba(60, 100, 240, 0.18)';
+    g.beginPath(); g.arc(16, 16, 5, 0, Math.PI * 2); g.fill();
+    // Tiny sparkle dots
+    fillRect(g, 14, 11, 1, 1, '#80b0ff');
+    fillRect(g, 18, 17, 1, 1, '#a080ff');
     return c;
   }
 

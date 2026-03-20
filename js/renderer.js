@@ -593,6 +593,9 @@ function updateUI() {
   // Floor Warp overlay
   updateFloorWarpOverlay();
 
+  // Spell Book overlay
+  updateSpellBookOverlay();
+
   // Healer overlay
   updateHealerOverlay();
 
@@ -2057,6 +2060,74 @@ function renderTownUpgradeSection(overlay, building) {
     upgradeTownBuilding(building);
     render();
   });
+}
+
+// ── Spell Book Overlay ───────────────────────
+
+function updateSpellBookOverlay() {
+  const overlay = document.getElementById('spellbook-overlay');
+  if (!overlay) return;
+  if (!state.showSpellBook) {
+    overlay.classList.add('hidden');
+    return;
+  }
+  overlay.classList.remove('hidden');
+
+  const p = state.player;
+  if (!p) return;
+
+  // Update mana bar
+  const manaFill = document.getElementById('sb-mana-fill');
+  const manaText = document.getElementById('sb-mana-text');
+  const manaPct = p.maxMana > 0 ? Math.round((p.mana / p.maxMana) * 100) : 0;
+  if (manaFill) manaFill.style.width = `${manaPct}%`;
+  if (manaText) manaText.textContent = `${p.mana} / ${p.maxMana}`;
+
+  const list = document.getElementById('spellbook-list');
+  if (!list) return;
+  list.innerHTML = '';
+
+  // Spell type icons
+  const TYPE_ICONS = {
+    ranged_single: '🎯',
+    ranged_multi: '⚡',
+    self_heal: '💚',
+    aoe: '💥',
+  };
+
+  const spells = Object.values(SPELLS);
+
+  if (!p.maxMana || p.maxMana <= 0) {
+    list.innerHTML = '<div class="spellbook-no-spells">You have no mana capacity — only mages and characters with magic gear can cast spells.</div>';
+    return;
+  }
+
+  for (const spell of spells) {
+    const canAfford = p.mana >= spell.manaCost;
+    const typeIcon = TYPE_ICONS[spell.type] || '✨';
+
+    // Build stat chips
+    let statsHtml = `<span class="spell-stat">💧 ${spell.manaCost} mana</span>`;
+    if (spell.damage) statsHtml += `<span class="spell-stat">⚔️ ${spell.damage} dmg</span>`;
+    if (spell.healAmount) statsHtml += `<span class="spell-stat">❤️ ${spell.healAmount} heal</span>`;
+    if (spell.range) statsHtml += `<span class="spell-stat">📏 range ${spell.range}</span>`;
+    if (spell.maxTargets) statsHtml += `<span class="spell-stat">🎯 hits ${spell.maxTargets}</span>`;
+
+    const entry = document.createElement('div');
+    entry.className = `spell-entry ${canAfford ? 'can-cast' : 'no-mana'}`;
+    entry.innerHTML = `
+      <div class="spell-key-badge">${spell.key.toUpperCase()}</div>
+      <div class="spell-info">
+        <div class="spell-name-row">
+          <span class="spell-name">${typeIcon} ${spell.name}</span>
+          <span class="spell-cost ${canAfford ? 'affordable' : ''}">💧 ${spell.manaCost}</span>
+        </div>
+        <div class="spell-stats">${statsHtml}</div>
+        <div class="spell-desc">${spell.desc}</div>
+      </div>
+    `;
+    list.appendChild(entry);
+  }
 }
 
 // ── Floor Warp Overlay ───────────────────────

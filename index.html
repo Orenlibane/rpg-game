@@ -44,7 +44,7 @@
     <div id="ui-panel">
       <!-- Player Stats -->
       <div id="stats-panel" class="panel">
-        <h2>Dungeon Diver <span id="game-version" style="font-size:10px;color:#555;font-weight:normal;">v33</span></h2>
+        <h2>Dungeon Diver <span id="game-version" style="font-size:10px;color:#555;font-weight:normal;">v34</span></h2>
         <div id="class-display" class="class-badge">Warrior</div>
         <div id="prestige-badge" style="display: none;"></div>
         <div id="floor-display" class="stat-row">Village</div>
@@ -142,7 +142,7 @@
         <div class="login-logo-icon">&#9876;</div>
         <h1 class="title-login-v2">Dungeon Diver</h1>
         <p class="login-tagline">Descend. Fight. Survive.</p>
-        <span class="login-version-badge">v33</span>
+        <span class="login-version-badge">v34</span>
       </div>
 
       <!-- Login Form -->
@@ -169,8 +169,12 @@
         <h3 class="changelog-title">&#128220; Changelog</h3>
         <div class="changelog-scroll" id="changelog-scroll">
           <div class="changelog-entry changelog-new">
+            <span class="changelog-version">v34</span>
+            <span class="changelog-text">Spell Book (Z key), proper scroll sprite, mobile Book button</span>
+          </div>
+          <div class="changelog-entry">
             <span class="changelog-version">v33</span>
-            <span class="changelog-text">Persistent floors (revisit same map), 3 save slots for multiple characters, achievement toast moved below HP bar</span>
+            <span class="changelog-text">Persistent floors (revisit same map), 3 save slots, achievement toast fix</span>
           </div>
           <div class="changelog-entry">
             <span class="changelog-version">v32</span>
@@ -628,6 +632,27 @@
     </div>
   </div>
 
+  <!-- Spell Book Overlay -->
+  <div id="spellbook-overlay" class="overlay hidden">
+    <div class="overlay-content spellbook-panel">
+      <div class="spellbook-header">
+        <h1 class="spellbook-title">&#128218; Spell Book</h1>
+        <button id="close-spellbook" class="spellbook-close-btn">X</button>
+      </div>
+      <div class="spellbook-mana-bar">
+        <span class="sb-mana-label">&#128300; Mana</span>
+        <div class="sb-mana-track">
+          <div class="sb-mana-fill" id="sb-mana-fill"></div>
+        </div>
+        <span class="sb-mana-text" id="sb-mana-text">0 / 0</span>
+      </div>
+      <div id="spellbook-list" class="spellbook-list">
+        <!-- Populated by renderer.js -->
+      </div>
+      <div class="spellbook-hint">Press <kbd>Z</kbd> to open/close &nbsp;·&nbsp; Cast spells with <kbd>F</kbd> <kbd>G</kbd> <kbd>H</kbd> <kbd>J</kbd></div>
+    </div>
+  </div>
+
   <!-- Run History Overlay -->
   <div id="history-overlay" class="overlay hidden">
     <div class="overlay-content history-panel">
@@ -665,6 +690,7 @@
       <button class="mobile-action-btn" data-action="pickup">E<span>Pick</span></button>
       <button class="mobile-action-btn" data-action="shoot">R<span>Shoot</span></button>
       <button class="mobile-action-btn" data-action="spell">F<span>Spell</span></button>
+      <button class="mobile-action-btn" data-action="book">&#128218;<span>Book</span></button>
       <button class="mobile-action-btn" data-action="map">M<span>Map</span></button>
       <button class="mobile-action-btn" data-action="char">C<span>Char</span></button>
       <button class="mobile-action-btn" data-action="settings">&#9881;<span>Menu</span></button>

@@ -3537,6 +3537,150 @@ body.rtl .side-minimap-legend {
 }
 
 /* ── Floor Warp Overlay ─────────────────────── */
+/* ── Spell Book Overlay ─────────────────────── */
+.spellbook-panel {
+  max-width: 460px;
+  width: 100%;
+  padding: 24px 28px;
+  background: linear-gradient(160deg, #0e0818 0%, #110d22 60%, #0a0614 100%);
+  border: 2px solid #5a35a0;
+  box-shadow: 0 0 40px rgba(120, 60, 220, 0.3);
+  border-radius: 12px;
+  text-align: left;
+}
+.spellbook-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #3a2060;
+  padding-bottom: 12px;
+}
+.spellbook-title {
+  font-size: 20px;
+  color: #c8a8ff;
+  margin: 0;
+  font-family: inherit;
+  text-shadow: 0 0 12px rgba(180, 100, 255, 0.5);
+}
+.spellbook-close-btn {
+  background: #1a1030;
+  border: 1px solid #4a2880;
+  color: #c8a8ff;
+  width: 28px; height: 28px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+.spellbook-close-btn:hover { background: #2a1845; }
+/* Mana bar */
+.spellbook-mana-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.sb-mana-label { font-size: 12px; color: #8888cc; white-space: nowrap; }
+.sb-mana-track {
+  flex: 1;
+  height: 8px;
+  background: #1a1430;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid #3a2860;
+}
+.sb-mana-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4040c0, #8060e0);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+.sb-mana-text { font-size: 11px; color: #a090d0; white-space: nowrap; }
+/* Spell list */
+.spellbook-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+.spell-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #14102a;
+  border: 1px solid #2a2050;
+  border-radius: 8px;
+  padding: 12px 14px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.spell-entry.can-cast { border-color: #5a3a90; }
+.spell-entry.can-cast:hover { background: #1c1838; border-color: #7a50c0; }
+.spell-entry.no-mana { opacity: 0.5; }
+.spell-key-badge {
+  background: #2a1860;
+  border: 1px solid #5a38a0;
+  color: #c8a8ff;
+  font-size: 14px;
+  font-weight: bold;
+  width: 32px; height: 32px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  font-family: monospace;
+}
+.spell-info { flex: 1; min-width: 0; }
+.spell-name-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.spell-name { font-size: 14px; color: #e0d0ff; font-weight: bold; }
+.spell-cost {
+  font-size: 11px;
+  background: #1a1040;
+  border: 1px solid #3a2870;
+  color: #9080c0;
+  padding: 2px 7px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.spell-cost.affordable { color: #80aaff; border-color: #3060a0; }
+.spell-stats {
+  display: flex;
+  gap: 10px;
+  font-size: 11px;
+  color: #7060a0;
+  margin-bottom: 5px;
+}
+.spell-stat { display: flex; align-items: center; gap: 3px; }
+.spell-desc { font-size: 11px; color: #9080b0; line-height: 1.4; }
+.spellbook-hint {
+  margin-top: 14px;
+  font-size: 10px;
+  color: #5a4878;
+  text-align: center;
+  border-top: 1px solid #2a1a48;
+  padding-top: 10px;
+}
+.spellbook-hint kbd {
+  background: #1e1435;
+  border: 1px solid #3a2860;
+  color: #9070c0;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 10px;
+}
+/* No spells message */
+.spellbook-no-spells {
+  text-align: center;
+  color: #5a4878;
+  font-size: 13px;
+  padding: 24px 0;
+}
+
 .floor-warp-panel {
   max-width: 380px;
   width: 100%;

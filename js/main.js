@@ -15,6 +15,7 @@ import {
   closeBlacksmith, craftItem,
   toggleRunHistory, closeRunHistory,
   closeFloorWarp, warpToFloor,
+  toggleSpellBook, closeSpellBook,
   gameSettings, updateSetting, pickupItem,
   apiRegister, apiLogin, setAuth, isLoggedIn, getAuthUsername,
   startCloudSync, checkDbStatus,
@@ -56,7 +57,7 @@ function hideLoginOverlay() {
 function updateUserBadge() {
   const el = document.getElementById('game-version');
   if (el && isLoggedIn()) {
-    el.textContent = `v33 | ${getAuthUsername()}`;
+    el.textContent = `v34 | ${getAuthUsername()}`;
   }
 }
 
@@ -221,6 +222,16 @@ function addManaLevelUpBtn() {
 // ── Input Handling ───────────────────────────
 
 document.addEventListener('keydown', (e) => {
+  // Spell book toggle
+  if (e.key === 'z' || e.key === 'Z') {
+    if (state.phase !== 'class_select') {
+      e.preventDefault();
+      toggleSpellBook();
+      render();
+      return;
+    }
+  }
+
   // Allow bestiary toggle even during class select
   if (e.key === 'b' || e.key === 'B') {
     if (state.phase !== 'class_select') {
@@ -313,6 +324,7 @@ document.addEventListener('keydown', (e) => {
     if (state.showFishing) { closeFishing(); render(); return; }
     if (state.showArena) { closeArena(); render(); return; }
     if (state.showChest) { closeChest(); render(); return; }
+    if (state.showSpellBook) { closeSpellBook(); render(); return; }
     if (state.showFloorWarp) { closeFloorWarp(); render(); return; }
     if (state.showHealer) { closeHealer(); render(); return; }
     if (state.showShop) { closeShop(); render(); return; }
@@ -519,6 +531,11 @@ closeMinimapBtn?.addEventListener('click', () => {
 // Floor Warp
 document.getElementById('close-floor-warp')?.addEventListener('click', () => {
   closeFloorWarp();
+  render();
+});
+
+document.getElementById('close-spellbook')?.addEventListener('click', () => {
+  closeSpellBook();
   render();
 });
 
@@ -854,6 +871,7 @@ window.addEventListener('resize', () => {
     pickup:   'e',
     shoot:    'r',
     spell:    'f',
+    book:     'z',
     map:      'm',
     char:     'c',
     settings: 'Escape',

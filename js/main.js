@@ -131,31 +131,37 @@ loginUsernameInput?.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') loginPasswordInput?.focus();
 });
 
-// On load: check if DB is available and show login, or skip
+// On load: always show login screen, handle DB availability transparently
 (async () => {
   const dbReady = await checkDbStatus();
-  if (dbReady) {
-    if (isLoggedIn()) {
-      // Already have a session token (page refresh)
-      startCloudSync();
-      updateUserBadge();
-      // Try cloud load
-      const cloudLoaded = await loadGameFromCloud();
-      if (cloudLoaded) {
-        classSelectEl.classList.add('hidden');
-        if (state.playerClass === PLAYER_CLASS.MAGE) addManaLevelUpBtn();
-        render();
-      } else if (!isLoggedIn()) {
-        // Token was invalidated (expired/401) — show login again
-        showLoginOverlay();
-      } else if (hasSaveGame()) {
-        continueSaveBtn.style.display = '';
-      }
-    } else {
-      showLoginOverlay();
+
+  if (dbReady && isLoggedIn()) {
+    // Already have a session token (page refresh) — skip login, load cloud save
+    startCloudSync();
+    updateUserBadge();
+    const cloudLoaded = await loadGameFromCloud();
+    if (cloudLoaded) {
+      classSelectEl.classList.add('hidden');
+      if (state.playerClass === PLAYER_CLASS.MAGE) addManaLevelUpBtn();
+      render();
+      return;
+    } else if (!isLoggedIn()) {
+      // Token was invalidated — fall through to show login
+    } else if (hasSaveGame()) {
+      continueSaveBtn.style.display = '';
     }
   }
-  // If no DB, just proceed with localStorage (offline mode)
+
+  // Always show the login screen (it has Play Offline for offline users)
+  showLoginOverlay();
+
+  // Hide login/register inputs if no DB available
+  if (!dbReady) {
+    const form = document.querySelector('.login-form-v2');
+    const hint = document.querySelector('.login-hint-v2');
+    if (form) form.style.display = 'none';
+    if (hint) hint.style.display = 'none';
+  }
 })();
 
 // ── Class Selection ──────────────────────────

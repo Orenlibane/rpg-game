@@ -2763,6 +2763,251 @@ function hideItemTooltip() {
   tooltip.classList.add('hidden');
 }
 
+// ── Tile Hover Tooltip ───────────────────────
+
+const tileTooltip = document.getElementById('tile-tooltip');
+
+function hideTileTooltip() {
+  if (tileTooltip) tileTooltip.classList.add('hidden');
+}
+
+function positionTileTooltip(clientX, clientY) {
+  if (!tileTooltip) return;
+  const pad = 14;
+  let x = clientX + pad;
+  let y = clientY + pad;
+  const rect = tileTooltip.getBoundingClientRect();
+  if (x + rect.width > window.innerWidth - 8)  x = clientX - rect.width - pad;
+  if (y + rect.height > window.innerHeight - 8) y = clientY - rect.height - pad;
+  tileTooltip.style.left = x + 'px';
+  tileTooltip.style.top  = y + 'px';
+}
+
+function buildTileTooltip(tx, ty) {
+  if (!tileTooltip) return;
+  if (!state.player || state.mode === 'arena') { hideTileTooltip(); return; }
+
+  // Only show for revealed tiles
+  const revealed = state.revealed && state.revealed[ty] && state.revealed[ty][tx];
+  if (!revealed) { hideTileTooltip(); return; }
+
+  let html = '';
+
+  // ── Player ─────────────────────────────────
+  if (tx === state.player.x && ty === state.player.y) {
+    const p = state.player;
+    const hpPct = Math.round((p.hp / p.maxHp) * 100);
+    html += `<span class="tt-badge tt-badge-player">You</span>`;
+    html += `<div class="tt-header"><span class="tt-icon">🧍</span>
+      <div><div class="tt-name">${p.name || 'Hero'}</div>
+      <div class="tt-subname">Level ${p.level} ${state.playerClass || ''}</div></div></div>`;
+    html += `<div class="tt-hp-bar"><div class="tt-hp-fill" style="width:${hpPct}%;background:#48c048"></div></div>`;
+    html += `<div class="tt-hp-text">HP ${p.hp} / ${p.maxHp}</div>`;
+    html += `<div class="tt-stats">
+      <div class="tt-stat"><span>Power</span><span>${p.power || 0}</span></div>
+      <div class="tt-stat"><span>Armor</span><span>${p.armor || 0}</span></div>
+      ${p.maxMana > 0 ? `<div class="tt-stat"><span>Mana</span><span>${p.mana} / ${p.maxMana}</span></div>` : ''}
+      <div class="tt-stat"><span>Floor</span><span>${state.floor || 'Village'}</span></div>
+    </div>`;
+    tileTooltip.innerHTML = html;
+    tileTooltip.classList.remove('hidden');
+    return;
+  }
+
+  // ── Enemy ───────────────────────────────────
+  const enemy = state.enemies && state.enemies.find(e => e.x === tx && e.y === ty && e.hp > 0);
+  if (enemy) {
+    const info = BESTIARY_INFO[enemy.type] || {};
+    // Entity-type → emoji map for tooltip icons
+    const ENTITY_ICONS = {
+      [ENTITY.GOBLIN]: '👺', [ENTITY.GOBLIN_SHAMAN]: '🧙', [ENTITY.GOBLIN_BERSERKER]: '👺',
+      [ENTITY.GOBLIN_SCOUT]: '👺', [ENTITY.GOBLIN_WARLORD]: '👑',
+      [ENTITY.ORC]: '🐗', [ENTITY.ORC_BRUTE]: '🐗', [ENTITY.ORC_CHAMPION]: '🐗',
+      [ENTITY.SKELETON]: '💀', [ENTITY.SKELETON_ARCHER]: '💀', [ENTITY.SKELETON_KNIGHT]: '💀',
+      [ENTITY.SPIDER]: '🕷️', [ENTITY.GIANT_SPIDER]: '🕷️',
+      [ENTITY.BAT]: '🦇', [ENTITY.CAVE_TROLL]: '👹', [ENTITY.TROLL]: '👹',
+      [ENTITY.SLIME]: '🟢', [ENTITY.WRAITH]: '👻', [ENTITY.DARK_MAGE]: '🧙',
+      [ENTITY.MUSHROOM]: '🍄', [ENTITY.VAMPIRE]: '🧛', [ENTITY.LICH]: '☠️',
+      [ENTITY.DRAGON]: '🐉', [ENTITY.DEMON]: '😈', [ENTITY.MIMIC]: '📦',
+      [ENTITY.GREATER_MIMIC]: '📦', [ENTITY.ANCIENT_MIMIC]: '📦',
+      [ENTITY.INFERNAL_MAGE]: '🔥', [ENTITY.ICE_MAGE]: '❄️',
+      [ENTITY.FROST_GIANT]: '🧊', [ENTITY.SAND_SCORPION]: '🦂',
+      [ENTITY.PLAGUE_RAT]: '🐀', [ENTITY.SWAMP_HAG]: '🧟',
+    };
+    const entityIcon = ENTITY_ICONS[enemy.type] || '👾';
+    const hpPct = Math.max(0, Math.round((enemy.hp / enemy.maxHp) * 100));
+    const hpColor = hpPct > 60 ? '#48c048' : hpPct > 30 ? '#d0a020' : '#d03030';
+    const nameClass = enemy.isPhaseBoss || enemy.isBoss ? 'boss' : enemy.isElite || enemy.isMiniboss || enemy.isGuardian ? 'elite' : '';
+    const label = enemy.isPhaseBoss ? 'Phase Boss' : enemy.isBoss ? 'Boss' : enemy.isGuardian ? 'Guardian' : enemy.isMiniboss ? 'Mini-Boss' : enemy.isElite ? `Elite` : 'Enemy';
+    const prefix = (enemy.isElite || enemy.isMiniboss) && enemy.elitePrefix ? `${enemy.elitePrefix} ` : '';
+    const displayName = prefix + getEnemyName(enemy);
+    html += `<span class="tt-badge tt-badge-enemy">${label}</span>`;
+    html += `<div class="tt-header">
+      <span class="tt-icon">${entityIcon}</span>
+      <div><div class="tt-name ${nameClass}">${displayName}</div>
+      ${info.title ? `<div class="tt-subname">${info.title}</div>` : ''}</div>
+    </div>`;
+    html += `<div class="tt-hp-bar"><div class="tt-hp-fill" style="width:${hpPct}%;background:${hpColor}"></div></div>`;
+    html += `<div class="tt-hp-text">HP ${enemy.hp} / ${enemy.maxHp}</div>`;
+    html += `<div class="tt-stats">
+      <div class="tt-stat"><span>Power</span><span>${enemy.power || 0}</span></div>
+      ${enemy.armor ? `<div class="tt-stat"><span>Armor</span><span>${enemy.armor}</span></div>` : ''}
+      ${info.element ? `<div class="tt-stat"><span>Element</span><span>${info.element}</span></div>` : ''}
+    </div>`;
+    if (info.desc) html += `<div class="tt-desc">${info.desc}</div>`;
+    tileTooltip.innerHTML = html;
+    tileTooltip.classList.remove('hidden');
+    return;
+  }
+
+  // ── Den ─────────────────────────────────────
+  const den = state.dens && state.dens.find(d => d.x === tx && d.y === ty && !d.destroyed);
+  if (den) {
+    const hpPct = Math.max(0, Math.round((den.hp / den.maxHp) * 100));
+    html += `<span class="tt-badge tt-badge-enemy">Spawner</span>`;
+    html += `<div class="tt-header"><span class="tt-icon">🕳️</span>
+      <div><div class="tt-name elite">${den.name}</div>
+      <div class="tt-subname">Monster Den</div></div></div>`;
+    html += `<div class="tt-hp-bar"><div class="tt-hp-fill" style="width:${hpPct}%;background:#c06030"></div></div>`;
+    html += `<div class="tt-hp-text">HP ${den.hp} / ${den.maxHp}</div>`;
+    html += `<div class="tt-desc">Periodically spawns enemies. Destroy it to stop new threats.</div>`;
+    tileTooltip.innerHTML = html;
+    tileTooltip.classList.remove('hidden');
+    return;
+  }
+
+  // ── Ground item ─────────────────────────────
+  const groundItem = state.items && state.items.find(i => i.x === tx && i.y === ty);
+  if (groundItem) {
+    const item = groundItem.item;
+    const tierColors = { 1: '#888', 2: '#40a040', 3: '#4080e0', 4: '#a040e0', 5: '#e0a030' };
+    const tierNames  = { 1: 'Common', 2: 'Uncommon', 3: 'Rare', 4: 'Epic', 5: 'Legendary' };
+    if (item.tier) html += `<span class="tt-badge tt-badge-item" style="color:${tierColors[item.tier]||'#888'}">${tierNames[item.tier]||''}</span>`;
+    html += `<div class="tt-header"><span class="tt-icon">${item.icon || '📦'}</span>
+      <div><div class="tt-name">${item.name}</div>
+      <div class="tt-subname">${item.type || ''}</div></div></div>`;
+    const stats = [];
+    if (item.power) stats.push(['Power', `+${item.power}`]);
+    if (item.armor) stats.push(['Armor', `+${item.armor}`]);
+    if (item.spellBonus) stats.push(['Spell Dmg', `+${item.spellBonus}`]);
+    if (item.healAmount) stats.push(['Heals', `${item.healAmount} HP`]);
+    if (item.manaAmount) stats.push(['Restores', `${item.manaAmount} MP`]);
+    if (stats.length) {
+      html += '<div class="tt-stats">';
+      for (const [k, v] of stats) html += `<div class="tt-stat"><span>${k}</span><span>${v}</span></div>`;
+      html += '</div>';
+    }
+    if (item.desc) html += `<div class="tt-desc">${item.desc}</div>`;
+    tileTooltip.innerHTML = html;
+    tileTooltip.classList.remove('hidden');
+    return;
+  }
+
+  // ── Chest ───────────────────────────────────
+  const chest = state.chests && state.chests.find(c => c.x === tx && c.y === ty);
+  if (chest) {
+    if (chest.opened) {
+      html += `<span class="tt-badge tt-badge-chest">Empty</span>`;
+      html += `<div class="tt-header"><span class="tt-icon">📭</span>
+        <div><div class="tt-name">Opened Chest</div></div></div>`;
+    } else if (chest.isMimic) {
+      // Don't spoil mimic — show as chest
+      html += `<span class="tt-badge tt-badge-chest">Chest</span>`;
+      html += `<div class="tt-header"><span class="tt-icon">📦</span>
+        <div><div class="tt-name">Treasure Chest</div>
+        <div class="tt-subname">Approach to open</div></div></div>`;
+    } else {
+      const itemCount = chest.items ? chest.items.length : 0;
+      html += `<span class="tt-badge tt-badge-chest">Chest</span>`;
+      html += `<div class="tt-header"><span class="tt-icon">💰</span>
+        <div><div class="tt-name">Treasure Chest</div>
+        <div class="tt-subname">Approach to open</div></div></div>`;
+      html += `<div class="tt-stats">
+        ${chest.gold ? `<div class="tt-stat"><span>Gold</span><span>${chest.gold}g</span></div>` : ''}
+        ${itemCount ? `<div class="tt-stat"><span>Items</span><span>${itemCount}</span></div>` : ''}
+      </div>`;
+    }
+    tileTooltip.innerHTML = html;
+    tileTooltip.classList.remove('hidden');
+    return;
+  }
+
+  // ── Special tile ────────────────────────────
+  const tile = state.map && state.map[ty] && state.map[ty][tx];
+  const tileProps = tile !== undefined ? TILE_PROPS[tile] : null;
+  if (!tileProps) { hideTileTooltip(); return; }
+
+  // Skip boring floor/wall tiles — only show interesting ones
+  const INTERESTING_TILES = new Set([
+    TILE.CAVE_STAIRS, TILE.UP_STAIRS, TILE.CAVE_ENTRANCE, TILE.PORTAL,
+    TILE.HEALER, TILE.MERCHANT, TILE.QUEST_BOARD, TILE.DUNGEON_MERCHANT,
+    TILE.FOUNTAIN, TILE.SARCOPHAGUS, TILE.WEAPON_RACK, TILE.BOOKSHELF,
+    TILE.BARREL, TILE.FISHING_SPOT, TILE.ARENA, TILE.BLACKSMITH,
+    TILE.FLOOR_WARP, TILE.WATER,
+  ]);
+  if (!INTERESTING_TILES.has(tile)) { hideTileTooltip(); return; }
+
+  const TILE_DESCS = {
+    [TILE.CAVE_STAIRS]:      { icon: '🪜', desc: 'Leads deeper into the dungeon.' },
+    [TILE.UP_STAIRS]:        { icon: '🪜', desc: 'Return to the previous floor.' },
+    [TILE.CAVE_ENTRANCE]:    { icon: '🕳️', desc: 'The entrance to the dungeon depths.' },
+    [TILE.PORTAL]:           { icon: '🌀', desc: 'A magical portal to the village.' },
+    [TILE.HEALER]:           { icon: '💊', desc: 'Restore HP and cure ailments for gold.' },
+    [TILE.MERCHANT]:         { icon: '🛒', desc: 'Buy and sell equipment and supplies.' },
+    [TILE.QUEST_BOARD]:      { icon: '📋', desc: 'Accept quests for gold and XP rewards.' },
+    [TILE.DUNGEON_MERCHANT]: { icon: '🛒', desc: 'A wandering trader found in the dungeon.' },
+    [TILE.FOUNTAIN]:         { icon: '⛲', desc: 'A mystical fountain. Step adjacent to interact.' },
+    [TILE.SARCOPHAGUS]:      { icon: '⚰️', desc: 'A stone coffin. May contain treasure — or worse.' },
+    [TILE.WEAPON_RACK]:      { icon: '🗡️', desc: 'A rack of weapons. Examine it carefully.' },
+    [TILE.BOOKSHELF]:        { icon: '📚', desc: 'Ancient tomes line these shelves.' },
+    [TILE.BARREL]:           { icon: '🪣', desc: 'A wooden barrel. Might hold supplies.' },
+    [TILE.FISHING_SPOT]:     { icon: '🎣', desc: 'A calm pool. Press E to fish here.' },
+    [TILE.ARENA]:            { icon: '⚔️', desc: 'Enter the arena to fight waves of enemies for rewards.' },
+    [TILE.BLACKSMITH]:       { icon: '🔨', desc: 'Craft and upgrade gear using materials.' },
+    [TILE.FLOOR_WARP]:       { icon: '⬆', desc: 'Warp stone — teleport to unlocked checkpoint floors.' },
+    [TILE.WATER]:            { icon: '💧', desc: 'A pool of still water.' },
+  };
+
+  const td = TILE_DESCS[tile] || { icon: '🔲', desc: '' };
+  html += `<span class="tt-badge tt-badge-tile">${tileProps.walkable ? 'Passable' : 'Obstacle'}</span>`;
+  html += `<div class="tt-header"><span class="tt-icon">${td.icon}</span>
+    <div><div class="tt-name">${tileProps.name}</div></div></div>`;
+  if (td.desc) html += `<div class="tt-desc">${td.desc}</div>`;
+
+  tileTooltip.innerHTML = html;
+  tileTooltip.classList.remove('hidden');
+}
+
+// Wire canvas mousemove → tile tooltip
+canvas.addEventListener('mousemove', (e) => {
+  if (!state.player || state.phase === 'class_select' || state.gameOver) {
+    hideTileTooltip(); return;
+  }
+  // Any overlay open? Hide tile tooltip
+  if (state.showShop || state.showHealer || state.showBlacksmith || state.showChest ||
+      state.showSettings || state.showCharSheet || state.showSkillTree ||
+      state.showFloorWarp || state.showSpellBook || state.showAchievements ||
+      state.showRunHistory || state.showBestiary || state.showArmory || state.showMinimap) {
+    hideTileTooltip(); return;
+  }
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const cx = (e.clientX - rect.left) * scaleX;
+  const cy = (e.clientY - rect.top)  * scaleY;
+  const ts = getTS();
+  const { camX, camY } = getCamera();
+  const tx = camX + Math.floor(cx / ts);
+  const ty = camY + Math.floor(cy / ts);
+  if (tx < 0 || ty < 0 || tx >= state.mapW || ty >= state.mapH) {
+    hideTileTooltip(); return;
+  }
+  buildTileTooltip(tx, ty);
+  positionTileTooltip(e.clientX, e.clientY);
+});
+
+canvas.addEventListener('mouseleave', hideTileTooltip);
+
 // ── Minimap Rendering ───────────────────────
 
 function updateMinimap() {

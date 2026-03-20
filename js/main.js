@@ -57,7 +57,7 @@ function hideLoginOverlay() {
 function updateUserBadge() {
   const el = document.getElementById('game-version');
   if (el && isLoggedIn()) {
-    el.textContent = `v34 | ${getAuthUsername()}`;
+    el.textContent = `v35 | ${getAuthUsername()}`;
   }
 }
 

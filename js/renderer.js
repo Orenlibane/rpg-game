@@ -1,11 +1,11 @@
-import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE, CRAFTING_RECIPES, MONSTER_CATEGORIES, BESTIARY_INFO, SUBCLASS, SUBCLASS_INFO, TOWN_UPGRADES, PHASE_BOSSES } from './constants.js?v=27';
+import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE, CRAFTING_RECIPES, MONSTER_CATEGORIES, BESTIARY_INFO, SUBCLASS, SUBCLASS_INFO, TOWN_UPGRADES, PHASE_BOSSES } from './constants.js?v=28';
 import { t } from './i18n.js';
 
 // Lookups for bestiary
 const BASE_STATS_LOOKUP = BASE_STATS;
 const GOLD_LOOKUP = GOLD_REWARDS;
-import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js?v=27';
-import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith, selectSubclass, isSubclassBranchUnlocked, getTownUpgradeLevel, upgradeTownBuilding, getAvailableCraftingRecipes, getRunHistory, closeRunHistory } from './engine.js?v=27';
+import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js?v=28';
+import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith, selectSubclass, isSubclassBranchUnlocked, getTownUpgradeLevel, upgradeTownBuilding, getAvailableCraftingRecipes, getRunHistory, closeRunHistory } from './engine.js?v=28';
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
@@ -455,14 +455,40 @@ function updateUI() {
   // Set bonus summary
   updateSetBonusSummary();
 
-  // Inventory grid (cube grid)
+  // Inventory grid with tab filtering
   const grid = document.getElementById('inventory-grid');
   grid.innerHTML = '';
-  for (let i = 0; i < BACKPACK_SIZE; i++) {
+
+  const GEAR_TYPES = new Set(['weapon', 'helmet', 'chest', 'gloves', 'boots', 'cape']);
+  const activeTab = window._invTab || 'all';
+
+  // Update tab button active state
+  const tabBtns = document.querySelectorAll('.inv-tab');
+  tabBtns.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === activeTab);
+  });
+
+  // Filter inventory items by active tab
+  const filteredItems = [];
+  for (let i = 0; i < p.inventory.length; i++) {
+    const item = p.inventory[i];
+    const t = item.type || 'consumable';
+    let show = false;
+    if (activeTab === 'all') show = true;
+    else if (activeTab === 'gear') show = GEAR_TYPES.has(t);
+    else if (activeTab === 'potions') show = (t === 'consumable');
+    else if (activeTab === 'ingredients') show = (t === 'material');
+    else if (activeTab === 'others') show = !GEAR_TYPES.has(t) && t !== 'consumable' && t !== 'material';
+    if (show) filteredItems.push({ item, origIdx: i });
+  }
+
+  // Show filtered items + empty slots to fill the grid
+  const slotsToShow = Math.max(filteredItems.length, 24);
+  for (let i = 0; i < slotsToShow; i++) {
     const slot = document.createElement('div');
     slot.className = 'inv-slot';
-    if (i < p.inventory.length) {
-      const item = p.inventory[i];
+    if (i < filteredItems.length) {
+      const { item, origIdx } = filteredItems[i];
       slot.classList.add('type-' + (item.type || 'consumable'));
       if (item.tier) slot.classList.add('tier-' + item.tier);
       if (item.setId && ITEM_SETS[item.setId]) {
@@ -485,7 +511,7 @@ function updateUI() {
         slot.appendChild(countEl);
       }
       slot.addEventListener('click', () => {
-        showItemPopup(item, i, 'inventory');
+        showItemPopup(item, origIdx, 'inventory');
       });
       slot.addEventListener('mouseenter', (e) => showItemTooltip(e, item));
       slot.addEventListener('mousemove', (e) => positionTooltip(e));
@@ -2354,7 +2380,7 @@ function showItemPopup(item, index, source) {
   hideItemTooltip();
 
   const tierNames = { 1: 'Common', 2: 'Uncommon', 3: 'Rare' };
-  const typeLabels = { weapon: 'Weapon', helmet: 'Helmet', chest: 'Chest Armor', gloves: 'Gloves', boots: 'Boots', cape: 'Cape', consumable: 'Consumable' };
+  const typeLabels = { weapon: 'Weapon', helmet: 'Helmet', chest: 'Chest Armor', gloves: 'Gloves', boots: 'Boots', cape: 'Cape', consumable: 'Consumable', material: 'Material' };
 
   let html = '';
   if (item.tier) {
@@ -2484,7 +2510,7 @@ function showItemTooltip(e, item) {
   html += `<div class="tooltip-name">${item.icon} ${item.name}</div>`;
 
   // Type
-  const typeLabels = { weapon: 'Weapon', helmet: 'Helmet', chest: 'Chest Armor', gloves: 'Gloves', boots: 'Boots', cape: 'Cape', consumable: 'Consumable' };
+  const typeLabels = { weapon: 'Weapon', helmet: 'Helmet', chest: 'Chest Armor', gloves: 'Gloves', boots: 'Boots', cape: 'Cape', consumable: 'Consumable', material: 'Material' };
   html += `<div class="tooltip-type">${typeLabels[item.type] || item.type}</div>`;
 
   // Stats

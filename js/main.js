@@ -17,9 +17,9 @@ import {
   gameSettings, updateSetting, pickupItem,
   apiRegister, apiLogin, setAuth, isLoggedIn, getAuthUsername,
   startCloudSync, checkDbStatus,
-} from './engine.js?v=27';
-import { render, resizeCanvas } from './renderer.js?v=27';
-import { PLAYER_CLASS, PRESTIGE } from './constants.js?v=27';
+} from './engine.js?v=28';
+import { render, resizeCanvas } from './renderer.js?v=28';
+import { PLAYER_CLASS, PRESTIGE } from './constants.js?v=28';
 import { initI18n, setLanguage, applyStaticTranslations, t } from './i18n.js';
 
 // ── Initialize i18n ─────────────────────────
@@ -709,6 +709,15 @@ document.getElementById('leave-arena-btn')?.addEventListener('click', () => {
 // ── Throw Trash ─────────────────────────────
 document.getElementById('btn-throw-trash')?.addEventListener('click', () => {
   throwTrash();
+  render();
+});
+
+// ── Inventory Tab Switching ─────────────────
+window._invTab = 'all';
+document.getElementById('inv-tabs')?.addEventListener('click', (e) => {
+  const btn = e.target.closest('.inv-tab');
+  if (!btn) return;
+  window._invTab = btn.dataset.tab;
   render();
 });
 

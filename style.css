@@ -116,6 +116,7 @@ body {
 #message-log .msg-item { color: #60c060; }
 #message-log .msg-info { color: #6080e0; }
 #message-log .msg-level { color: #e0c040; }
+#message-log .msg-faction { color: #d4a030; }
 
 /* UI Panel */
 #ui-panel {
@@ -249,11 +250,33 @@ body {
 .slot-item { color: #c0a860; font-size: 10px; text-align: right; }
 .slot-item.empty { color: #444; }
 
+/* Inventory Tabs */
+#inv-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+.inv-tab {
+  flex: 1;
+  padding: 3px 2px;
+  font-size: 9px;
+  background: #1a1a28;
+  color: #888;
+  border: 1px solid #2a2a3a;
+  border-radius: 3px 3px 0 0;
+  cursor: pointer;
+  text-align: center;
+}
+.inv-tab:hover { background: #1e1e2e; color: #bbb; }
+.inv-tab.active { background: #2a2a3e; color: #e0c860; border-color: #4a4a6a; border-bottom-color: #2a2a3e; }
+
 /* Inventory Grid */
 #inventory-grid {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
   gap: 2px;
+  max-height: 300px;
+  overflow-y: auto;
 }
 
 .inv-slot {
@@ -284,6 +307,7 @@ body {
 .inv-slot.type-boots,
 .inv-slot.type-cape    { border-color: #606870; }
 .inv-slot.type-consumable { border-color: #408040; }
+.inv-slot.type-material  { border-color: #a08040; }
 
 /* Tier glow */
 .inv-slot.tier-2 { box-shadow: inset 0 0 6px #4060a030; }

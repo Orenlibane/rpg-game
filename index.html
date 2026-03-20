@@ -80,6 +80,13 @@
       <!-- Inventory -->
       <div id="inventory-panel" class="panel">
         <h3 data-i18n="ui.backpack">Backpack <button id="btn-throw-trash" class="throw-trash-btn" title="Discard all non-magical equipment">Throw Trash</button></h3>
+        <div id="inv-tabs">
+          <button class="inv-tab active" data-tab="all">All</button>
+          <button class="inv-tab" data-tab="gear">Gear</button>
+          <button class="inv-tab" data-tab="potions">Potions</button>
+          <button class="inv-tab" data-tab="ingredients">Ingr.</button>
+          <button class="inv-tab" data-tab="others">Others</button>
+        </div>
         <div id="inventory-grid"></div>
       </div>
 
@@ -573,9 +580,9 @@
       document.body.appendChild(d);
     };
   </script>
-  <script type="module" src="js/main.js?v=27"></script>
+  <script type="module" src="js/main.js?v=28"></script>
   <script type="module">
-    import('./js/main.js?v=27').catch(function(e) {
+    import('./js/main.js?v=28').catch(function(e) {
       var d = document.createElement('div');
       d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:red;color:white;padding:10px;z-index:9999;font-size:14px';
       d.textContent = 'MODULE LOAD ERROR: ' + e.message;

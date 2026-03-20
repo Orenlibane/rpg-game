@@ -3,7 +3,7 @@ import {
   DUNGEON_W, DUNGEON_H,
   MIN_ROOM_SIZE, MAX_ROOM_SIZE, MAX_ROOMS,
   FLOOR_THEMES, ROOM_TYPE,
-} from './constants.js?v=27';
+} from './constants.js?v=28';
 
 // ── Village (fixed layout) ───────────────────────
 
@@ -128,7 +128,18 @@ export function generateDungeon(floor, themeKey) {
   const theme = FLOOR_THEMES[themeKey];
   const wallTile = theme ? theme.wallTile : TILE.CAVE_WALL;
   const floorTile = theme ? theme.floorTile : TILE.CAVE_FLOOR;
+  const layoutType = theme ? (theme.layoutType || 'dungeon') : 'dungeon';
 
+  switch (layoutType) {
+    case 'village': return generateVillageLayout(floor, wallTile, floorTile);
+    case 'lair':    return generateLairLayout(floor, wallTile, floorTile);
+    case 'swamp':   return generateSwampLayout(floor, wallTile, floorTile);
+    default:        return generateStandardDungeon(floor, wallTile, floorTile);
+  }
+}
+
+// ── Standard Dungeon (rooms + corridors) ─────────
+function generateStandardDungeon(floor, wallTile, floorTile) {
   const map = Array.from({ length: DUNGEON_H }, () =>
     new Uint8Array(DUNGEON_W).fill(wallTile)
   );
@@ -149,14 +160,11 @@ export function generateDungeon(floor, themeKey) {
     }
     if (overlaps) continue;
 
-    // Carve room: outer ring stays as wall (room border), inner area is floor
     carveRoom(map, room, wallTile, floorTile);
 
-    // Connect to previous room via corridor
     if (rooms.length > 0) {
       const prev = rooms[rooms.length - 1];
       if (Math.random() < 0.3) {
-        const width = randInt(2, 3);
         carveWideCorridor(map, prev.cx, prev.cy, room.cx, room.cy, floorTile);
       } else {
         carveCorridor(map, prev.cx, prev.cy, room.cx, room.cy, floorTile);
@@ -166,7 +174,6 @@ export function generateDungeon(floor, themeKey) {
     rooms.push(room);
   }
 
-  // Ensure we have at least 2 rooms
   if (rooms.length < 2) {
     const w = MIN_ROOM_SIZE;
     const h = MIN_ROOM_SIZE;
@@ -176,13 +183,244 @@ export function generateDungeon(floor, themeKey) {
     rooms.push(room);
   }
 
-  // Assign special room types and decorate
   assignRoomTypes(rooms);
   decorateRooms(map, rooms, floorTile, wallTile);
   decorateCorridors(map, floorTile);
 
+  return finalizeDungeon(map, rooms, floor, floorTile);
+}
+
+// ── Village Layout (open area with hut structures) ─
+function generateVillageLayout(floor, wallTile, floorTile) {
+  const map = Array.from({ length: DUNGEON_H }, () =>
+    new Uint8Array(DUNGEON_W).fill(floorTile)
+  );
+
+  // Palisade border (2-tile thick)
+  for (let y = 0; y < DUNGEON_H; y++) {
+    for (let x = 0; x < DUNGEON_W; x++) {
+      if (x < 2 || x >= DUNGEON_W - 2 || y < 2 || y >= DUNGEON_H - 2) {
+        map[y][x] = wallTile;
+      }
+    }
+  }
+
+  // Gate opening at south center
+  const gateX = Math.floor(DUNGEON_W / 2);
+  for (let dx = -2; dx <= 2; dx++) {
+    map[DUNGEON_H - 2][gateX + dx] = floorTile;
+    map[DUNGEON_H - 1][gateX + dx] = floorTile;
+  }
+
+  // Generate 6-10 small hut structures
+  const rooms = [];
+  const numHuts = randInt(6, 10);
+  for (let attempt = 0; attempt < 200 && rooms.length < numHuts; attempt++) {
+    const w = randInt(3, 5);
+    const h = randInt(3, 5);
+    const x = randInt(4, DUNGEON_W - w - 4);
+    const y = randInt(4, DUNGEON_H - h - 4);
+    const room = new Room(x, y, w, h);
+
+    let overlaps = false;
+    for (const r of rooms) {
+      if (room.intersects(r)) { overlaps = true; break; }
+    }
+    if (overlaps) continue;
+
+    // Carve hut walls and floor
+    carveRoom(map, room, wallTile, floorTile);
+
+    // Open one side of the hut as a door
+    const doorSide = randInt(0, 3);
+    if (doorSide === 0) map[room.y][room.cx] = floorTile; // top
+    else if (doorSide === 1) map[room.y + room.h - 1][room.cx] = floorTile; // bottom
+    else if (doorSide === 2) map[room.cy][room.x] = floorTile; // left
+    else map[room.cy][room.x + room.w - 1] = floorTile; // right
+
+    rooms.push(room);
+  }
+
+  // Scatter barrels near huts
+  for (const room of rooms) {
+    if (Math.random() < 0.6) {
+      const bx = room.x + room.w;
+      const by = room.y + randInt(0, room.h - 1);
+      if (bx < DUNGEON_W - 2 && map[by][bx] === floorTile) map[by][bx] = TILE.BARREL;
+    }
+  }
+
+  // Campfire areas (carpet tiles)
+  for (let i = 0; i < 3; i++) {
+    const cx = randInt(10, DUNGEON_W - 10);
+    const cy = randInt(10, DUNGEON_H - 10);
+    if (map[cy][cx] === floorTile) map[cy][cx] = TILE.CARPET;
+  }
+
+  // Wooden posts (pillars)
+  for (let i = 0; i < 5; i++) {
+    const px = randInt(4, DUNGEON_W - 4);
+    const py = randInt(4, DUNGEON_H - 4);
+    if (map[py][px] === floorTile) map[py][px] = TILE.PILLAR;
+  }
+
+  return finalizeDungeon(map, rooms, floor, floorTile);
+}
+
+// ── Lair Layout (massive central chamber + side caves) ─
+function generateLairLayout(floor, wallTile, floorTile) {
+  const map = Array.from({ length: DUNGEON_H }, () =>
+    new Uint8Array(DUNGEON_W).fill(wallTile)
+  );
+
+  const rooms = [];
+
+  // Small entrance cave (south)
+  const entranceW = randInt(5, 7);
+  const entranceH = randInt(5, 7);
+  const entranceX = randInt(5, 15);
+  const entranceY = DUNGEON_H - entranceH - 3;
+  const entrance = new Room(entranceX, entranceY, entranceW, entranceH);
+  carveRoom(map, entrance, wallTile, floorTile);
+  rooms.push(entrance);
+
+  // Massive central chamber
+  const bigW = randInt(20, 28);
+  const bigH = randInt(14, 20);
+  const bigX = Math.floor((DUNGEON_W - bigW) / 2);
+  const bigY = Math.floor((DUNGEON_H - bigH) / 2) - 3;
+  const bigRoom = new Room(bigX, bigY, bigW, bigH);
+  carveRoom(map, bigRoom, wallTile, floorTile);
+  rooms.push(bigRoom);
+
+  // Connect entrance to central chamber
+  carveCorridor(map, entrance.cx, entrance.cy, bigRoom.cx, bigRoom.cy, floorTile);
+
+  // 3-5 side caves
+  const numSides = randInt(3, 5);
+  for (let i = 0; i < numSides; i++) {
+    const sw = randInt(5, 8);
+    const sh = randInt(5, 8);
+    let sx, sy;
+    // Place around the central chamber
+    if (i % 2 === 0) {
+      sx = randInt(bigX - sw - 4, bigX - sw); // left side
+      sy = bigY + randInt(0, bigH - sh);
+    } else {
+      sx = randInt(bigX + bigW, bigX + bigW + 4); // right side
+      sy = bigY + randInt(0, bigH - sh);
+    }
+    sx = Math.max(1, Math.min(sx, DUNGEON_W - sw - 1));
+    sy = Math.max(1, Math.min(sy, DUNGEON_H - sh - 1));
+    const side = new Room(sx, sy, sw, sh);
+    carveRoom(map, side, wallTile, floorTile);
+    carveCorridor(map, bigRoom.cx, bigRoom.cy, side.cx, side.cy, floorTile);
+    rooms.push(side);
+  }
+
+  // Decorate central chamber: carpet center (treasure hoard), rubble, bone piles
+  const cInner = { x: bigRoom.ix, y: bigRoom.iy, w: bigRoom.iw, h: bigRoom.ih };
+  for (let y = cInner.y + 2; y < cInner.y + cInner.h - 2; y++) {
+    for (let x = cInner.x + 3; x < cInner.x + cInner.w - 3; x++) {
+      if (map[y][x] === floorTile) map[y][x] = TILE.CARPET;
+    }
+  }
+  // Scatter rubble and sarcophagi (bone piles)
+  for (let i = 0; i < 6; i++) {
+    const rx = cInner.x + randInt(0, cInner.w - 1);
+    const ry = cInner.y + randInt(0, cInner.h - 1);
+    if (map[ry][rx] === floorTile) map[ry][rx] = TILE.RUBBLE;
+  }
+  for (let i = 0; i < 3; i++) {
+    const rx = cInner.x + randInt(1, cInner.w - 2);
+    const ry = cInner.y + randInt(1, cInner.h - 2);
+    if (map[ry][rx] === floorTile || map[ry][rx] === TILE.CARPET) map[ry][rx] = TILE.SARCOPHAGUS;
+  }
+
+  return finalizeDungeon(map, rooms, floor, floorTile);
+}
+
+// ── Swamp Layout (organic rooms + water) ──────────
+function generateSwampLayout(floor, wallTile, floorTile) {
+  const map = Array.from({ length: DUNGEON_H }, () =>
+    new Uint8Array(DUNGEON_W).fill(wallTile)
+  );
+
+  // Standard room generation
+  const rooms = [];
+  const maxAttempts = 500;
+  for (let attempt = 0; attempt < maxAttempts && rooms.length < MAX_ROOMS; attempt++) {
+    const w = randInt(MIN_ROOM_SIZE, MAX_ROOM_SIZE);
+    const h = randInt(MIN_ROOM_SIZE, MAX_ROOM_SIZE);
+    const x = randInt(1, DUNGEON_W - w - 1);
+    const y = randInt(1, DUNGEON_H - h - 1);
+    const room = new Room(x, y, w, h);
+
+    let overlaps = false;
+    for (const r of rooms) {
+      if (room.intersects(r)) { overlaps = true; break; }
+    }
+    if (overlaps) continue;
+
+    carveRoom(map, room, wallTile, floorTile);
+
+    if (rooms.length > 0) {
+      const prev = rooms[rooms.length - 1];
+      carveWideCorridor(map, prev.cx, prev.cy, room.cx, room.cy, floorTile);
+    }
+
+    rooms.push(room);
+  }
+
+  if (rooms.length < 2) {
+    const w = MIN_ROOM_SIZE;
+    const h = MIN_ROOM_SIZE;
+    const room = new Room(DUNGEON_W - w - 2, DUNGEON_H - h - 2, w, h);
+    carveRoom(map, room, wallTile, floorTile);
+    carveCorridor(map, rooms[0].cx, rooms[0].cy, room.cx, room.cy, floorTile);
+    rooms.push(room);
+  }
+
+  // Post-processing: erode room edges (make organic)
+  for (const room of rooms) {
+    for (let y = room.y; y < room.y + room.h; y++) {
+      for (let x = room.x; x < room.x + room.w; x++) {
+        const isEdge = (y === room.y || y === room.y + room.h - 1 ||
+                        x === room.x || x === room.x + room.w - 1);
+        if (isEdge && map[y][x] === wallTile && Math.random() < 0.3) {
+          map[y][x] = floorTile; // Erode wall edges
+        }
+      }
+    }
+  }
+
+  // Post-processing: scatter water tiles (25-30% of floor)
+  for (let y = 1; y < DUNGEON_H - 1; y++) {
+    for (let x = 1; x < DUNGEON_W - 1; x++) {
+      if (map[y][x] === floorTile && Math.random() < 0.28) {
+        map[y][x] = TILE.WATER;
+      }
+    }
+  }
+
+  // Scatter rubble as dead tree stumps
+  for (let i = 0; i < 8; i++) {
+    const rx = randInt(3, DUNGEON_W - 3);
+    const ry = randInt(3, DUNGEON_H - 3);
+    if (map[ry][rx] === floorTile) map[ry][rx] = TILE.RUBBLE;
+  }
+
+  return finalizeDungeon(map, rooms, floor, floorTile);
+}
+
+// ── Shared dungeon finalization (stairs, reachability) ─
+function finalizeDungeon(map, rooms, floor, floorTile) {
   // Player start: center of first room
   const playerStart = { x: rooms[0].cx, y: rooms[0].cy };
+  // Ensure player start is walkable
+  if (!TILE_PROPS[map[playerStart.y][playerStart.x]] || !TILE_PROPS[map[playerStart.y][playerStart.x]].walkable) {
+    map[playerStart.y][playerStart.x] = floorTile;
+  }
 
   // Stairs down: center of last room
   const lastRoom = rooms[rooms.length - 1];
@@ -192,7 +430,6 @@ export function generateDungeon(floor, themeKey) {
   // Up stairs: place near player start (floor > 1 only)
   let upStairsPos = null;
   if (floor > 1) {
-    // Try one tile to the left of player, then try adjacent offsets
     const offsets = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]];
     for (const [ox, oy] of offsets) {
       const ux = playerStart.x + ox, uy = playerStart.y + oy;
@@ -207,9 +444,8 @@ export function generateDungeon(floor, themeKey) {
     }
   }
 
-  // BFS reachability: ensure player can reach down stairs (and up stairs if present)
+  // BFS reachability: ensure player can reach down stairs
   if (!isReachable(map, playerStart, stairsPos)) {
-    // Force a direct corridor from player to stairs, then re-place stairs tiles
     carveCorridor(map, playerStart.x, playerStart.y, stairsPos.x, stairsPos.y, floorTile);
     map[stairsPos.y][stairsPos.x] = TILE.CAVE_STAIRS;
     if (upStairsPos) map[upStairsPos.y][upStairsPos.x] = TILE.UP_STAIRS;

@@ -1,5 +1,5 @@
-import { TILE, TILE_SIZE, ENTITY } from './constants.js?v=27';
-import { gameSettings } from './engine.js?v=27';
+import { TILE, TILE_SIZE, ENTITY } from './constants.js?v=28';
+import { gameSettings } from './engine.js?v=28';
 
 const cache = {};
 const tileSeedCache = {};
@@ -137,6 +137,8 @@ const JRPG_MAP = {
   'guardian_keeper':   { col: 6, row: 2 },  // reuse lich (arcane)
   // Void Emperor
   'void_emperor':     { col: 3, row: 5 },  // reuse dark acolyte
+  // Kobold
+  'kobold':           { col: 0, row: 3 },  // unused slot
 };
 
 // Houses sheet: 12 cols at x=48+col*150, variable row heights
@@ -494,6 +496,123 @@ function buildTileSprite(tileType, variant) {
         g.strokeStyle = '#4a6a9a'; g.lineWidth = 1;
         g.beginPath(); g.moveTo(6, 6); g.lineTo(12, 12); g.stroke();
         g.beginPath(); g.moveTo(20, 18); g.lineTo(28, 26); g.stroke();
+      }
+      break;
+
+    // ── New Environment Tiles ──────────────────────
+    case TILE.VILLAGE_WALL:
+      fillRect(g, 0, 0, 32, 32, '#6a4a2a');
+      // Vertical wood planks
+      g.fillStyle = '#8a6a3a';
+      for (let px = 0; px < 32; px += 6) {
+        g.fillRect(px, 0, 4, 32);
+      }
+      // Nail details
+      g.fillStyle = '#4a3a1a';
+      g.fillRect(3, 6, 2, 2); g.fillRect(15, 14, 2, 2); g.fillRect(27, 22, 2, 2);
+      // Horizontal brace
+      g.fillStyle = '#5a3a1a';
+      g.fillRect(0, 14, 32, 3);
+      break;
+
+    case TILE.VILLAGE_FLOOR:
+      fillRect(g, 0, 0, 32, 32, '#9a8060');
+      // Pebble accents
+      g.fillStyle = '#8a7050';
+      for (let i = 0; i < 5; i++) {
+        g.fillRect(Math.floor(Math.random() * 28) + 2, Math.floor(Math.random() * 28) + 2, 3, 2);
+      }
+      if (variant === 0) {
+        g.fillStyle = '#b09070'; g.fillRect(10, 10, 4, 3); g.fillRect(22, 20, 3, 3);
+      } else if (variant === 1) {
+        g.fillStyle = '#7a6040'; g.fillRect(6, 16, 3, 2); g.fillRect(20, 8, 4, 2);
+      } else {
+        g.fillStyle = '#a88a68'; g.fillRect(14, 14, 5, 3);
+      }
+      break;
+
+    case TILE.CHARRED_WALL:
+      fillRect(g, 0, 0, 32, 32, '#2a2020');
+      g.fillStyle = '#3a2a2a';
+      for (let i = 0; i < 4; i++) {
+        g.fillRect(Math.floor(Math.random() * 24) + 4, Math.floor(Math.random() * 24) + 4, 5, 4);
+      }
+      // Ember-glow cracks
+      g.fillStyle = '#6a2a0a';
+      g.fillRect(8, 12, 1, 8); g.fillRect(20, 6, 1, 10);
+      g.fillStyle = '#8a3a0a';
+      g.fillRect(14, 20, 6, 1); g.fillRect(4, 8, 4, 1);
+      break;
+
+    case TILE.CHARRED_FLOOR:
+      fillRect(g, 0, 0, 32, 32, '#3a3030');
+      g.fillStyle = '#4a3a3a';
+      for (let i = 0; i < 4; i++) {
+        g.fillRect(Math.floor(Math.random() * 26) + 3, Math.floor(Math.random() * 26) + 3, 3, 2);
+      }
+      if (variant === 0) {
+        g.fillStyle = '#5a2a1a'; g.fillRect(10, 14, 6, 4);
+      } else if (variant === 1) {
+        g.fillStyle = '#6a3020'; g.fillRect(18, 8, 4, 3);
+        g.fillStyle = '#4a2010'; g.fillRect(6, 22, 5, 3);
+      } else {
+        g.fillStyle = '#5a3020'; g.fillRect(12, 10, 3, 2); g.fillRect(22, 22, 4, 2);
+      }
+      break;
+
+    case TILE.SWAMP_WALL:
+      fillRect(g, 0, 0, 32, 32, '#2a3a1a');
+      // Root/vine tangles
+      g.fillStyle = '#3a4a2a';
+      for (let i = 0; i < 5; i++) {
+        g.fillRect(Math.floor(Math.random() * 24) + 4, Math.floor(Math.random() * 24) + 4, 4, 5);
+      }
+      g.fillStyle = '#1a2a10';
+      g.fillRect(6, 4, 2, 12); g.fillRect(18, 10, 2, 14); g.fillRect(26, 2, 2, 10);
+      break;
+
+    case TILE.SWAMP_FLOOR:
+      fillRect(g, 0, 0, 32, 32, '#3a3020');
+      g.fillStyle = '#4a4030';
+      for (let i = 0; i < 4; i++) {
+        g.fillRect(Math.floor(Math.random() * 26) + 3, Math.floor(Math.random() * 26) + 3, 3, 2);
+      }
+      if (variant === 0) {
+        g.fillStyle = '#4a4a30'; g.fillRect(8, 12, 8, 6);
+      } else if (variant === 1) {
+        g.fillStyle = '#3a4020'; g.fillRect(16, 6, 6, 4);
+        g.fillStyle = '#4a4a28'; g.fillRect(4, 20, 5, 4);
+      } else {
+        g.fillStyle = '#3a3818'; g.fillRect(10, 18, 4, 3); g.fillRect(22, 8, 3, 3);
+      }
+      break;
+
+    case TILE.SHADOW_WALL:
+      fillRect(g, 0, 0, 32, 32, '#1a1020');
+      g.fillStyle = '#2a1a30';
+      for (let i = 0; i < 3; i++) {
+        g.fillRect(Math.floor(Math.random() * 24) + 4, Math.floor(Math.random() * 24) + 4, 5, 4);
+      }
+      // Purple veins
+      g.fillStyle = '#3a1a4a';
+      g.fillRect(6, 8, 1, 16); g.fillRect(20, 4, 1, 12);
+      g.fillStyle = '#4a2060';
+      g.fillRect(12, 20, 8, 1); g.fillRect(2, 14, 6, 1);
+      break;
+
+    case TILE.SHADOW_FLOOR:
+      fillRect(g, 0, 0, 32, 32, '#2a1a30');
+      g.fillStyle = '#3a2a40';
+      for (let i = 0; i < 4; i++) {
+        g.fillRect(Math.floor(Math.random() * 26) + 3, Math.floor(Math.random() * 26) + 3, 3, 2);
+      }
+      if (variant === 0) {
+        // Faint arcane rune
+        g.fillStyle = '#3a2a4a'; g.fillRect(12, 10, 8, 1); g.fillRect(16, 8, 1, 6);
+      } else if (variant === 1) {
+        g.fillStyle = '#4a2a5a'; g.fillRect(8, 14, 4, 1); g.fillRect(20, 20, 5, 1);
+      } else {
+        g.fillStyle = '#3a2a4a'; g.fillRect(14, 14, 3, 3);
       }
       break;
 
@@ -2433,6 +2552,155 @@ function buildItemSprite(iconCode) {
     fillRect(g, 8, 24, 16, 4, pCol);
     // Shine
     fillRect(g, 10, 10, 3, 4, '#ffffff40');
+    return c;
+  }
+
+  // ── Materials / Ingredients ───────────────────
+  if (code === 'MB') {
+    // Bone Fragment — broken bone piece
+    fillRect(g, 10, 6, 4, 20, '#e0d8c0');
+    fillRect(g, 14, 8, 4, 16, '#d8d0b0');
+    fillRect(g, 18, 10, 3, 8, '#e0d8c0');
+    // Jagged break at top
+    fillRect(g, 10, 4, 2, 4, '#c8c0a0');
+    fillRect(g, 14, 6, 2, 4, '#c8c0a0');
+    // Dark crack lines
+    fillRect(g, 12, 10, 1, 8, '#8a8060');
+    fillRect(g, 16, 12, 1, 6, '#8a8060');
+    return c;
+  }
+
+  if (code === 'MS') {
+    // Spider Silk — bundled silk threads
+    g.strokeStyle = '#d0d0e0';
+    g.lineWidth = 2;
+    g.beginPath(); g.moveTo(8, 8); g.quadraticCurveTo(16, 20, 24, 8); g.stroke();
+    g.beginPath(); g.moveTo(6, 14); g.quadraticCurveTo(16, 26, 26, 14); g.stroke();
+    g.beginPath(); g.moveTo(10, 20); g.quadraticCurveTo(16, 30, 22, 20); g.stroke();
+    // Shimmer
+    g.strokeStyle = '#ffffff60';
+    g.lineWidth = 1;
+    g.beginPath(); g.moveTo(12, 10); g.lineTo(20, 10); g.stroke();
+    g.beginPath(); g.moveTo(10, 16); g.lineTo(22, 16); g.stroke();
+    return c;
+  }
+
+  if (code === 'MI') {
+    // Iron Ore — rough rock chunk with metallic veins
+    fillRect(g, 8, 10, 16, 14, '#5a5a5a');
+    fillRect(g, 10, 8, 12, 2, '#4a4a4a');
+    fillRect(g, 10, 24, 12, 2, '#4a4a4a');
+    // Metallic silver veins
+    fillRect(g, 10, 12, 3, 2, '#b0b0c0');
+    fillRect(g, 16, 16, 4, 2, '#c0c0d0');
+    fillRect(g, 12, 20, 3, 2, '#b0b0c0');
+    // Dark shading
+    fillRect(g, 20, 14, 2, 8, '#3a3a3a');
+    return c;
+  }
+
+  if (code === 'MD') {
+    // Dark Essence — swirling purple-black wisp
+    g.fillStyle = '#2a1040';
+    g.beginPath(); g.arc(16, 16, 8, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#5a2080';
+    g.beginPath(); g.arc(16, 16, 5, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#8040c0';
+    g.beginPath(); g.arc(14, 14, 2, 0, Math.PI * 2); g.fill();
+    // Wispy tendrils
+    g.strokeStyle = '#5a2080';
+    g.lineWidth = 2;
+    g.beginPath(); g.moveTo(10, 10); g.quadraticCurveTo(6, 16, 10, 22); g.stroke();
+    g.beginPath(); g.moveTo(22, 10); g.quadraticCurveTo(26, 16, 22, 22); g.stroke();
+    return c;
+  }
+
+  if (code === 'MR') {
+    // Dragon Scale — shimmering colored scale
+    g.fillStyle = '#2a6030';
+    g.beginPath();
+    g.moveTo(16, 4); g.lineTo(26, 16); g.lineTo(16, 28); g.lineTo(6, 16);
+    g.closePath(); g.fill();
+    g.fillStyle = '#3a8040';
+    g.beginPath();
+    g.moveTo(16, 6); g.lineTo(24, 16); g.lineTo(16, 26); g.lineTo(8, 16);
+    g.closePath(); g.fill();
+    // Scale ridges
+    g.strokeStyle = '#4aa050';
+    g.lineWidth = 1;
+    g.beginPath(); g.moveTo(10, 16); g.lineTo(22, 16); g.stroke();
+    g.beginPath(); g.moveTo(16, 8); g.lineTo(16, 24); g.stroke();
+    // Shimmer
+    fillRect(g, 13, 12, 3, 3, '#60c06060');
+    return c;
+  }
+
+  if (code === 'MC') {
+    // Crystal Shard — glowing geometric crystal
+    g.fillStyle = '#4060c0';
+    g.beginPath();
+    g.moveTo(16, 2); g.lineTo(22, 12); g.lineTo(20, 28); g.lineTo(12, 28); g.lineTo(10, 12);
+    g.closePath(); g.fill();
+    g.fillStyle = '#6080e0';
+    g.beginPath();
+    g.moveTo(16, 4); g.lineTo(20, 12); g.lineTo(18, 26); g.lineTo(14, 26); g.lineTo(12, 12);
+    g.closePath(); g.fill();
+    // Inner glow
+    fillRect(g, 14, 10, 4, 8, '#80a0ff40');
+    // Bright edge
+    fillRect(g, 15, 4, 2, 6, '#a0c0ff60');
+    return c;
+  }
+
+  if (code === 'MN') {
+    // Den Core — pulsing organic core
+    g.fillStyle = '#4a2020';
+    g.beginPath(); g.arc(16, 16, 10, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#8a3030';
+    g.beginPath(); g.arc(16, 16, 7, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#cc4040';
+    g.beginPath(); g.arc(16, 16, 4, 0, Math.PI * 2); g.fill();
+    // Pulse lines
+    g.strokeStyle = '#cc404060';
+    g.lineWidth = 1;
+    g.beginPath(); g.arc(16, 16, 12, 0, Math.PI * 2); g.stroke();
+    // Inner glow
+    fillRect(g, 14, 14, 4, 4, '#ff606060');
+    return c;
+  }
+
+  if (code === 'MG') {
+    // Guardian Relic — golden ancient artifact
+    fillRect(g, 10, 6, 12, 4, '#c0a030');
+    fillRect(g, 12, 10, 8, 14, '#c0a030');
+    fillRect(g, 10, 24, 12, 4, '#c0a030');
+    // Central gem
+    g.fillStyle = '#40a0e0';
+    g.beginPath(); g.arc(16, 16, 3, 0, Math.PI * 2); g.fill();
+    fillRect(g, 15, 15, 2, 2, '#80d0ff');
+    // Gold trim
+    fillRect(g, 10, 6, 12, 1, '#e0c040');
+    fillRect(g, 10, 27, 12, 1, '#e0c040');
+    // Ornate details
+    fillRect(g, 14, 10, 1, 4, '#a08020');
+    fillRect(g, 17, 10, 1, 4, '#a08020');
+    fillRect(g, 14, 20, 1, 4, '#a08020');
+    fillRect(g, 17, 20, 1, 4, '#a08020');
+    return c;
+  }
+
+  if (code === 'PT') {
+    // Portal Scroll — rolled scroll with magical glow
+    fillRect(g, 10, 6, 12, 20, '#d0c8a0');
+    fillRect(g, 8, 6, 16, 3, '#b0a880');
+    fillRect(g, 8, 23, 16, 3, '#b0a880');
+    // Text lines
+    fillRect(g, 12, 11, 8, 1, '#6a6040');
+    fillRect(g, 12, 14, 8, 1, '#6a6040');
+    fillRect(g, 12, 17, 8, 1, '#6a6040');
+    // Magic glow
+    g.fillStyle = '#4080e040';
+    g.beginPath(); g.arc(16, 16, 6, 0, Math.PI * 2); g.fill();
     return c;
   }
 

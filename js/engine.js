@@ -15,10 +15,11 @@ import {
   CRAFTING_RECIPES_T2, CRAFTING_RECIPES_T3,
   PHASE_BOSSES,
   ROOM_TYPE, DEN_TYPES, GUARDIAN_NAMES, GUARDIAN_FOR_THEME,
-} from './constants.js?v=27';
+  ENTITY_FACTION, areFactionsHostile,
+} from './constants.js?v=28';
 import { t } from './i18n.js';
-import { generateVillage, generateDungeon, generateArenaMap } from './mapgen.js?v=27';
-import { computeFOV } from './fov.js?v=27';
+import { generateVillage, generateDungeon, generateArenaMap } from './mapgen.js?v=28';
+import { computeFOV } from './fov.js?v=28';
 
 function randInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -784,6 +785,8 @@ const ENEMY_NAMES = {
   [ENTITY.GUARDIAN_HOARDER]:  'Treasure Guardian',
   [ENTITY.GUARDIAN_SENTINEL]: 'Vault Sentinel',
   [ENTITY.GUARDIAN_KEEPER]:   'Arcane Keeper',
+  // Kobold
+  [ENTITY.KOBOLD]:           'Kobold',
 };
 
 export function getEnemyName(entity) {
@@ -3223,6 +3226,8 @@ const SIGHT_RANGES = {
   [ENTITY.GUARDIAN_HOARDER]:  10,
   [ENTITY.GUARDIAN_SENTINEL]: 10,
   [ENTITY.GUARDIAN_KEEPER]:   10,
+  // Kobold
+  [ENTITY.KOBOLD]:           5,
 };
 
 function getEnemySightRange(enemy) {
@@ -3281,6 +3286,32 @@ function checkBossPhaseTransition(enemy) {
   return true;
 }
 
+// ── Faction Infighting Combat ──────────────────
+function enemyAttackEnemy(attacker, defender) {
+  const damage = Math.max(1, attacker.power - (defender.armor || 0) + randInt(-1, 1));
+  defender.hp -= damage;
+  const atkName = getEnemyName(attacker);
+  const defName = getEnemyName(defender);
+
+  // Only log if player can see the fight
+  const px = state.player.x, py = state.player.y;
+  const aDist = Math.abs(attacker.x - px) + Math.abs(attacker.y - py);
+  const canSee = aDist <= 12 && state.visibility && state.visibility[attacker.y] && state.visibility[attacker.y][attacker.x];
+
+  if (canSee) {
+    log(`${atkName} attacks ${defName} for ${damage}!`, 'faction');
+    spawnDamageNumber(defender.x, defender.y, damage, '#d4a030');
+  }
+
+  if (defender.hp <= 0) {
+    defender.hp = 0;
+    if (canSee) {
+      log(`${atkName} slays ${defName}!`, 'faction');
+    }
+    // No XP, gold, or loot for the player — enemies killing enemies
+  }
+}
+
 function moveEnemies() {
   for (const enemy of state.enemies) {
     if (enemy.hp <= 0) continue;
@@ -3307,6 +3338,48 @@ function moveEnemies() {
     const dy = state.player.y - enemy.y;
     const dist = Math.abs(dx) + Math.abs(dy);
     const sightRange = getEnemySightRange(enemy);
+
+    // ── Faction Infighting ────────────────────────
+    // Bosses, minibosses, and guardians never infight
+    if (!enemy.isBoss && !enemy.isMiniboss && !enemy.isGuardian) {
+      const myFaction = ENTITY_FACTION[enemy.type];
+      if (myFaction) {
+        let closestRival = null;
+        let rivalDist = Infinity;
+        for (const other of state.enemies) {
+          if (other === enemy || other.hp <= 0) continue;
+          if (other.isBoss || other.isMiniboss || other.isGuardian) continue;
+          const otherFaction = ENTITY_FACTION[other.type];
+          if (!otherFaction || !areFactionsHostile(myFaction, otherFaction)) continue;
+          const rd = Math.abs(other.x - enemy.x) + Math.abs(other.y - enemy.y);
+          if (rd <= 3 && rd < rivalDist) {
+            closestRival = other;
+            rivalDist = rd;
+          }
+        }
+        // Priority: player adjacent always wins; otherwise prefer closer target
+        if (closestRival && !(dist === 1)) {
+          if (rivalDist < dist || dist > sightRange) {
+            // Fight the rival instead of chasing player
+            if (rivalDist === 1) {
+              enemyAttackEnemy(enemy, closestRival);
+            } else {
+              // Move toward rival
+              const rdx = closestRival.x - enemy.x;
+              const rdy = closestRival.y - enemy.y;
+              let mx, my;
+              if (Math.abs(rdx) >= Math.abs(rdy)) { mx = Math.sign(rdx); my = 0; }
+              else { mx = 0; my = Math.sign(rdy); }
+              const nx = enemy.x + mx, ny = enemy.y + my;
+              if (canWalk(nx, ny) && !isOccupied(nx, ny)) {
+                enemy.x = nx; enemy.y = ny;
+              }
+            }
+            continue; // Skip normal player-chase for this turn
+          }
+        }
+      }
+    }
 
     if (dist > sightRange) continue;
 

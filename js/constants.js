@@ -37,6 +37,15 @@ export const TILE = {
   ARENA:            32,
   BLACKSMITH:       33,
   UP_STAIRS:        34,
+  // New environment tiles
+  VILLAGE_WALL:     35,
+  VILLAGE_FLOOR:    36,
+  CHARRED_WALL:     37,
+  CHARRED_FLOOR:    38,
+  SWAMP_WALL:       39,
+  SWAMP_FLOOR:      40,
+  SHADOW_WALL:      41,
+  SHADOW_FLOOR:     42,
 };
 
 
@@ -76,6 +85,15 @@ export const TILE_PROPS = {
   [TILE.ARENA]:            { name: 'Arena',            walkable: true,  transparent: true  },
   [TILE.BLACKSMITH]:       { name: 'Blacksmith',       walkable: true,  transparent: true  },
   [TILE.UP_STAIRS]:        { name: 'Stairs Up',        walkable: true,  transparent: true  },
+  // New environment tiles
+  [TILE.VILLAGE_WALL]:     { name: 'Palisade',        walkable: false, transparent: true  },
+  [TILE.VILLAGE_FLOOR]:    { name: 'Packed Dirt',     walkable: true,  transparent: true  },
+  [TILE.CHARRED_WALL]:     { name: 'Charred Rock',    walkable: false, transparent: false },
+  [TILE.CHARRED_FLOOR]:    { name: 'Scorched Stone',  walkable: true,  transparent: true  },
+  [TILE.SWAMP_WALL]:       { name: 'Dense Mangrove',  walkable: false, transparent: false },
+  [TILE.SWAMP_FLOOR]:      { name: 'Muddy Ground',    walkable: true,  transparent: true  },
+  [TILE.SHADOW_WALL]:      { name: 'Void Barrier',    walkable: false, transparent: false },
+  [TILE.SHADOW_FLOOR]:     { name: 'Shadow Stone',    walkable: true,  transparent: true  },
 };
 
 // ── Item Features ────────────────────────────────
@@ -192,6 +210,8 @@ export const ENTITY = {
   GUARDIAN_HOARDER:  'guardian_hoarder',
   GUARDIAN_SENTINEL: 'guardian_sentinel',
   GUARDIAN_KEEPER:   'guardian_keeper',
+  // Dragon's Lair minion
+  KOBOLD:           'kobold',
 };
 
 // ── Player Classes ────────────────────────────────
@@ -379,6 +399,8 @@ export const BASE_STATS = {
   [ENTITY.VOID_TOUCHED]:     { maxHp: 14, hp: 14, power: 7, armor: 1, xpReward: 25 },
   [ENTITY.ABYSSAL_WATCHER]:  { maxHp: 18, hp: 18, power: 8, armor: 2, xpReward: 28 },
   [ENTITY.OBSIDIAN_DRAKE]:   { maxHp: 24, hp: 24, power: 7, armor: 3, xpReward: 30 },
+  // Kobold
+  [ENTITY.KOBOLD]:           { maxHp: 12, hp: 12, power: 3,  armor: 1, xpReward: 8 },
   // Mimics
   [ENTITY.MIMIC]:            { maxHp: 25, hp: 25, power: 5,  armor: 2, xpReward: 20 },
   [ENTITY.GREATER_MIMIC]:    { maxHp: 45, hp: 45, power: 8,  armor: 3, xpReward: 40 },
@@ -522,7 +544,7 @@ export const ITEMS = {
   dark_essence:     { id: 'dark_essence',     name: 'Dark Essence',     type: 'material', icon: 'MD', desc: 'A wisp of dark energy. Used in crafting.', stackable: true, maxStack: 50 },
   dragon_scale:     { id: 'dragon_scale',     name: 'Dragon Scale',     type: 'material', icon: 'MR', desc: 'A shimmering scale. Used in crafting.', stackable: true, maxStack: 50 },
   crystal_shard:    { id: 'crystal_shard',    name: 'Crystal Shard',    type: 'material', icon: 'MC', desc: 'A glowing crystal. Used in crafting.', stackable: true, maxStack: 50 },
-  den_core:         { id: 'den_core',         name: 'Den Core',         type: 'material', icon: 'MD', desc: 'A pulsing core from a monster den. Radiates primal energy. Used in crafting.', stackable: true, maxStack: 50 },
+  den_core:         { id: 'den_core',         name: 'Den Core',         type: 'material', icon: 'MN', desc: 'A pulsing core from a monster den. Radiates primal energy. Used in crafting.', stackable: true, maxStack: 50 },
   guardian_relic:    { id: 'guardian_relic',    name: 'Guardian Relic',    type: 'material', icon: 'MG', desc: 'An ancient artifact taken from a treasure guardian. Extremely valuable.', stackable: true, maxStack: 50 },
 };
 
@@ -553,6 +575,10 @@ export const FLOOR_THEME = {
   MUSHROOM_GROTTO:'mushroom_grotto',
   SCORCHED_DEPTHS:'scorched_depths',
   FROZEN_HALLS:   'frozen_halls',
+  GOBLIN_VILLAGE: 'goblin_village',
+  DRAGON_LAIR:    'dragon_lair',
+  SWAMP_BOG:      'swamp_bog',
+  SHADOW_REALM:   'shadow_realm',
 };
 
 export const FLOOR_THEMES = {
@@ -614,6 +640,49 @@ export const FLOOR_THEMES = {
       [ENTITY.WRAITH]: 3, [ENTITY.SKELETON]: 3, [ENTITY.SLIME]: 2, [ENTITY.TROLL]: 1, [ENTITY.ICE_SPIDER]: 3, [ENTITY.FROST_WRAITH]: 2, [ENTITY.FROZEN_SENTINEL]: 1, [ENTITY.SNOW_WOLF]: 3, [ENTITY.ICE_MAGE]: 1, [ENTITY.GLACIAL_BEETLE]: 2, [ENTITY.FROST_ARCHER]: 2, [ENTITY.STONE_GARGOYLE]: 1, [ENTITY.VOID_TOUCHED]: 1, [ENTITY.WAILING_BANSHEE]: 1,
     },
     minFloor: 3,
+    maxFloor: 99,
+  },
+  [FLOOR_THEME.GOBLIN_VILLAGE]: {
+    name: 'Goblin Village',
+    wallTile: TILE.VILLAGE_WALL,
+    floorTile: TILE.VILLAGE_FLOOR,
+    spawnWeights: {
+      [ENTITY.GOBLIN]: 6, [ENTITY.ORC]: 3, [ENTITY.GOBLIN_SHAMAN]: 2, [ENTITY.GOBLIN_BERSERKER]: 3, [ENTITY.GOBLIN_SCOUT]: 4, [ENTITY.VILE_SHAMAN]: 2, [ENTITY.GOBLIN_CHIEF]: 1,
+    },
+    minFloor: 1,
+    maxFloor: 4,
+    layoutType: 'village',
+  },
+  [FLOOR_THEME.DRAGON_LAIR]: {
+    name: "Dragon's Lair",
+    wallTile: TILE.CHARRED_WALL,
+    floorTile: TILE.CHARRED_FLOOR,
+    spawnWeights: {
+      [ENTITY.DRAGON_WHELP]: 5, [ENTITY.OBSIDIAN_DRAKE]: 3, [ENTITY.FIRE_IMP]: 3, [ENTITY.LAVA_HOUND]: 2, [ENTITY.EMBER_BAT]: 4, [ENTITY.ASH_WRAITH]: 2, [ENTITY.KOBOLD]: 3,
+    },
+    minFloor: 5,
+    maxFloor: 99,
+    layoutType: 'lair',
+  },
+  [FLOOR_THEME.SWAMP_BOG]: {
+    name: 'Swamp Bog',
+    wallTile: TILE.SWAMP_WALL,
+    floorTile: TILE.SWAMP_FLOOR,
+    spawnWeights: {
+      [ENTITY.SWAMP_HAG]: 3, [ENTITY.TOXIC_TOAD]: 4, [ENTITY.PLAGUE_RAT]: 3, [ENTITY.VINE_LURKER]: 3, [ENTITY.SLIME]: 4, [ENTITY.SPIDER]: 2, [ENTITY.VENOM_SPITTER]: 2, [ENTITY.SPORE_WALKER]: 2, [ENTITY.BLOOD_BAT]: 2,
+    },
+    minFloor: 2,
+    maxFloor: 5,
+    layoutType: 'swamp',
+  },
+  [FLOOR_THEME.SHADOW_REALM]: {
+    name: 'Shadow Realm',
+    wallTile: TILE.SHADOW_WALL,
+    floorTile: TILE.SHADOW_FLOOR,
+    spawnWeights: {
+      [ENTITY.VOID_TOUCHED]: 4, [ENTITY.ABYSSAL_WATCHER]: 3, [ENTITY.DARK_MAGE]: 3, [ENTITY.WRAITH]: 3, [ENTITY.PHANTOM]: 3, [ENTITY.SHADOW_STALKER]: 3, [ENTITY.WAILING_BANSHEE]: 2, [ENTITY.DEATH_KNIGHT]: 1,
+    },
+    minFloor: 7,
     maxFloor: 99,
   },
 };
@@ -1276,6 +1345,13 @@ export const LOOT_TABLES = {
     { itemId: 'crystal_shard',      chance: 0.40 },
     { itemId: 'dark_essence',       chance: 0.30 },
   ],
+  [ENTITY.KOBOLD]: [
+    { itemId: 'minor_health_pot', chance: 0.30 },
+    { itemId: 'rusty_sword',      chance: 0.08 },
+    { itemId: 'leather_cap',      chance: 0.06 },
+    { itemId: 'bone_fragment',    chance: 0.20 },
+    { itemId: 'iron_ore',         chance: 0.15 },
+  ],
 };
 
 // ── Bestiary Data ────────────────────────────────
@@ -1384,7 +1460,88 @@ export const BESTIARY_INFO = {
   [ENTITY.GUARDIAN_HOARDER]:  { name: 'Treasure Guardian', title: 'The Hoarder',        level: 15, element: 'EARTH',  category: 'Guardian', desc: 'A massive creature that has claimed a room of treasure as its own. It sits motionless atop piles of gold, but attacks with devastating fury when its hoard is threatened.', lore: 'Hoarders were once dungeon bosses that chose to stop hunting. Instead, they lure prey with glittering treasure, waiting for greed to deliver meals to their lair.', habitat: 'Guardian Chamber', threat: 'Extreme', moves: 'Crushing Slam, Gold Scatter, Treasure Surge', basePower: 10, baseHp: 60, isBoss: false },
   [ENTITY.GUARDIAN_SENTINEL]: { name: 'Vault Sentinel',   title: 'Eternal Warden',     level: 16, element: 'EARTH',  category: 'Guardian', desc: 'An ancient construct of stone and iron, bound by forgotten magic to guard a vault for eternity. Its eyes glow with the light of ages past, and its fists can shatter walls.', lore: 'The sentinels were built by the same civilization that carved the deepest dungeons. Their creators are dust, but the sentinels remain, faithful to their eternal duty.', habitat: 'Guardian Chamber', threat: 'Extreme', moves: 'Iron Fist, Shield Bash, Sentinel Stance, Earthquake', basePower: 8, baseHp: 70, isBoss: false },
   [ENTITY.GUARDIAN_KEEPER]:   { name: 'Arcane Keeper',    title: 'Keeper of Secrets',  level: 15, element: 'ARCANE', category: 'Guardian', desc: 'A robed figure hovering above a cache of magical artifacts. It phases in and out of reality, and its spells can unravel the strongest enchantments.', lore: 'Keepers are mages who fused their souls with their collections, becoming one with the magic they hoarded. They attack with the very artifacts they protect.', habitat: 'Guardian Chamber', threat: 'Extreme', moves: 'Arcane Barrage, Relic Blast, Phase Shift, Mana Drain', basePower: 12, baseHp: 55, isBoss: false },
+  // Kobold
+  [ENTITY.KOBOLD]:           { name: 'Kobold',           title: 'Dragon Servant',     level: 3,  element: 'FIRE',   category: 'Dragon', desc: 'A small, scaly humanoid that worships dragons as gods. Fights with crude weapons and suicidal bravery, hoping to earn its master\'s favor.', lore: 'Kobolds build their warrens around dragon lairs, serving as lookouts, trapmakers, and living shields. They believe dying for a dragon earns rebirth as one.', habitat: "Dragon's Lair", threat: 'Low', moves: 'Claw Swipe, Javelin Toss', basePower: 3, baseHp: 12, isBoss: false },
 };
+
+// ── Monster Factions ─────────────────────────────
+export const FACTION = {
+  GOBLINOID:  'goblinoid',
+  UNDEAD:     'undead',
+  BEAST:      'beast',
+  NATURE:     'nature',
+  FIRE:       'fire',
+  ICE:        'ice',
+  CONSTRUCT:  'construct',
+  ARCANE:     'arcane',
+  DRAGON:     'dragon',
+  ABERRATION: 'aberration',
+};
+
+export const ENTITY_FACTION = {
+  // Goblinoid
+  [ENTITY.GOBLIN]: FACTION.GOBLINOID, [ENTITY.ORC]: FACTION.GOBLINOID, [ENTITY.TROLL]: FACTION.GOBLINOID,
+  [ENTITY.GOBLIN_SHAMAN]: FACTION.GOBLINOID, [ENTITY.GOBLIN_BERSERKER]: FACTION.GOBLINOID,
+  [ENTITY.GOBLIN_SCOUT]: FACTION.GOBLINOID, [ENTITY.GOBLIN_CHIEF]: FACTION.GOBLINOID,
+  [ENTITY.GOBLIN_WARLORD]: FACTION.GOBLINOID, [ENTITY.VILE_SHAMAN]: FACTION.GOBLINOID,
+  // Undead
+  [ENTITY.SKELETON]: FACTION.UNDEAD, [ENTITY.WRAITH]: FACTION.UNDEAD, [ENTITY.ZOMBIE]: FACTION.UNDEAD,
+  [ENTITY.BONE_ARCHER]: FACTION.UNDEAD, [ENTITY.PHANTOM]: FACTION.UNDEAD,
+  [ENTITY.DEATH_KNIGHT]: FACTION.UNDEAD, [ENTITY.NECROMANCER]: FACTION.UNDEAD,
+  [ENTITY.DARK_ACOLYTE]: FACTION.UNDEAD, [ENTITY.CORPSE_EATER]: FACTION.UNDEAD,
+  [ENTITY.BONE_SENTINEL]: FACTION.UNDEAD, [ENTITY.WAILING_BANSHEE]: FACTION.UNDEAD,
+  [ENTITY.BLOOD_GOLEM]: FACTION.UNDEAD, [ENTITY.LICH]: FACTION.UNDEAD,
+  // Beast
+  [ENTITY.BAT]: FACTION.BEAST, [ENTITY.SPIDER]: FACTION.BEAST, [ENTITY.CAVE_CRAWLER]: FACTION.BEAST,
+  [ENTITY.VENOM_SPITTER]: FACTION.BEAST, [ENTITY.COCOON_HORROR]: FACTION.BEAST,
+  [ENTITY.SPIDER_QUEEN]: FACTION.BEAST, [ENTITY.PLAGUE_RAT]: FACTION.BEAST,
+  [ENTITY.SAND_SCORPION]: FACTION.BEAST, [ENTITY.TOXIC_TOAD]: FACTION.BEAST,
+  [ENTITY.SNOW_WOLF]: FACTION.BEAST, [ENTITY.ICE_SPIDER]: FACTION.BEAST,
+  [ENTITY.BLOOD_BAT]: FACTION.BEAST, [ENTITY.THUNDER_LIZARD]: FACTION.BEAST,
+  [ENTITY.EMBER_BAT]: FACTION.BEAST,
+  // Nature
+  [ENTITY.SLIME]: FACTION.NATURE, [ENTITY.MUSHROOM]: FACTION.NATURE, [ENTITY.SPORE_WALKER]: FACTION.NATURE,
+  [ENTITY.VINE_LURKER]: FACTION.NATURE, [ENTITY.MOSS_GOLEM]: FACTION.NATURE,
+  [ENTITY.MYCELIUM_LORD]: FACTION.NATURE, [ENTITY.MYCONID_SPROUT]: FACTION.NATURE,
+  [ENTITY.SWAMP_HAG]: FACTION.NATURE,
+  // Fire
+  [ENTITY.FIRE_IMP]: FACTION.FIRE, [ENTITY.LAVA_HOUND]: FACTION.FIRE, [ENTITY.ASH_WRAITH]: FACTION.FIRE,
+  [ENTITY.MAGMA_GOLEM]: FACTION.FIRE, [ENTITY.INFERNAL_MAGE]: FACTION.FIRE,
+  [ENTITY.FIRE_ELEMENTAL]: FACTION.FIRE, [ENTITY.FLAME_DANCER]: FACTION.FIRE,
+  // Ice
+  [ENTITY.FROST_WRAITH]: FACTION.ICE, [ENTITY.FROZEN_SENTINEL]: FACTION.ICE,
+  [ENTITY.FROST_GIANT]: FACTION.ICE, [ENTITY.GLACIAL_BEETLE]: FACTION.ICE,
+  [ENTITY.FROST_ARCHER]: FACTION.ICE, [ENTITY.ICE_MAGE]: FACTION.ICE,
+  // Construct
+  [ENTITY.IRON_REVENANT]: FACTION.CONSTRUCT, [ENTITY.STONE_GARGOYLE]: FACTION.CONSTRUCT,
+  [ENTITY.CRYSTAL_GOLEM]: FACTION.CONSTRUCT,
+  // Arcane
+  [ENTITY.DARK_MAGE]: FACTION.ARCANE, [ENTITY.VOID_TOUCHED]: FACTION.ARCANE,
+  [ENTITY.ABYSSAL_WATCHER]: FACTION.ARCANE, [ENTITY.SHADOW_STALKER]: FACTION.ARCANE,
+  // Dragon
+  [ENTITY.DRAGON_WHELP]: FACTION.DRAGON, [ENTITY.OBSIDIAN_DRAKE]: FACTION.DRAGON,
+  [ENTITY.KOBOLD]: FACTION.DRAGON, [ENTITY.ANCIENT_WYRM]: FACTION.DRAGON,
+  // Aberration
+  [ENTITY.MIMIC]: FACTION.ABERRATION, [ENTITY.GREATER_MIMIC]: FACTION.ABERRATION,
+  [ENTITY.ANCIENT_MIMIC]: FACTION.ABERRATION,
+};
+
+export const FACTION_HOSTILITY = [
+  ['goblinoid', 'undead'],    // territorial rivalry
+  ['fire',      'ice'],       // elemental opposites
+  ['nature',    'undead'],    // life vs death
+  ['beast',     'construct'], // wild vs artificial
+  ['goblinoid', 'beast'],    // goblins hunt beasts, beasts eat goblins
+  ['arcane',    'nature'],    // corruption vs purity
+];
+
+export function areFactionsHostile(factionA, factionB) {
+  if (!factionA || !factionB || factionA === factionB) return false;
+  for (const [a, b] of FACTION_HOSTILITY) {
+    if ((a === factionA && b === factionB) || (a === factionB && b === factionA)) return true;
+  }
+  return false;
+}
 
 // ── Ranged Attack Constants ──────────────────────
 export const FIRE_SPELL_COST = 4;
@@ -1416,7 +1573,7 @@ export const ITEMS_PER_FLOOR_MIN = 3;
 export const ITEMS_PER_FLOOR_MAX = 6;
 
 // ── Inventory ─────────────────────────────────────
-export const BACKPACK_SIZE = 30;
+export const BACKPACK_SIZE = 120;
 
 // ── Boss Mapping ──────────────────────────────────
 export const BOSS_FOR_THEME = {
@@ -1426,6 +1583,10 @@ export const BOSS_FOR_THEME = {
   [FLOOR_THEME.MUSHROOM_GROTTO]: ENTITY.MYCELIUM_LORD,
   [FLOOR_THEME.SCORCHED_DEPTHS]: ENTITY.FIRE_ELEMENTAL,
   [FLOOR_THEME.FROZEN_HALLS]:    ENTITY.FROST_GIANT,
+  [FLOOR_THEME.GOBLIN_VILLAGE]:  ENTITY.GOBLIN_WARLORD,
+  [FLOOR_THEME.DRAGON_LAIR]:     ENTITY.ANCIENT_WYRM,
+  [FLOOR_THEME.SWAMP_BOG]:       ENTITY.MYCELIUM_LORD,
+  [FLOOR_THEME.SHADOW_REALM]:    ENTITY.LICH,
 };
 
 export const ELITE_PREFIXES = ['Savage', 'Frenzied', 'Ancient', 'Corrupted', 'Enraged', 'Cursed', 'Venomous', 'Spectral', 'Blazing', 'Frozen'];
@@ -1637,6 +1798,10 @@ export const DEN_TYPES = {
   mushroom_grotto:  { name: 'Mycelium Cluster',  spawnType: ENTITY.MUSHROOM,     hp: 18, sprite: 'den_mushroom' },
   scorched_depths:  { name: 'Magma Vent',        spawnType: ENTITY.FIRE_IMP,     hp: 30, sprite: 'den_fire' },
   frozen_halls:     { name: 'Frost Nexus',       spawnType: ENTITY.FROST_WRAITH, hp: 28, sprite: 'den_ice' },
+  goblin_village:   { name: 'Goblin War Camp',   spawnType: ENTITY.GOBLIN,       hp: 20, sprite: 'den_goblin' },
+  dragon_lair:      { name: 'Dragon Egg Nest',   spawnType: ENTITY.KOBOLD,       hp: 35, sprite: 'den_fire' },
+  swamp_bog:        { name: 'Swamp Nest',        spawnType: ENTITY.TOXIC_TOAD,   hp: 18, sprite: 'den_mushroom' },
+  shadow_realm:     { name: 'Void Rift',         spawnType: ENTITY.PHANTOM,      hp: 30, sprite: 'den_crypt' },
 };
 
 // ── Guardian Names ─────────────────────────────────
@@ -1660,6 +1825,10 @@ export const GUARDIAN_FOR_THEME = {
   mushroom_grotto: ENTITY.GUARDIAN_HOARDER,
   scorched_depths: ENTITY.GUARDIAN_SENTINEL,
   frozen_halls:    ENTITY.GUARDIAN_KEEPER,
+  goblin_village:  ENTITY.GUARDIAN_HOARDER,
+  dragon_lair:     ENTITY.GUARDIAN_SENTINEL,
+  swamp_bog:       ENTITY.GUARDIAN_KEEPER,
+  shadow_realm:    ENTITY.GUARDIAN_KEEPER,
 };
 
 // ── Mage Spells ───────────────────────────────────
@@ -1744,6 +1913,8 @@ export const GOLD_REWARDS = {
   [ENTITY.GUARDIAN_HOARDER]:  60,
   [ENTITY.GUARDIAN_SENTINEL]: 60,
   [ENTITY.GUARDIAN_KEEPER]:   60,
+  // Kobold
+  [ENTITY.KOBOLD]:           4,
 };
 
 export const HEALER_COST = 10; // gold to fully heal

@@ -1109,7 +1109,7 @@ export function generateTown() {
 // Layout: entry room → 5 boss rooms connected by corridors with BOSS_DOORs
 // Map: 76 wide × 16 tall
 export function generateBossCave() {
-  const W = 76, H = 16;
+  const W = 83, H = 16;  // 7 (entry) + 5×(3 corridor + 12 room) = 82; +1 outer wall = 83
   const map = Array.from({ length: H }, () => new Uint8Array(W).fill(TILE.CAVE_WALL));
 
   // Helper: fill a rectangle with a tile

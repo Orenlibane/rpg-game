@@ -330,15 +330,6 @@ export function render() {
     const sx = (state.player.x - camX) * ts;
     const sy = (state.player.y - camY) * ts;
     ctx.drawImage(getPlayerSprite(state.playerClass), 0, 0, S, S, sx, sy, ts, ts);
-    // Hero color border
-    if (state.heroColor && state.heroColor !== 'default') {
-      const hc = HERO_COLORS.find(c => c.id === state.heroColor);
-      if (hc?.color) {
-        ctx.strokeStyle = hc.color;
-        ctx.lineWidth = 3;
-        ctx.strokeRect(sx + 1, sy + 1, ts - 2, ts - 2);
-      }
-    }
     // Hero name above player
     if (state.heroName && state.heroName !== 'Hero') {
       ctx.font = 'bold 9px monospace';

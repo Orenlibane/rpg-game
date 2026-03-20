@@ -46,7 +46,7 @@ Object.assign(translations.en, {
   'ui.language': 'Language',
 
   // Title
-  'ui.title': 'Cave Diver',
+  'ui.title': 'Dungeon Diver',
 
   // Class names
   'class.warrior': 'Warrior',
@@ -535,7 +535,7 @@ Object.assign(translations.he, {
   'ui.language': 'שפה',
 
   // Title
-  'ui.title': 'צולל המערות',
+  'ui.title': 'צולל המבוכים',
 
   // Class names
   'class.warrior': 'לוחם',

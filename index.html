@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Cave Diver</title>
+  <title>Dungeon Diver</title>
   <link rel="stylesheet" href="style.css">
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700&display=swap" rel="stylesheet">
 </head>
@@ -44,7 +44,7 @@
     <div id="ui-panel">
       <!-- Player Stats -->
       <div id="stats-panel" class="panel">
-        <h2>Cave Diver <span id="game-version" style="font-size:10px;color:#555;font-weight:normal;">v26</span></h2>
+        <h2>Dungeon Diver <span id="game-version" style="font-size:10px;color:#555;font-weight:normal;">v28</span></h2>
         <div id="class-display" class="class-badge">Warrior</div>
         <div id="prestige-badge" style="display: none;"></div>
         <div id="floor-display" class="stat-row">Village</div>
@@ -131,20 +131,81 @@
 
   <!-- Login/Register Overlay -->
   <div id="login-overlay" class="overlay hidden">
-    <div class="overlay-content login-panel">
-      <h1 class="title-login">Cave Diver</h1>
-      <p class="login-subtitle">Cloud Save</p>
+    <div class="overlay-content login-panel-v2">
+      <!-- Animated torch left -->
+      <div class="login-torch login-torch-left"></div>
+      <!-- Animated torch right -->
+      <div class="login-torch login-torch-right"></div>
+
+      <!-- Logo / Title -->
+      <div class="login-logo">
+        <div class="login-logo-icon">&#9876;</div>
+        <h1 class="title-login-v2">Dungeon Diver</h1>
+        <p class="login-tagline">Descend. Fight. Survive.</p>
+        <span class="login-version-badge">v28</span>
+      </div>
+
+      <!-- Login Form -->
       <div id="login-error" class="login-error" style="display:none"></div>
-      <div class="login-form">
-        <input type="text" id="login-username" class="login-input" placeholder="Username" autocomplete="username" maxlength="30">
-        <input type="password" id="login-password" class="login-input" placeholder="Password" autocomplete="current-password">
-        <div class="login-buttons">
-          <button id="btn-login" class="login-btn login-btn-primary">Login</button>
-          <button id="btn-register" class="login-btn login-btn-secondary">Register</button>
+      <div class="login-form-v2">
+        <div class="login-input-group">
+          <span class="login-input-icon">&#9786;</span>
+          <input type="text" id="login-username" class="login-input-v2" placeholder="Username" autocomplete="username" maxlength="30">
+        </div>
+        <div class="login-input-group">
+          <span class="login-input-icon">&#128274;</span>
+          <input type="password" id="login-password" class="login-input-v2" placeholder="Password" autocomplete="current-password">
+        </div>
+        <div class="login-buttons-v2">
+          <button id="btn-login" class="login-btn-v2 login-btn-primary-v2">Enter Dungeon</button>
+          <button id="btn-register" class="login-btn-v2 login-btn-secondary-v2">Create Hero</button>
         </div>
       </div>
-      <button id="btn-play-offline" class="login-btn login-btn-offline">Play Offline</button>
-      <p class="login-hint">Offline saves use browser storage only</p>
+      <button id="btn-play-offline" class="login-btn-v2 login-btn-offline-v2">Play Offline</button>
+      <p class="login-hint-v2">Offline saves use browser storage only</p>
+
+      <!-- Changelog -->
+      <div class="login-changelog">
+        <h3 class="changelog-title">&#128220; Changelog</h3>
+        <div class="changelog-scroll" id="changelog-scroll">
+          <div class="changelog-entry changelog-new">
+            <span class="changelog-version">v28</span>
+            <span class="changelog-text">Monster faction infighting, 4 new environments, backpack overhaul</span>
+          </div>
+          <div class="changelog-entry">
+            <span class="changelog-version">v27</span>
+            <span class="changelog-text">Guardians, monster dens, and mimics</span>
+          </div>
+          <div class="changelog-entry">
+            <span class="changelog-version">v26</span>
+            <span class="changelog-text">Town upgrades, run history, boss phases, portal scrolls, mobile responsive</span>
+          </div>
+          <div class="changelog-entry">
+            <span class="changelog-version">v25</span>
+            <span class="changelog-text">5-tier items, 6 subclasses, and expanded skill trees</span>
+          </div>
+          <div class="changelog-entry">
+            <span class="changelog-version">v24</span>
+            <span class="changelog-text">20 new monsters (Wave 2) and bestiary categories</span>
+          </div>
+          <div class="changelog-entry">
+            <span class="changelog-version">v22</span>
+            <span class="changelog-text">Crafting system with Blacksmith NPC, materials, and recipes</span>
+          </div>
+          <div class="changelog-entry">
+            <span class="changelog-version">v18</span>
+            <span class="changelog-text">Fullscreen canvas, potion stacking, throw trash button</span>
+          </div>
+          <div class="changelog-entry">
+            <span class="changelog-version">v17</span>
+            <span class="changelog-text">Cloud saves with login/register system</span>
+          </div>
+          <div class="changelog-entry">
+            <span class="changelog-version">v16</span>
+            <span class="changelog-text">i18n, arena, fishing, prestige, quests, and UI improvements</span>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 

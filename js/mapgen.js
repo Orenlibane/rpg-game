@@ -3,8 +3,8 @@ import {
   DUNGEON_W, DUNGEON_H,
   MIN_ROOM_SIZE, MAX_ROOM_SIZE, MAX_ROOMS,
   FLOOR_THEMES, ROOM_TYPE,
-  ENTITY,
-} from './constants.js?v=37';
+  ENTITY, BASE_STATS,
+} from './constants.js?v=38';
 
 // ── Village (fixed layout) ───────────────────────
 
@@ -66,6 +66,12 @@ export function generateVillage() {
 
   // Floor Warp (north of center crossroads — easy to find)
   map[5][12] = TILE.FLOOR_WARP;
+
+  // Beach entrance (right edge of village, accessible from east path)
+  map[8][21] = TILE.BEACH_ENTRANCE;
+
+  // Town entrance (left edge of village, accessible from west path)
+  map[8][0] = TILE.TOWN_ENTRANCE;
 
   // Player start position
   const playerStart = { x: 11, y: 9 };
@@ -994,4 +1000,104 @@ export function generateArenaMap() {
   }
   const playerStart = { x: Math.floor(SIZE / 2), y: Math.floor(SIZE / 2) };
   return { map, playerStart };
+}
+
+// ── Beach Map ─────────────────────────────────
+
+export function generateBeach() {
+  const W = 22, H = 16;
+  // Fill with sandy beach
+  const map = Array.from({ length: H }, () => new Uint8Array(W).fill(TILE.BEACH_SAND));
+
+  // Rocky walls at top and bottom
+  for (let x = 0; x < W; x++) {
+    map[0][x] = TILE.BEACH_WALL;
+    map[H - 1][x] = TILE.BEACH_WALL;
+  }
+  // Left wall (west)
+  for (let y = 0; y < H; y++) {
+    map[y][0] = TILE.BEACH_WALL;
+  }
+  // Oceanwater on right side (east)
+  for (let y = 1; y < H - 1; y++) {
+    map[y][W - 1] = TILE.WATER;
+    if (y % 3 !== 1) map[y][W - 2] = TILE.WATER;
+  }
+  // Rocky outcroppings
+  const rocks = [[3,2],[4,2],[3,3],[8,4],[9,4],[14,2],[15,3],[7,12],[8,12],[15,11],[16,11]];
+  for (const [x,y] of rocks) {
+    if (x < W - 2 && y < H - 1) map[y][x] = TILE.BEACH_WALL;
+  }
+
+  // Beach entrance tile (return path to village)
+  map[8][1] = TILE.BEACH_ENTRANCE;
+
+  // Player starts near the entrance
+  const playerStart = { x: 3, y: 8 };
+
+  // Enemies
+  const enemies = [];
+  const beachEnemyTypes = [ENTITY.SAND_SCORPION, ENTITY.TOXIC_TOAD, ENTITY.GOBLIN_SCOUT, ENTITY.VENOM_SPITTER];
+  const spawnPoints = [[6,5],[10,3],[13,6],[5,10],[10,11],[15,7],[17,5],[12,9]];
+  for (let i = 0; i < Math.min(4, spawnPoints.length); i++) {
+    const [ex, ey] = spawnPoints[i];
+    if (map[ey][ex] === TILE.BEACH_SAND) {
+      const etype = beachEnemyTypes[i % beachEnemyTypes.length];
+      const base = BASE_STATS[etype] || { maxHp: 8, hp: 8, power: 3, armor: 0, xpReward: 8 };
+      enemies.push({ type: etype, x: ex, y: ey, ...base, id: Math.random() });
+    }
+  }
+
+  // A chest hidden in the beach
+  const chests = [{ x: 17, y: 9, opened: false, tier: 1 }];
+
+  return { map, playerStart, enemies, chests, items: [] };
+}
+
+// ── Town Map ──────────────────────────────────
+
+export function generateTown() {
+  const W = 22, H = 16;
+  // Stone/dirt roads for the town
+  const map = Array.from({ length: H }, () => new Uint8Array(W).fill(TILE.GRASS));
+
+  // Stone walls around the edges (town walls)
+  for (let x = 0; x < W; x++) {
+    map[0][x] = TILE.VILLAGE_WALL;
+    map[H - 1][x] = TILE.VILLAGE_WALL;
+  }
+  for (let y = 0; y < H; y++) {
+    map[y][W - 1] = TILE.VILLAGE_WALL;
+  }
+  // Right side exit (return to village)
+  map[8][W - 1] = TILE.TOWN_ENTRANCE;
+
+  // Main dirt road (horizontal)
+  for (let x = 0; x < W - 1; x++) {
+    map[8][x] = TILE.DIRT;
+    map[9][x] = TILE.DIRT;
+  }
+  // Vertical road
+  for (let y = 1; y < H - 1; y++) {
+    map[y][10] = TILE.DIRT;
+    map[y][11] = TILE.DIRT;
+  }
+
+  // Town buildings (huts)
+  const townHuts = [[2,2],[6,2],[13,2],[18,2],[2,12],[6,12],[13,12],[18,12]];
+  for (const [hx, hy] of townHuts) {
+    if (map[hy] && map[hy][hx] !== undefined) map[hy][hx] = TILE.HUT;
+  }
+
+  // Town merchant
+  map[5][16] = TILE.MERCHANT;
+  // Town healer
+  map[5][3] = TILE.HEALER;
+  // Bookshelf decorations (town has a library feel)
+  map[3][7] = TILE.BOOKSHELF;
+  map[3][14] = TILE.BOOKSHELF;
+
+  const playerStart = { x: W - 3, y: 8 };
+
+  return { map, playerStart, enemies: [], chests: [], items: [] };
 }

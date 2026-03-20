@@ -1,5 +1,5 @@
-import { TILE, TILE_SIZE, ENTITY } from './constants.js?v=37';
-import { gameSettings } from './engine.js?v=37';
+import { TILE, TILE_SIZE, ENTITY } from './constants.js?v=38';
+import { gameSettings } from './engine.js?v=38';
 
 const cache = {};
 const tileSeedCache = {};
@@ -1130,6 +1130,77 @@ function buildTileSprite(tileType, variant) {
       g.font = `${10 * SC}px serif`;
       g.textAlign = 'center';
       g.fillText('⚡', 16 * SC, 30 * SC);
+      break;
+    }
+    case TILE.BEACH_ENTRANCE: {
+      // Sandy path leading to the beach - golden sand with footprints
+      fillRect(g, 0, 0, 32, 32, '#c8a458');
+      // Path texture
+      for (let i = 0; i < 8; i++) {
+        const px = 2 + (i * 4) % 28, py = 2 + Math.floor(i / 7) * 10 + (i % 3) * 3;
+        fillRect(g, px, py, 3, 2, '#b89040');
+      }
+      // Arrow pointing right
+      g.fillStyle = '#8a6820';
+      g.font = 'bold 18px sans-serif';
+      g.textAlign = 'center';
+      g.fillText('→', 16, 20);
+      g.textAlign = 'start';
+      // "BEACH" label
+      g.fillStyle = '#5a3a10';
+      g.font = '6px monospace';
+      g.textAlign = 'center';
+      g.fillText('BEACH', 16, 29);
+      g.textAlign = 'start';
+      break;
+    }
+    case TILE.TOWN_ENTRANCE: {
+      // Stone gateway leading to town
+      fillRect(g, 0, 0, 32, 32, '#8a7a60');
+      // Stone arch
+      fillRect(g, 2, 4, 5, 24, '#6a5a48');  // left pillar
+      fillRect(g, 25, 4, 5, 24, '#6a5a48'); // right pillar
+      fillRect(g, 2, 4, 28, 5, '#6a5a48');  // arch top
+      // Archway opening
+      fillRect(g, 7, 9, 18, 19, '#c8b890');
+      // Inner path
+      fillRect(g, 11, 9, 10, 19, '#a09070');
+      // Town label
+      g.fillStyle = '#3a2a18';
+      g.font = 'bold 6px monospace';
+      g.textAlign = 'center';
+      g.fillText('TOWN', 16, 8);
+      g.textAlign = 'start';
+      break;
+    }
+    case TILE.BEACH_SAND: {
+      // Sandy beach ground
+      const sandSeed = (tileX * 7 + tileY * 13) % 6;
+      const sandColors = ['#d4b86a', '#c8a858', '#dcc070', '#c4a048', '#cbb060', '#d0b462'];
+      fillRect(g, 0, 0, 32, 32, sandColors[sandSeed]);
+      // Sand texture dots
+      g.fillStyle = sandColors[(sandSeed + 3) % 6];
+      for (let i = 0; i < 12; i++) {
+        const dx = (i * 7 + tileX * 3) % 28 + 2;
+        const dy = (i * 11 + tileY * 5) % 28 + 2;
+        fillRect(g, dx, dy, 2, 1, sandColors[(sandSeed + 2) % 6]);
+      }
+      break;
+    }
+    case TILE.BEACH_WALL: {
+      // Rocky shore / boulders
+      fillRect(g, 0, 0, 32, 32, '#7a6a54');
+      // Rock faces
+      fillRect(g, 2, 2, 14, 12, '#8a7a64');
+      fillRect(g, 18, 4, 12, 10, '#8a7a64');
+      fillRect(g, 5, 16, 10, 12, '#8a7a64');
+      fillRect(g, 20, 18, 10, 10, '#8a7a64');
+      // Highlights
+      fillRect(g, 2, 2, 14, 2, '#a09080');
+      fillRect(g, 18, 4, 12, 2, '#a09080');
+      // Shadow
+      fillRect(g, 2, 12, 14, 2, '#6a5a44');
+      fillRect(g, 18, 12, 12, 2, '#6a5a44');
       break;
     }
     case TILE.VILLAGE_CAVE_EXIT: {
@@ -3154,3 +3225,11 @@ export function getTorchSprite() {
   }
   return tileSeedCache[key];
 }
+
+// Clear player sprite cache (called when hero color changes)
+export function clearPlayerSpriteCache() {
+  for (const key of Object.keys(cache)) {
+    if (key.startsWith('player_')) delete cache[key];
+  }
+}
+window.__clearPlayerSpriteCache = clearPlayerSpriteCache;

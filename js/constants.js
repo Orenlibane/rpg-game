@@ -56,6 +56,11 @@ export const TILE = {
   MINI_DUNGEON:     48,
   // Village cave exit
   VILLAGE_CAVE_EXIT:49,
+  // World exploration
+  BEACH_ENTRANCE: 50,
+  TOWN_ENTRANCE:  51,
+  BEACH_SAND:     52,
+  BEACH_WALL:     53,
 };
 
 
@@ -111,6 +116,10 @@ export const TILE_PROPS = {
   [TILE.SHRINE]:           { name: 'Shrine',            walkable: true,  transparent: true  },
   [TILE.MINI_DUNGEON]:     { name: 'Mini Dungeon Gate', walkable: true,  transparent: true  },
   [TILE.VILLAGE_CAVE_EXIT]:{ name: 'Cave Exit',         walkable: true,  transparent: true  },
+  [TILE.BEACH_ENTRANCE]:   { name: 'Beach Path',   walkable: true,  transparent: true  },
+  [TILE.TOWN_ENTRANCE]:    { name: 'Town Gate',    walkable: true,  transparent: true  },
+  [TILE.BEACH_SAND]:       { name: 'Sandy Beach',  walkable: true,  transparent: true  },
+  [TILE.BEACH_WALL]:       { name: 'Rocky Shore',  walkable: false, transparent: false },
 };
 
 // ── Item Features ────────────────────────────────
@@ -632,6 +641,15 @@ export const ITEMS = {
   crystal_shard:    { id: 'crystal_shard',    name: 'Crystal Shard',    type: 'material', icon: 'MC', desc: 'A glowing crystal. Used in crafting.', stackable: true, maxStack: 50 },
   den_core:         { id: 'den_core',         name: 'Den Core',         type: 'material', icon: 'MN', desc: 'A pulsing core from a monster den. Radiates primal energy. Used in crafting.', stackable: true, maxStack: 50 },
   guardian_relic:    { id: 'guardian_relic',    name: 'Guardian Relic',    type: 'material', icon: 'MG', desc: 'An ancient artifact taken from a treasure guardian. Extremely valuable.', stackable: true, maxStack: 50 },
+
+  // ── Alchemy Ingredients ──────────────────────
+  mushroom_cap:  { id: 'mushroom_cap',  name: 'Mushroom Cap',   type: 'ingredient', icon: 'IC', desc: 'A plump fungal cap with healing properties. Used in alchemy.', stackable: true, maxStack: 50 },
+  goblin_tooth:  { id: 'goblin_tooth',  name: 'Goblin Tooth',   type: 'ingredient', icon: 'IG', desc: 'A jagged tooth from a goblin. Volatile when brewed.', stackable: true, maxStack: 50 },
+  spider_venom:  { id: 'spider_venom',  name: 'Spider Venom',   type: 'ingredient', icon: 'IV', desc: 'A concentrated venom sac. Paradoxically curative in small doses.', stackable: true, maxStack: 50 },
+  bat_wing:      { id: 'bat_wing',      name: 'Bat Wing',       type: 'ingredient', icon: 'IB', desc: 'A dried bat wing. Grants swiftness when distilled.', stackable: true, maxStack: 50 },
+  shadow_dust:   { id: 'shadow_dust',   name: 'Shadow Dust',    type: 'ingredient', icon: 'IS', desc: 'Crystallized shadow residue from undead. Restores arcane energy.', stackable: true, maxStack: 50 },
+  toad_slime:    { id: 'toad_slime',    name: 'Toad Slime',     type: 'ingredient', icon: 'IT', desc: 'Corrosive slime from a toxic toad. Potent base for remedies.', stackable: true, maxStack: 50 },
+  wolf_pelt:     { id: 'wolf_pelt',     name: 'Wolf Pelt',      type: 'ingredient', icon: 'IW', desc: 'A thick pelt from a snow wolf. Fortifying when properly brewed.', stackable: true, maxStack: 50 },
 };
 
 // ── Crafting Recipes ─────────────────────────────
@@ -783,6 +801,7 @@ export const LOOT_TABLES = {
     { itemId: 'leather_gloves',   chance: 0.06 },
     { itemId: 'sandals',          chance: 0.06 },
     { itemId: 'worn_cloak',       chance: 0.05 },
+    { itemId: 'goblin_tooth',     chance: 0.30 },
   ],
   [ENTITY.ORC]: [
     { itemId: 'minor_health_pot', chance: 0.30 },
@@ -810,6 +829,7 @@ export const LOOT_TABLES = {
     { itemId: 'leather_gloves',   chance: 0.06 },
     { itemId: 'leather_boots',    chance: 0.06 },
     { itemId: 'spider_silk',      chance: 0.35 },
+    { itemId: 'spider_venom',     chance: 0.30 },
   ],
   [ENTITY.TROLL]: [
     { itemId: 'major_health_pot', chance: 0.35 },
@@ -840,6 +860,7 @@ export const LOOT_TABLES = {
   [ENTITY.BAT]: [
     { itemId: 'minor_health_pot', chance: 0.20 },
     { itemId: 'leather_cap',      chance: 0.05 },
+    { itemId: 'bat_wing',         chance: 0.30 },
   ],
   [ENTITY.SLIME]: [
     { itemId: 'antidote',         chance: 0.30 },
@@ -858,6 +879,7 @@ export const LOOT_TABLES = {
     { itemId: 'vampiric_blade',   chance: 0.04 },
     { itemId: 'lucky_cloak',      chance: 0.03 },
     { itemId: 'dark_essence',     chance: 0.20 },
+    { itemId: 'shadow_dust',      chance: 0.25 },
   ],
   [ENTITY.GOBLIN_SHAMAN]: [
     { itemId: 'mana_potion',      chance: 0.35 },
@@ -871,6 +893,7 @@ export const LOOT_TABLES = {
     { itemId: 'antidote',         chance: 0.35 },
     { itemId: 'minor_health_pot', chance: 0.30 },
     { itemId: 'mana_potion',      chance: 0.15 },
+    { itemId: 'mushroom_cap',     chance: 0.45 },
   ],
   [ENTITY.GOBLIN_BERSERKER]: [
     { itemId: 'war_axe',          chance: 0.15 },
@@ -1002,6 +1025,7 @@ export const LOOT_TABLES = {
     { itemId: 'antidote',         chance: 0.35 },
     { itemId: 'minor_health_pot', chance: 0.20 },
     { itemId: 'mana_potion',      chance: 0.10 },
+    { itemId: 'toad_slime',       chance: 0.35 },
   ],
   [ENTITY.EMBER_BAT]: [
     { itemId: 'minor_health_pot', chance: 0.20 },
@@ -1013,6 +1037,7 @@ export const LOOT_TABLES = {
     { itemId: 'leather_boots',    chance: 0.08 },
     { itemId: 'worn_cloak',       chance: 0.06 },
     { itemId: 'frost_greaves',    chance: 0.04 },
+    { itemId: 'wolf_pelt',        chance: 0.35 },
   ],
   [ENTITY.ICE_SPIDER]: [
     { itemId: 'antidote',         chance: 0.35 },
@@ -1260,6 +1285,7 @@ export const LOOT_TABLES = {
     { itemId: 'minor_health_pot', chance: 0.30 },
     { itemId: 'leather_cap',     chance: 0.06 },
     { itemId: 'worn_cloak',      chance: 0.06 },
+    { itemId: 'bat_wing',        chance: 0.30 },
   ],
   [ENTITY.DARK_ACOLYTE]: [
     { itemId: 'minor_health_pot', chance: 0.30 },
@@ -1758,6 +1784,42 @@ export const CRAFTING_RECIPES_T3 = [
   { name: 'Excalibur',       output: 'excalibur',          gold: 250, materials: { dragon_scale: 5, crystal_shard: 4, iron_ore: 6 } },
   { name: 'Crown of Ages',   output: 'crown_of_ages',      gold: 200, materials: { crystal_shard: 5, dark_essence: 4, dragon_scale: 3 } },
 ];
+
+// ── Alchemy Recipes (Ingredient → Potion at Blacksmith) ──────
+export const ALCHEMY_RECIPES = [
+  { name: 'Healing Brew',    output: 'minor_health_pot', materials: { mushroom_cap: 2 },                 gold: 5,  desc: 'Two mushroom caps brew a basic healing potion.' },
+  { name: 'Greater Heal',    output: 'major_health_pot', materials: { mushroom_cap: 3, bat_wing: 1 },   gold: 12, desc: 'Potent mushrooms + bat wing for a stronger heal.' },
+  { name: 'Antitoxin',       output: 'antidote',         materials: { spider_venom: 1, toad_slime: 1 }, gold: 8,  desc: 'Venom and slime neutralize each other.' },
+  { name: 'Shadow Mana',     output: 'mana_potion',      materials: { shadow_dust: 2 },                 gold: 8,  desc: 'Crystallized shadow energy restores mana.' },
+  { name: 'Strength Brew',   output: 'strength_potion',  materials: { wolf_pelt: 2, goblin_tooth: 1 }, gold: 15, desc: 'Primal beast materials for raw power.' },
+  { name: 'Iron Skin Oil',   output: 'shield_potion',    materials: { spider_silk: 2, iron_ore: 1 },   gold: 15, desc: 'Hardened silk and iron dust form a protective layer.' },
+  { name: 'Swiftness Tonic', output: 'haste_potion',     materials: { bat_wing: 2, shadow_dust: 1 },   gold: 12, desc: 'Bat speed + shadow agility for double strikes.' },
+  { name: 'Regen Salve',     output: 'regen_potion',     materials: { mushroom_cap: 2, toad_slime: 1 }, gold: 12, desc: 'Slow-drip regeneration from fungal compounds.' },
+];
+
+// ── Hero Customization ─────────────────────────
+export const HERO_COLORS = [
+  { id: 'default',  name: 'Steel',    color: null },
+  { id: 'crimson',  name: 'Crimson',  color: '#cc2020' },
+  { id: 'emerald',  name: 'Emerald',  color: '#20a040' },
+  { id: 'sapphire', name: 'Sapphire', color: '#2050d0' },
+  { id: 'golden',   name: 'Golden',   color: '#c09010' },
+  { id: 'shadow',   name: 'Shadow',   color: '#6020a0' },
+];
+
+// ── Bestiary Passive Bonuses ────────────────────
+// Unlock a flat damage bonus vs a category after killing enough of them
+export const BESTIARY_BONUSES = {
+  Goblinoid: { killsNeeded: 10, damageBonus: 1, desc: '+1 dmg vs Goblinoids' },
+  Undead:    { killsNeeded: 10, damageBonus: 1, desc: '+1 dmg vs Undead' },
+  Beast:     { killsNeeded: 10, damageBonus: 1, desc: '+1 dmg vs Beasts' },
+  Nature:    { killsNeeded: 10, damageBonus: 1, desc: '+1 dmg vs Nature' },
+  Fire:      { killsNeeded: 15, damageBonus: 2, desc: '+2 dmg vs Fire creatures' },
+  Ice:       { killsNeeded: 15, damageBonus: 2, desc: '+2 dmg vs Ice creatures' },
+  Arcane:    { killsNeeded: 15, damageBonus: 2, desc: '+2 dmg vs Arcane enemies' },
+  Dragon:    { killsNeeded: 20, damageBonus: 3, desc: '+3 dmg vs Dragons' },
+  Construct: { killsNeeded: 15, damageBonus: 2, desc: '+2 dmg vs Constructs' },
+};
 
 // ── Phase Bosses (floors 10, 20, 30) ────────────
 export const PHASE_BOSSES = {

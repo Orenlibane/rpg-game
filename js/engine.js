@@ -17,10 +17,11 @@ import {
   ROOM_TYPE, DEN_TYPES, GUARDIAN_NAMES, GUARDIAN_FOR_THEME,
   ENTITY_FACTION, areFactionsHostile,
   DIFFICULTY, CLASS_UNLOCK_CONDITIONS, VILLAGE_BUILDINGS,
-} from './constants.js?v=37';
+  ALCHEMY_RECIPES, HERO_COLORS, BESTIARY_BONUSES,
+} from './constants.js?v=38';
 import { t } from './i18n.js';
-import { generateVillage, generateDungeon, generateArenaMap, generateCave, generateMiniDungeon } from './mapgen.js?v=37';
-import { computeFOV } from './fov.js?v=37';
+import { generateVillage, generateDungeon, generateArenaMap, generateCave, generateMiniDungeon, generateBeach, generateTown } from './mapgen.js?v=38';
+import { computeFOV } from './fov.js?v=38';
 
 function randInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -122,6 +123,8 @@ export const state = {
   floorCache: {},
   // Difficulty / hardship level
   difficulty: 'normal',
+  heroName: 'Hero',
+  heroColor: 'default',
   // Unlocked classes (persists across runs via localStorage)
   unlockedClasses: [],
   // Village expansion buildings (persists across runs)
@@ -132,6 +135,9 @@ export const state = {
   mode_cave: false,       // true when inside the village cave
   caveFloor: 0,           // current cave depth (1-2)
   caveReturnPos: null,    // village player pos to return to after cave
+  // Beach and town
+  mode_beach: false,
+  mode_town: false,
   // Mini dungeon
   inMiniDungeon: false,
   miniDungeonReturnFloor: 0,
@@ -217,10 +223,37 @@ function createEntity(type, x, y) {
   };
 }
 
+// ── Hero Name & Color ─────────────────────────
+
+export function setHeroName(name) {
+  state.heroName = (name || 'Hero').trim().slice(0, 20) || 'Hero';
+}
+
+export function setHeroColor(colorId) {
+  state.heroColor = colorId || 'default';
+  // Invalidate player sprite cache so it redraws
+  if (typeof window !== 'undefined' && window.__clearPlayerSpriteCache) {
+    window.__clearPlayerSpriteCache();
+  }
+}
+
 // ── Difficulty ───────────────────────────────
 
 export function setDifficulty(id) {
   state.difficulty = id;
+}
+
+// Returns flat damage bonus from bestiary kills vs the given entity type
+export function getBestiaryDamageBonus(entityType) {
+  const info = BESTIARY_INFO[entityType];
+  if (!info) return 0;
+  const category = info.category;
+  const bonus = BESTIARY_BONUSES[category];
+  if (!bonus) return 0;
+  const kills = Object.entries(state.bestiary)
+    .filter(([t]) => BESTIARY_INFO[t]?.category === category)
+    .reduce((sum, [, b]) => sum + (b.kills || 0), 0);
+  return kills >= bonus.killsNeeded ? bonus.damageBonus : 0;
 }
 
 export function getDifficultyInfo() {
@@ -292,6 +325,63 @@ export function toggleVillageExpansion() {
 
 export function closeVillageExpansion() {
   state.showVillageExpansion = false;
+}
+
+// ── Beach & Town ───────────────────────────────
+
+export function enterBeach() {
+  state.player.beachReturnPos = { x: state.player.x, y: state.player.y };
+  const beach = generateBeach();
+  state.map = beach.map;
+  state.mapW = beach.map[0].length;
+  state.mapH = beach.map.length;
+  state.items = beach.items || [];
+  state.enemies = beach.enemies || [];
+  state.chests = beach.chests || [];
+  state.dens = [];
+  state.projectiles = [];
+  state.player.x = beach.playerStart.x;
+  state.player.y = beach.playerStart.y;
+  state.mode_beach = true;
+  computeFov();
+  log('You step onto a windswept beach...', 'explore');
+}
+
+export function exitBeach() {
+  const beach = generateBeach ? null : null;
+  const returnPos = state.player.beachReturnPos || { x: 1, y: 8 };
+  initVillage();
+  state.player.x = returnPos.x;
+  state.player.y = returnPos.y;
+  state.mode_beach = false;
+  log('You return to the village.', 'explore');
+}
+
+export function enterTown() {
+  state.player.townReturnPos = { x: state.player.x, y: state.player.y };
+  const town = generateTown();
+  state.map = town.map;
+  state.mapW = town.map[0].length;
+  state.mapH = town.map.length;
+  state.items = town.items || [];
+  state.enemies = town.enemies || [];
+  state.chests = town.chests || [];
+  state.dens = [];
+  state.projectiles = [];
+  state.player.x = town.playerStart.x;
+  state.player.y = town.playerStart.y;
+  state.mode_town = true;
+  computeFov();
+  log('You enter the bustling nearby town...', 'explore');
+}
+
+export function exitTown() {
+  const returnPos = state.player.townReturnPos || { x: 20, y: 8 };
+  initVillage();
+  state.player.x = returnPos.x;
+  state.player.y = returnPos.y;
+  state.mode_town = false;
+  log('You return to the village.', 'explore');
 }
 
 // ── Village Cave ──────────────────────────────
@@ -759,6 +849,13 @@ export function enterDungeon(floor = 1) {
       boss.maxHp += floor * 4;
       boss.hp = boss.maxHp;
       boss.power += Math.floor(floor / 2);
+      // Floor 10 boss is a massive 4x4 tile entity
+      if (floor === 10) {
+        boss.bossSize = 4;
+        boss.maxHp = Math.floor(boss.maxHp * 1.5);
+        boss.hp = boss.maxHp;
+        boss.power += 3;
+      }
       state.enemies.push(boss);
       log(`${phaseBossData.phases[0].msg}`, 'combat');
     } else if (BOSS_FOR_THEME[themeKey]) {
@@ -1081,7 +1178,14 @@ function canWalk(x, y) {
 }
 
 function enemyAt(x, y) {
-  return state.enemies.find(e => e.x === x && e.y === y && e.hp > 0);
+  return state.enemies.find(e => {
+    if (e.hp <= 0) return false;
+    if (e.bossSize && e.bossSize > 1) {
+      // Large boss: occupies a bossSize x bossSize area from its (x,y) origin
+      return x >= e.x && x < e.x + e.bossSize && y >= e.y && y < e.y + e.bossSize;
+    }
+    return e.x === x && e.y === y;
+  });
 }
 
 const ENEMY_NAMES = {
@@ -2567,6 +2671,41 @@ export function getAvailableCraftingRecipes() {
   return recipes;
 }
 
+export function alchemyCraft(recipeIndex) {
+  const recipes = ALCHEMY_RECIPES;
+  const recipe = recipes[recipeIndex];
+  if (!recipe) return;
+  const p = state.player;
+
+  // Check materials
+  for (const [matId, qty] of Object.entries(recipe.materials)) {
+    const count = p.inventory.filter(it => it.id === matId).reduce((sum, it) => sum + (it.count ?? it.qty ?? 1), 0);
+    if (count < qty) { log(`Not enough ${ITEMS[matId]?.name || matId}.`, 'info'); return; }
+  }
+  if (p.gold < recipe.gold) { log(`Need ${recipe.gold}g to brew.`, 'info'); return; }
+  if (p.inventory.length >= BACKPACK_SIZE) { log('Backpack full!', 'info'); return; }
+
+  // Deduct materials
+  for (const [matId, qty] of Object.entries(recipe.materials)) {
+    let remaining = qty;
+    for (let i = p.inventory.length - 1; i >= 0 && remaining > 0; i--) {
+      if (p.inventory[i].id !== matId) continue;
+      const stack = p.inventory[i].count ?? p.inventory[i].qty ?? 1;
+      if (stack <= remaining) { remaining -= stack; p.inventory.splice(i, 1); }
+      else { p.inventory[i].count = stack - remaining; delete p.inventory[i].qty; remaining = 0; }
+    }
+  }
+  p.gold -= recipe.gold;
+
+  // Add crafted item
+  const crafted = { ...ITEMS[recipe.output] };
+  if (crafted.stackable) crafted.count = 1;
+  if (!tryStackItem(crafted)) p.inventory.push(crafted);
+  if (!state.armory[recipe.output]) state.armory[recipe.output] = { count: 0 };
+  state.armory[recipe.output].count++;
+  log(`Brewed: ${crafted.name}!`, 'item');
+}
+
 export function craftItem(recipeIndex) {
   const allRecipes = getAvailableCraftingRecipes();
   const recipe = allRecipes[recipeIndex];
@@ -2584,7 +2723,7 @@ export function craftItem(recipeIndex) {
 
   // Check materials
   for (const [matId, qty] of Object.entries(recipe.materials)) {
-    const count = p.inventory.filter(it => it.id === matId).reduce((sum, it) => sum + (it.qty || 1), 0);
+    const count = p.inventory.filter(it => it.id === matId).reduce((sum, it) => sum + (it.count ?? it.qty ?? 1), 0);
     if (count < qty) {
       log(t('log.not_enough_materials'), 'info');
       return;
@@ -2605,12 +2744,13 @@ export function craftItem(recipeIndex) {
     let remaining = qty;
     for (let i = p.inventory.length - 1; i >= 0 && remaining > 0; i--) {
       if (p.inventory[i].id === matId) {
-        const stack = p.inventory[i].qty || 1;
+        const stack = p.inventory[i].count ?? p.inventory[i].qty ?? 1;
         if (stack <= remaining) {
           remaining -= stack;
           p.inventory.splice(i, 1);
         } else {
-          p.inventory[i].qty = stack - remaining;
+          p.inventory[i].count = stack - remaining;
+          delete p.inventory[i].qty;
           remaining = 0;
         }
       }
@@ -2621,7 +2761,7 @@ export function craftItem(recipeIndex) {
   const itemDef = ITEMS[recipe.output];
   if (!itemDef) return;
   const crafted = { ...itemDef };
-  if (crafted.stackable) crafted.qty = 1;
+  if (crafted.stackable) crafted.count = 1;
   p.inventory.push(crafted);
 
   // Track in armory
@@ -2753,9 +2893,10 @@ export function getSellPrice(item) {
 }
 
 export function isTrashItem(item) {
-  // Trash = tier 1 gear, or consumables/materials (always sellable in bulk)
+  // Trash = tier 1 gear only. Materials and ingredients are NOT trash.
   if (!item) return false;
-  if (item.type === 'material') return true;
+  if (item.type === 'material') return false;   // crafting materials — keep
+  if (item.type === 'ingredient') return false; // alchemy ingredients — keep
   if (item.type === 'consumable') return false; // potions are not trash
   return (item.tier || 1) <= 1;
 }
@@ -3095,6 +3236,11 @@ function attack(attacker, defender) {
   const power = getEffectivePower(attacker);
   const armor = getEffectiveArmor(defender);
   let baseDmg = Math.max(1, power - armor + randInt(-1, 1));
+
+  // Bestiary damage bonus
+  if (attacker.type === ENTITY.PLAYER && defender.type !== ENTITY.PLAYER) {
+    baseDmg += getBestiaryDamageBonus(defender.type);
+  }
 
   // Power Strike passive (warrior skill)
   if (attacker.type === ENTITY.PLAYER) {
@@ -3535,9 +3681,14 @@ export function allocateStat(stat) {
 function tryStackItem(item) {
   if (!item.stackable) return false;
   for (const invItem of state.player.inventory) {
-    if (invItem.id === item.id && (invItem.count || 1) < (invItem.maxStack || 5)) {
-      invItem.count = (invItem.count || 1) + 1;
-      return true;
+    if (invItem.id === item.id) {
+      // Normalize: treat .qty and .count as the same field (use .count canonically)
+      const current = invItem.count ?? invItem.qty ?? 1;
+      if (current < (invItem.maxStack || item.maxStack || 30)) {
+        invItem.count = current + 1;
+        delete invItem.qty; // normalize to count only
+        return true;
+      }
     }
   }
   return false;
@@ -4134,6 +4285,28 @@ export function playerMove(dx, dy) {
   state.player.y = ny;
 
   // Cave entrance → village cave (not main dungeon)
+  // Beach entrance
+  if ((state.mode === 'village' || state.mode === 'dungeon') && !state.mode_beach && !state.mode_town &&
+      state.map[ny][nx] === TILE.BEACH_ENTRANCE) {
+    enterBeach();
+    return;
+  }
+  if (state.mode_beach && state.map[ny][nx] === TILE.BEACH_ENTRANCE) {
+    exitBeach();
+    return;
+  }
+
+  // Town entrance
+  if ((state.mode === 'village' || state.mode === 'dungeon') && !state.mode_beach && !state.mode_town &&
+      state.map[ny][nx] === TILE.TOWN_ENTRANCE) {
+    enterTown();
+    return;
+  }
+  if (state.mode_town && state.map[ny][nx] === TILE.TOWN_ENTRANCE) {
+    exitTown();
+    return;
+  }
+
   if (state.mode === 'village' && state.map[ny][nx] === TILE.CAVE_ENTRANCE) {
     enterCave();
     return;
@@ -4697,6 +4870,8 @@ export function restartGame() {
   state.unlockedFloorWarps = [];
   state.inMiniDungeon = false;
   state.mode_cave = false;
+  state.mode_beach = false;
+  state.mode_town = false;
   state.caveFloor = 0;
   deleteSave();
 }

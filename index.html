@@ -44,7 +44,7 @@
     <div id="ui-panel">
       <!-- Player Stats -->
       <div id="stats-panel" class="panel">
-        <h2>Dungeon Diver <span id="game-version" style="font-size:10px;color:#555;font-weight:normal;">v37</span></h2>
+        <h2>Dungeon Diver <span id="game-version" style="font-size:10px;color:#555;font-weight:normal;">v38</span></h2>
         <div id="class-display" class="class-badge">Warrior</div>
         <div id="prestige-badge" style="display: none;"></div>
         <div id="floor-display" class="stat-row">Village</div>
@@ -142,7 +142,7 @@
         <div class="login-logo-icon">&#9876;</div>
         <h1 class="title-login-v2">Dungeon Diver</h1>
         <p class="login-tagline">Descend. Fight. Survive.</p>
-        <span class="login-version-badge">v37</span>
+        <span class="login-version-badge">v38</span>
       </div>
 
       <!-- Login Form -->
@@ -169,7 +169,7 @@
         <h3 class="changelog-title">&#128220; Changelog</h3>
         <div class="changelog-scroll" id="changelog-scroll">
           <div class="changelog-entry changelog-new">
-            <span class="changelog-version">v37</span>
+            <span class="changelog-version">v38</span>
             <span class="changelog-text">Hardship difficulty (4 funny modes), 3 unlockable classes (Bard/Holy Knight/Plague Doctor), Village Expansion (build structures), Village Cave, Mini Dungeons on floors 5/10</span>
           </div>
           <div class="changelog-entry">
@@ -249,6 +249,21 @@
   <div id="class-select" class="overlay">
     <div class="overlay-content class-select-content">
       <h1 class="title-select" data-i18n="select.title">Choose Your Class</h1>
+
+      <!-- Hero Customization -->
+      <div class="hero-customization">
+        <div class="hero-custom-label">Hero Name</div>
+        <input type="text" id="hero-name-input" class="hero-name-input" placeholder="Enter name..." maxlength="20" value="Hero" />
+        <div class="hero-custom-label" style="margin-top:8px">Color</div>
+        <div class="hero-color-row">
+          <button class="hero-color-btn active" data-color-id="default" style="background:#808090" title="Steel"></button>
+          <button class="hero-color-btn" data-color-id="crimson" style="background:#cc2020" title="Crimson"></button>
+          <button class="hero-color-btn" data-color-id="emerald" style="background:#20a040" title="Emerald"></button>
+          <button class="hero-color-btn" data-color-id="sapphire" style="background:#2050d0" title="Sapphire"></button>
+          <button class="hero-color-btn" data-color-id="golden" style="background:#c09010" title="Golden"></button>
+          <button class="hero-color-btn" data-color-id="shadow" style="background:#6020a0" title="Shadow"></button>
+        </div>
+      </div>
 
       <!-- Difficulty selector -->
       <div class="difficulty-selector">
@@ -777,9 +792,9 @@
       document.body.appendChild(d);
     };
   </script>
-  <script type="module" src="js/main.js?v=28"></script>
+  <script type="module" src="js/main.js?v=38"></script>
   <script type="module">
-    import('./js/main.js?v=28').catch(function(e) {
+    import('./js/main.js?v=38').catch(function(e) {
       var d = document.createElement('div');
       d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:red;color:white;padding:10px;z-index:9999;font-size:14px';
       d.textContent = 'MODULE LOAD ERROR: ' + e.message;

@@ -20,9 +20,10 @@ import {
   apiRegister, apiLogin, setAuth, isLoggedIn, getAuthUsername,
   startCloudSync, checkDbStatus,
   setDifficulty, toggleVillageExpansion, closeVillageExpansion, purchaseBuilding,
-} from './engine.js?v=37';
-import { render, resizeCanvas } from './renderer.js?v=37';
-import { PLAYER_CLASS, PRESTIGE, DIFFICULTY } from './constants.js?v=37';
+  setHeroName, setHeroColor, enterBeach, enterTown, exitBeach, exitTown,
+} from './engine.js?v=38';
+import { render, resizeCanvas } from './renderer.js?v=38';
+import { PLAYER_CLASS, PRESTIGE, DIFFICULTY } from './constants.js?v=38';
 import { initI18n, setLanguage, applyStaticTranslations, t } from './i18n.js';
 
 // ── Initialize i18n ─────────────────────────
@@ -212,6 +213,21 @@ document.getElementById('pick-plague-doctor')?.addEventListener('click', () => {
   classSelectEl.classList.add('hidden');
   addManaLevelUpBtn();
   render();
+});
+
+// Hero name input handler
+const heroNameInput = document.getElementById('hero-name-input');
+if (heroNameInput) {
+  heroNameInput.addEventListener('input', () => setHeroName(heroNameInput.value));
+}
+
+// Hero color selection
+document.querySelectorAll('.hero-color-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    setHeroColor(btn.dataset.colorId);
+    document.querySelectorAll('.hero-color-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
 });
 
 // Difficulty buttons

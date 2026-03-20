@@ -1,11 +1,11 @@
-import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE, CRAFTING_RECIPES, MONSTER_CATEGORIES, BESTIARY_INFO, SUBCLASS, SUBCLASS_INFO, TOWN_UPGRADES, PHASE_BOSSES, DIFFICULTY, CLASS_UNLOCK_CONDITIONS, CLASS_STATS, VILLAGE_BUILDINGS } from './constants.js?v=37';
+import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE, CRAFTING_RECIPES, MONSTER_CATEGORIES, BESTIARY_INFO, SUBCLASS, SUBCLASS_INFO, TOWN_UPGRADES, PHASE_BOSSES, DIFFICULTY, CLASS_UNLOCK_CONDITIONS, CLASS_STATS, VILLAGE_BUILDINGS, ALCHEMY_RECIPES, HERO_COLORS, BESTIARY_BONUSES } from './constants.js?v=38';
 import { t } from './i18n.js';
 
 // Lookups for bestiary
 const BASE_STATS_LOOKUP = BASE_STATS;
 const GOLD_LOOKUP = GOLD_REWARDS;
-import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js?v=37';
-import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, getSellPrice, isTrashItem, sellAllTrash, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, toggleSkillTree, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith, selectSubclass, isSubclassBranchUnlocked, getTownUpgradeLevel, upgradeTownBuilding, getAvailableCraftingRecipes, getRunHistory, closeRunHistory, SAVE_SLOTS, saveToSlot, loadFromSlot, deleteSlot, getSlotInfo, setDifficulty, purchaseBuilding, closeVillageExpansion } from './engine.js?v=37';
+import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite, clearPlayerSpriteCache } from './sprites.js?v=38';
+import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, getSellPrice, isTrashItem, sellAllTrash, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, toggleSkillTree, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith, selectSubclass, isSubclassBranchUnlocked, getTownUpgradeLevel, upgradeTownBuilding, getAvailableCraftingRecipes, getRunHistory, closeRunHistory, SAVE_SLOTS, saveToSlot, loadFromSlot, deleteSlot, getSlotInfo, setDifficulty, purchaseBuilding, closeVillageExpansion, setHeroName, setHeroColor, enterBeach, enterTown, exitBeach, exitTown, alchemyCraft, getBestiaryDamageBonus } from './engine.js?v=38';
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
@@ -51,6 +51,21 @@ function getCamera() {
   camY = Math.max(0, Math.min(camY, state.mapH - vh));
 
   return { camX, camY };
+}
+
+// ── Hero Customization ───────────────────────
+function updateHeroCustomization() {
+  const nameInput = document.getElementById('hero-name-input');
+  if (nameInput && !nameInput.dataset.bound) {
+    nameInput.dataset.bound = '1';
+    nameInput.addEventListener('input', () => setHeroName(nameInput.value));
+    nameInput.value = state.heroName || 'Hero';
+  }
+  // Color buttons
+  document.querySelectorAll('.hero-color-btn').forEach(btn => {
+    const colorId = btn.dataset.colorId;
+    btn.classList.toggle('active', colorId === (state.heroColor || 'default'));
+  });
 }
 
 // ── Render ───────────────────────────────────
@@ -210,7 +225,10 @@ export function render() {
     const sx = (enemy.x - camX) * ts;
     const sy = (enemy.y - camY) * ts;
     if (sx < 0 || sy < 0 || sx >= canvas.width || sy >= canvas.height) continue;
-    ctx.drawImage(getEnemySprite(enemy.type), 0, 0, S, S, sx, sy, ts, ts);
+    const bossSize = enemy.bossSize || 1;
+    const drawW = ts * bossSize;
+    const drawH = ts * bossSize;
+    ctx.drawImage(getEnemySprite(enemy.type), 0, 0, S, S, sx, sy, drawW, drawH);
 
     // Guardian orange+gold border indicator
     if (enemy.isGuardian) {
@@ -249,9 +267,9 @@ export function render() {
     if (gameSettings.showEnemyHpBars) {
       const hpPct = enemy.hp / enemy.maxHp;
       ctx.fillStyle = '#300';
-      ctx.fillRect(sx + 4, barY, ts - 8, 4);
+      ctx.fillRect(sx + 4, barY, drawW - 8, 4);
       ctx.fillStyle = hpPct > 0.5 ? '#0c0' : hpPct > 0.25 ? '#cc0' : '#c00';
-      ctx.fillRect(sx + 4, barY, (ts - 8) * hpPct, 4);
+      ctx.fillRect(sx + 4, barY, (drawW - 8) * hpPct, 4);
     }
 
     // Guardian name label
@@ -312,6 +330,25 @@ export function render() {
     const sx = (state.player.x - camX) * ts;
     const sy = (state.player.y - camY) * ts;
     ctx.drawImage(getPlayerSprite(state.playerClass), 0, 0, S, S, sx, sy, ts, ts);
+    // Hero color border
+    if (state.heroColor && state.heroColor !== 'default') {
+      const hc = HERO_COLORS.find(c => c.id === state.heroColor);
+      if (hc?.color) {
+        ctx.strokeStyle = hc.color;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(sx + 1, sy + 1, ts - 2, ts - 2);
+      }
+    }
+    // Hero name above player
+    if (state.heroName && state.heroName !== 'Hero') {
+      ctx.font = 'bold 9px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#000';
+      ctx.fillText(state.heroName, sx + ts / 2 + 1, sy - 3);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(state.heroName, sx + ts / 2, sy - 4);
+      ctx.textAlign = 'start';
+    }
   }
 
   // Draw damage numbers
@@ -605,6 +642,9 @@ function updateUI() {
 
   // Class select unlock info
   updateClassSelectUnlockInfo();
+
+  // Hero customization
+  updateHeroCustomization();
 
   // Healer overlay
   updateHealerOverlay();
@@ -1809,6 +1849,21 @@ function updateBestiary() {
       <span class="bestiary-gold-stat">Gold: ${goldReward}</span>
       <span class="bst-kills-stat">Defeated: ${selected.kills}</span>
     </div>
+    ${(() => {
+      const cat = BESTIARY_INFO[selected.type]?.category;
+      const bon = cat && BESTIARY_BONUSES[cat];
+      if (!bon) return '';
+      const catKills = Object.entries(state.bestiary || {})
+        .filter(([t]) => BESTIARY_INFO[t]?.category === cat)
+        .reduce((sum, [,b]) => sum + (b.kills || 0), 0);
+      const pct = Math.min(100, Math.floor(catKills / bon.killsNeeded * 100));
+      const unlocked = catKills >= bon.killsNeeded;
+      return `<div class="bst-bonus-row ${unlocked ? 'bst-bonus-unlocked' : ''}">
+        <div class="bst-bonus-label">${unlocked ? '✅' : '🔒'} Hunter Bonus: ${bon.desc}</div>
+        <div class="bst-bonus-bar"><div class="bst-bonus-fill" style="width:${pct}%"></div></div>
+        <div class="bst-bonus-progress">${catKills}/${bon.killsNeeded} ${cat} kills</div>
+      </div>`;
+    })()}
   `;
 
   // Append the pre-rendered canvas
@@ -2166,7 +2221,7 @@ function updateFloorWarpOverlay() {
     btn.className = 'warp-floor-btn';
     btn.innerHTML = `<span class="warp-floor-num">Floor ${floor}</span><span class="warp-floor-icon">⬆</span>`;
     btn.addEventListener('click', () => {
-      import('./engine.js?v=37').then(({ warpToFloor }) => { warpToFloor(floor); });
+      import('./engine.js?v=38').then(({ warpToFloor }) => { warpToFloor(floor); });
       overlay.classList.add('hidden');
     });
     list.appendChild(btn);
@@ -2366,6 +2421,76 @@ function updateBlacksmithOverlay() {
 
   const list = document.getElementById('blacksmith-recipes');
   list.innerHTML = '';
+
+  // Alchemy tab toggle
+  const bsTabBar = document.getElementById('blacksmith-tab-bar');
+  if (!bsTabBar) {
+    const tabBar = document.createElement('div');
+    tabBar.id = 'blacksmith-tab-bar';
+    tabBar.className = 'bs-tab-bar';
+    tabBar.innerHTML = `
+      <button class="bs-tab active" id="bs-tab-craft">⚒️ Craft</button>
+      <button class="bs-tab" id="bs-tab-alchemy">🧪 Alchemy</button>
+    `;
+    list.parentNode.insertBefore(tabBar, list);
+    document.getElementById('bs-tab-craft')?.addEventListener('click', () => {
+      document.querySelectorAll('.bs-tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('bs-tab-craft').classList.add('active');
+      state._bsTab = 'craft';
+      updateBlacksmithOverlay();
+    });
+    document.getElementById('bs-tab-alchemy')?.addEventListener('click', () => {
+      document.querySelectorAll('.bs-tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('bs-tab-alchemy').classList.add('active');
+      state._bsTab = 'alchemy';
+      updateBlacksmithOverlay();
+    });
+  } else {
+    // Update active tab visual
+    document.querySelectorAll('.bs-tab').forEach(t => t.classList.remove('active'));
+    const activeId = state._bsTab === 'alchemy' ? 'bs-tab-alchemy' : 'bs-tab-craft';
+    document.getElementById(activeId)?.classList.add('active');
+  }
+
+  if (state._bsTab === 'alchemy') {
+    // Show alchemy recipes
+    for (let i = 0; i < ALCHEMY_RECIPES.length; i++) {
+      const recipe = ALCHEMY_RECIPES[i];
+      const outputItem = ITEMS[recipe.output];
+      if (!outputItem) continue;
+      const p = state.player;
+      let canCraft = p.gold >= recipe.gold && p.inventory.length < BACKPACK_SIZE;
+      const matParts = [];
+      for (const [matId, qty] of Object.entries(recipe.materials)) {
+        const mat = ITEMS[matId];
+        const matName = mat ? mat.name : matId;
+        const count = p.inventory.filter(it => it.id === matId).reduce((sum, it) => sum + (it.count ?? it.qty ?? 1), 0);
+        const has = count >= qty;
+        if (!has) canCraft = false;
+        matParts.push(`<span class="${has ? 'bs-has' : 'bs-lack'}">${matName} ${count}/${qty}</span>`);
+      }
+      const div = document.createElement('div');
+      div.className = 'bs-recipe' + (canCraft ? '' : ' bs-unavailable');
+      div.innerHTML = `
+        <div class="bs-recipe-info">
+          <div class="bs-recipe-name">🧪 ${recipe.name}</div>
+          <div class="bs-recipe-mats">${matParts.join(' + ')}</div>
+          <div class="bs-recipe-desc">${recipe.desc}</div>
+        </div>
+        <div class="bs-recipe-cost">${recipe.gold}g</div>
+        <button class="bs-craft-btn" data-alchemy-idx="${i}" ${canCraft ? '' : 'disabled'}>Brew</button>
+      `;
+      list.appendChild(div);
+    }
+    list.querySelectorAll('[data-alchemy-idx]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const idx = parseInt(e.target.dataset.alchemyIdx);
+        alchemyCraft(idx);
+        render();
+      });
+    });
+    return;
+  }
 
   const bsLevel = getTownUpgradeLevel('blacksmith');
   const allRecipes = getAvailableCraftingRecipes();

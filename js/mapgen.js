@@ -4,7 +4,7 @@ import {
   MIN_ROOM_SIZE, MAX_ROOM_SIZE, MAX_ROOMS,
   FLOOR_THEMES, ROOM_TYPE,
   ENTITY, BASE_STATS, BOSS_CAVE_BOSSES,
-} from './constants.js?v=43';
+} from './constants.js?v=44';
 
 // ── Village (fixed layout) ───────────────────────
 
@@ -1152,6 +1152,18 @@ export function generateBossCave() {
 
     // Boss room interior
     fill(roomX1 + 1, ROOM_Y1 + 1, roomX2 - 1, ROOM_Y2 - 1, TILE.BOSS_FLOOR);
+
+    // Open the LEFT wall where the corridor meets this room (3 tiles wide)
+    map[MID_Y - 1][roomX1] = TILE.BOSS_FLOOR;
+    map[MID_Y][roomX1]     = TILE.BOSS_FLOOR;
+    map[MID_Y + 1][roomX1] = TILE.BOSS_FLOOR;
+
+    // Open the RIGHT wall for the exit to the next corridor (all rooms except the last)
+    if (i < 4) {
+      map[MID_Y - 1][roomX2] = TILE.BOSS_FLOOR;
+      map[MID_Y][roomX2]     = TILE.BOSS_FLOOR;
+      map[MID_Y + 1][roomX2] = TILE.BOSS_FLOOR;
+    }
 
     // Boss position: centre of room
     const cx = Math.floor((roomX1 + roomX2) / 2);

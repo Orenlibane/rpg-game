@@ -19,9 +19,10 @@ import {
   gameSettings, updateSetting, pickupItem,
   apiRegister, apiLogin, setAuth, isLoggedIn, getAuthUsername,
   startCloudSync, checkDbStatus,
-} from './engine.js?v=28';
-import { render, resizeCanvas } from './renderer.js?v=28';
-import { PLAYER_CLASS, PRESTIGE } from './constants.js?v=28';
+  setDifficulty, toggleVillageExpansion, closeVillageExpansion, purchaseBuilding,
+} from './engine.js?v=37';
+import { render, resizeCanvas } from './renderer.js?v=37';
+import { PLAYER_CLASS, PRESTIGE, DIFFICULTY } from './constants.js?v=37';
 import { initI18n, setLanguage, applyStaticTranslations, t } from './i18n.js';
 
 // ── Initialize i18n ─────────────────────────
@@ -57,7 +58,7 @@ function hideLoginOverlay() {
 function updateUserBadge() {
   const el = document.getElementById('game-version');
   if (el && isLoggedIn()) {
-    el.textContent = `v36 | ${getAuthUsername()}`;
+    el.textContent = `v37 | ${getAuthUsername()}`;
   }
 }
 
@@ -188,6 +189,56 @@ document.getElementById('pick-archer')?.addEventListener('click', () => {
   selectClass(PLAYER_CLASS.ARCHER);
   classSelectEl.classList.add('hidden');
   render();
+});
+
+// Unlockable classes
+document.getElementById('pick-bard')?.addEventListener('click', () => {
+  if (!state.unlockedClasses.includes(PLAYER_CLASS.BARD)) return;
+  selectClass(PLAYER_CLASS.BARD);
+  classSelectEl.classList.add('hidden');
+  addManaLevelUpBtn();
+  render();
+});
+document.getElementById('pick-holy-knight')?.addEventListener('click', () => {
+  if (!state.unlockedClasses.includes(PLAYER_CLASS.HOLY_KNIGHT)) return;
+  selectClass(PLAYER_CLASS.HOLY_KNIGHT);
+  classSelectEl.classList.add('hidden');
+  addManaLevelUpBtn();
+  render();
+});
+document.getElementById('pick-plague-doctor')?.addEventListener('click', () => {
+  if (!state.unlockedClasses.includes(PLAYER_CLASS.PLAGUE_DOCTOR)) return;
+  selectClass(PLAYER_CLASS.PLAGUE_DOCTOR);
+  classSelectEl.classList.add('hidden');
+  addManaLevelUpBtn();
+  render();
+});
+
+// Difficulty buttons
+document.querySelectorAll('.difficulty-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const id = btn.dataset.difficulty;
+    setDifficulty(id);
+    document.querySelectorAll('.difficulty-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+// Village expansion
+document.getElementById('village-expansion-btn')?.addEventListener('click', () => {
+  toggleVillageExpansion();
+  render();
+});
+document.getElementById('close-village-expansion')?.addEventListener('click', () => {
+  closeVillageExpansion();
+  render();
+});
+document.querySelectorAll('.build-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const key = btn.dataset.building;
+    purchaseBuilding(key);
+    render();
+  });
 });
 
 // ── Continue (Load Save) ────────────────────

@@ -47,6 +47,15 @@ export const TILE = {
   SHADOW_WALL:      41,
   SHADOW_FLOOR:     42,
   FLOOR_WARP:       43,
+  // Village expansion buildings
+  LIBRARY:          44,
+  TAVERN:           45,
+  TRAINING_GROUNDS: 46,
+  SHRINE:           47,
+  // Mini dungeon portal
+  MINI_DUNGEON:     48,
+  // Village cave exit
+  VILLAGE_CAVE_EXIT:49,
 };
 
 
@@ -96,6 +105,12 @@ export const TILE_PROPS = {
   [TILE.SHADOW_WALL]:      { name: 'Void Barrier',    walkable: false, transparent: false },
   [TILE.SHADOW_FLOOR]:     { name: 'Shadow Stone',    walkable: true,  transparent: true  },
   [TILE.FLOOR_WARP]:       { name: 'Floor Warp',      walkable: true,  transparent: true  },
+  [TILE.LIBRARY]:          { name: 'Library',          walkable: true,  transparent: true  },
+  [TILE.TAVERN]:           { name: 'Tavern',            walkable: true,  transparent: true  },
+  [TILE.TRAINING_GROUNDS]: { name: 'Training Grounds', walkable: true,  transparent: true  },
+  [TILE.SHRINE]:           { name: 'Shrine',            walkable: true,  transparent: true  },
+  [TILE.MINI_DUNGEON]:     { name: 'Mini Dungeon Gate', walkable: true,  transparent: true  },
+  [TILE.VILLAGE_CAVE_EXIT]:{ name: 'Cave Exit',         walkable: true,  transparent: true  },
 };
 
 // ── Item Features ────────────────────────────────
@@ -218,9 +233,21 @@ export const ENTITY = {
 
 // ── Player Classes ────────────────────────────────
 export const PLAYER_CLASS = {
-  WARRIOR: 'warrior',
-  MAGE:    'mage',
-  ARCHER:  'archer',
+  WARRIOR:       'warrior',
+  MAGE:          'mage',
+  ARCHER:        'archer',
+  // Unlockable classes
+  BARD:          'bard',
+  HOLY_KNIGHT:   'holy_knight',
+  PLAGUE_DOCTOR: 'plague_doctor',
+};
+
+// ── Hardship Difficulty ───────────────────────────
+export const DIFFICULTY = {
+  STROLL:    { id: 'stroll',    name: 'Sunday Stroll',  emoji: '🌸', desc: 'Enemies trip over flowers.',          hpMult: 0.7,  powMult: 0.7,  goldMult: 1.2,  xpMult: 1.2,  color: '#80e060' },
+  NORMAL:    { id: 'normal',    name: 'Getting Sweaty', emoji: '💦', desc: 'A fair and proper dungeon crawl.',    hpMult: 1.0,  powMult: 1.0,  goldMult: 1.0,  xpMult: 1.0,  color: '#60a0e0' },
+  SEND_HELP: { id: 'send_help', name: 'Send Help',      emoji: '😰', desc: 'They read the strategy guide.',      hpMult: 1.35, powMult: 1.3,  goldMult: 0.8,  xpMult: 0.85, color: '#e09030' },
+  WHY_GOD:   { id: 'why_god',   name: 'Why God Why',    emoji: '☠️',  desc: 'The dungeon hates you personally.',  hpMult: 1.8,  powMult: 1.65, goldMult: 0.55, xpMult: 0.75, color: '#c03030' },
 };
 
 export const CLASS_STATS = {
@@ -244,6 +271,63 @@ export const CLASS_STATS = {
     xp: 0, level: 1, xpToLevel: 20,
     attrs: { str: 2, agi: 5, int: 1, vit: 3, cha: 2 },
     // Derived: HP=8+4+9=21, Pow=0+1=1, Arm=1, RangedBonus=2
+  },
+  [PLAYER_CLASS.BARD]: {
+    name: 'Bard', desc: 'Charming performer who turns wit and gold into power. High charisma grants shop discounts and XP bonuses.',
+    maxHp: 8, hp: 8, power: 0, armor: 0, maxMana: 4, mana: 4,
+    xp: 0, level: 1, xpToLevel: 20,
+    attrs: { str: 1, agi: 2, int: 3, vit: 2, cha: 6 },
+  },
+  [PLAYER_CLASS.HOLY_KNIGHT]: {
+    name: 'Holy Knight', desc: 'Divine tank with built-in armor and a healing ability. Slow but near-unkillable early on.',
+    maxHp: 12, hp: 12, power: 0, armor: 2, maxMana: 3, mana: 3,
+    xp: 0, level: 1, xpToLevel: 20,
+    attrs: { str: 4, agi: 1, int: 2, vit: 5, cha: 2 },
+  },
+  [PLAYER_CLASS.PLAGUE_DOCTOR]: {
+    name: 'Plague Doctor', desc: 'Masked physician who weaponizes disease. Poisons stack and spells drain enemy vitality.',
+    maxHp: 7, hp: 7, power: 0, armor: 0, maxMana: 5, mana: 5,
+    xp: 0, level: 1, xpToLevel: 20,
+    attrs: { str: 1, agi: 3, int: 5, vit: 2, cha: 3 },
+  },
+};
+
+// ── Class Unlock Conditions ────────────────────────
+export const CLASS_UNLOCK_CONDITIONS = {
+  [PLAYER_CLASS.BARD]:          { desc: 'Complete 3 quests',  check: (s) => (s.completedQuestIds || []).length >= 3 },
+  [PLAYER_CLASS.HOLY_KNIGHT]:   { desc: 'Reach floor 5',      check: (s) => (s.stats?.highestFloor || 0) >= 5 },
+  [PLAYER_CLASS.PLAGUE_DOCTOR]: { desc: 'Kill 50 enemies',    check: (s) => (s.stats?.totalKills || 0) >= 50 },
+};
+
+// ── Village Buildings (purchasable expansions) ────
+export const VILLAGE_BUILDINGS = {
+  library: {
+    name: 'Library', emoji: '📚',
+    desc: '+15% XP earned this run. Knowledge is power!',
+    cost: 100, tile: TILE.LIBRARY,
+    mapPos: { x: 7, y: 11 },
+    benefit: 'xp',
+  },
+  tavern: {
+    name: 'Tavern', emoji: '🍺',
+    desc: 'Fully heals you AND cures debuffs on each village return.',
+    cost: 150, tile: TILE.TAVERN,
+    mapPos: { x: 16, y: 11 },
+    benefit: 'heal',
+  },
+  training: {
+    name: 'Training Grounds', emoji: '⚔️',
+    desc: 'Grants +2 to your primary stat at game start.',
+    cost: 200, tile: TILE.TRAINING_GROUNDS,
+    mapPos: { x: 6, y: 7 },
+    benefit: 'stat',
+  },
+  shrine: {
+    name: 'Shrine', emoji: '🏛️',
+    desc: 'Bestows a random blessing when you enter the dungeon.',
+    cost: 120, tile: TILE.SHRINE,
+    mapPos: { x: 19, y: 11 },
+    benefit: 'blessing',
   },
 };
 

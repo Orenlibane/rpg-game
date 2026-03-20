@@ -16,10 +16,11 @@ import {
   PHASE_BOSSES,
   ROOM_TYPE, DEN_TYPES, GUARDIAN_NAMES, GUARDIAN_FOR_THEME,
   ENTITY_FACTION, areFactionsHostile,
-} from './constants.js?v=28';
+  DIFFICULTY, CLASS_UNLOCK_CONDITIONS, VILLAGE_BUILDINGS,
+} from './constants.js?v=37';
 import { t } from './i18n.js';
-import { generateVillage, generateDungeon, generateArenaMap } from './mapgen.js?v=28';
-import { computeFOV } from './fov.js?v=28';
+import { generateVillage, generateDungeon, generateArenaMap, generateCave, generateMiniDungeon } from './mapgen.js?v=37';
+import { computeFOV } from './fov.js?v=37';
 
 function randInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -119,6 +120,22 @@ export const state = {
   // Persistent floor cache: each floor is generated once per run and remembered
   // Key = floor number, value = { map, enemies, items, chests, dens, stairsPos, portalPos, floorTheme, isDungeonShop, revealed }
   floorCache: {},
+  // Difficulty / hardship level
+  difficulty: 'normal',
+  // Unlocked classes (persists across runs via localStorage)
+  unlockedClasses: [],
+  // Village expansion buildings (persists across runs)
+  townBuildings: { library: false, tavern: false, training: false, shrine: false },
+  // Show village expansion overlay
+  showVillageExpansion: false,
+  // Village cave
+  mode_cave: false,       // true when inside the village cave
+  caveFloor: 0,           // current cave depth (1-2)
+  caveReturnPos: null,    // village player pos to return to after cave
+  // Mini dungeon
+  inMiniDungeon: false,
+  miniDungeonReturnFloor: 0,
+  miniDungeonReturnPos: null,
 };
 
 // ── Game Settings (persisted separately) ────
@@ -159,6 +176,8 @@ export function updateSetting(key, value) {
 
 // Load saved settings on startup
 loadSettings();
+// Load persisted unlocks and buildings
+setTimeout(() => { loadUnlockedClasses(); loadTownBuildings(); }, 0);
 
 export function spawnDamageNumber(x, y, amount, color = '#fff') {
   if (!gameSettings.showDamageNumbers) return;
@@ -198,6 +217,164 @@ function createEntity(type, x, y) {
   };
 }
 
+// ── Difficulty ───────────────────────────────
+
+export function setDifficulty(id) {
+  state.difficulty = id;
+}
+
+export function getDifficultyInfo() {
+  return Object.values(DIFFICULTY).find(d => d.id === state.difficulty) || DIFFICULTY.NORMAL;
+}
+
+// ── Unlockable Classes ────────────────────────
+
+export function checkClassUnlocks() {
+  for (const [cls, cond] of Object.entries(CLASS_UNLOCK_CONDITIONS)) {
+    if (!state.unlockedClasses.includes(cls) && cond.check(state)) {
+      state.unlockedClasses.push(cls);
+      log(`🎓 New class unlocked: ${CLASS_STATS[cls]?.name || cls}!`, 'level');
+      saveUnlockedClasses();
+    }
+  }
+}
+
+function saveUnlockedClasses() {
+  try {
+    localStorage.setItem('rpg_unlocked_classes', JSON.stringify(state.unlockedClasses));
+  } catch (_) {}
+}
+
+export function loadUnlockedClasses() {
+  try {
+    const raw = localStorage.getItem('rpg_unlocked_classes');
+    if (raw) state.unlockedClasses = JSON.parse(raw);
+  } catch (_) {}
+}
+
+// ── Village Buildings ─────────────────────────
+
+export function saveTownBuildings() {
+  try {
+    localStorage.setItem('rpg_town_buildings', JSON.stringify(state.townBuildings));
+  } catch (_) {}
+}
+
+export function loadTownBuildings() {
+  try {
+    const raw = localStorage.getItem('rpg_town_buildings');
+    if (raw) Object.assign(state.townBuildings, JSON.parse(raw));
+  } catch (_) {}
+}
+
+export function purchaseBuilding(key) {
+  const bld = VILLAGE_BUILDINGS[key];
+  if (!bld) return;
+  if (state.townBuildings[key]) { log('Already built!', 'info'); return; }
+  if (state.player.gold < bld.cost) { log(`Not enough gold! Need ${bld.cost}g.`, 'combat'); return; }
+  state.player.gold -= bld.cost;
+  state.townBuildings[key] = true;
+  saveTownBuildings();
+  // Place building tile on village map
+  if (state.mode === 'village') {
+    const { x, y } = bld.mapPos;
+    if (y < state.mapH && x < state.mapW) {
+      state.map[y][x] = bld.tile;
+      updateFOV();
+    }
+  }
+  log(`🏗️ ${bld.name} built! ${bld.desc}`, 'level');
+}
+
+export function toggleVillageExpansion() {
+  state.showVillageExpansion = !state.showVillageExpansion;
+}
+
+export function closeVillageExpansion() {
+  state.showVillageExpansion = false;
+}
+
+// ── Village Cave ──────────────────────────────
+
+export function enterCave() {
+  state.caveReturnPos = { x: state.player.x, y: state.player.y };
+  const cave = generateCave(1);
+  state.mode_cave = true;
+  state.caveFloor = 1;
+  state.mode = 'dungeon';
+  state.map = cave.map;
+  state.mapW = cave.map[0].length;
+  state.mapH = cave.map.length;
+  state.enemies = cave.enemies.map(e => {
+    const enemy = createEntity(e.type, e.x, e.y);
+    enemy.maxHp = Math.floor(enemy.maxHp * 1.2);
+    enemy.hp = enemy.maxHp;
+    return enemy;
+  });
+  state.items = [];
+  state.chests = cave.chests || [];
+  state.dens = [];
+  state.stairsPos = cave.stairsPos;
+  state.player.x = cave.playerStart.x;
+  state.player.y = cave.playerStart.y;
+  state.revealed = Array.from({ length: state.mapH }, () => new Uint8Array(state.mapW));
+  state.floorTheme = 'cave';
+  updateFOV();
+  log('🦇 You venture into the village cave...', 'info');
+}
+
+export function exitCave() {
+  state.mode_cave = false;
+  state.caveFloor = 0;
+  state.lastDungeonFloor = 0;
+  initVillage();
+  if (state.caveReturnPos) {
+    state.player.x = state.caveReturnPos.x;
+    state.player.y = state.caveReturnPos.y;
+    state.caveReturnPos = null;
+  }
+  log('You emerge from the cave into fresh air.', 'info');
+}
+
+// ── Mini Dungeons ─────────────────────────────
+
+export function enterMiniDungeon() {
+  state.inMiniDungeon = true;
+  state.miniDungeonReturnFloor = state.floor;
+  state.miniDungeonReturnPos = { x: state.player.x, y: state.player.y };
+  const mini = generateMiniDungeon(state.floor);
+  state.map = mini.map;
+  state.mapW = mini.map[0].length;
+  state.mapH = mini.map.length;
+  const diff = getDifficultyInfo();
+  state.enemies = mini.enemies.map(e => {
+    const enemy = createEntity(e.type, e.x, e.y);
+    enemy.isElite = true;
+    enemy.elitePrefix = ELITE_PREFIXES[randInt(0, ELITE_PREFIXES.length - 1)];
+    enemy.maxHp = Math.floor((enemy.maxHp + state.floor * 2) * 1.5 * diff.hpMult);
+    enemy.hp = enemy.maxHp;
+    enemy.power = Math.floor((enemy.power + Math.floor(state.floor / 2)) * 1.5 * diff.powMult);
+    return enemy;
+  });
+  state.items = [];
+  state.chests = mini.chests || [];
+  state.dens = [];
+  state.stairsPos = null;
+  state.player.x = mini.playerStart.x;
+  state.player.y = mini.playerStart.y;
+  state.revealed = Array.from({ length: state.mapH }, () => new Uint8Array(state.mapW));
+  updateFOV();
+  log(`⚡ You enter a Mini Dungeon! Elite enemies and rare rewards await...`, 'level');
+}
+
+export function exitMiniDungeon() {
+  state.inMiniDungeon = false;
+  const returnFloor = state.miniDungeonReturnFloor;
+  state.miniDungeonReturnFloor = 0;
+  enterDungeon(returnFloor);
+  log('You step back through the gate, richer and wiser.', 'info');
+}
+
 // ── Class Selection ──────────────────────────
 
 export function selectClass(cls) {
@@ -227,6 +404,27 @@ function giveStartingGear(cls) {
       equip('worn_staff');
       equip('sandals');
       p.inventory.push({ ...ITEMS.mana_potion, count: 2 });
+      registerArmoryItem('mana_potion');
+      break;
+    case PLAYER_CLASS.BARD:
+      equip('worn_staff');
+      equip('sandals');
+      p.inventory.push({ ...ITEMS.minor_health_pot, count: 1 });
+      p.inventory.push({ ...ITEMS.mana_potion, count: 1 });
+      registerArmoryItem('minor_health_pot');
+      registerArmoryItem('mana_potion');
+      break;
+    case PLAYER_CLASS.HOLY_KNIGHT:
+      equip('rusty_sword');
+      equip('leather_tunic');
+      equip('leather_boots');
+      p.inventory.push({ ...ITEMS.minor_health_pot, count: 2 });
+      registerArmoryItem('minor_health_pot');
+      break;
+    case PLAYER_CLASS.PLAGUE_DOCTOR:
+      equip('worn_staff');
+      equip('sandals');
+      p.inventory.push({ ...ITEMS.mana_potion, count: 3 });
       registerArmoryItem('mana_potion');
       break;
     case PLAYER_CLASS.ARCHER:
@@ -281,13 +479,37 @@ export function initVillage() {
       recalcDerivedStats();
       state.player.hp = state.player.maxHp;
       state.player.mana = state.player.maxMana;
+      // Training grounds: +2 to primary stat at game start
+      if (state.townBuildings.training) {
+        const primaryStat = { warrior: 'str', mage: 'int', archer: 'agi', bard: 'cha', holy_knight: 'str', plague_doctor: 'int' }[state.playerClass] || 'str';
+        state.player.attrs[primaryStat] = (state.player.attrs[primaryStat] || 1) + 2;
+        recalcDerivedStats();
+        log(`⚔️ Training grounds granted +2 ${primaryStat.toUpperCase()}!`, 'level');
+      }
     }
   } else {
     state.player.x = village.playerStart.x;
     state.player.y = village.playerStart.y;
-    // Heal on return to village
-    state.player.hp = state.player.maxHp;
-    state.player.mana = state.player.maxMana;
+    // Heal on return to village (Tavern gives full heal + debuff removal)
+    if (state.townBuildings.tavern) {
+      state.player.hp = state.player.maxHp;
+      state.player.mana = state.player.maxMana;
+      state.player.effects = (state.player.effects || []).filter(e => !e.debuff);
+      if (state.lastDungeonFloor > 0) log('🍺 The Tavern keeper welcomes you back, fully restored!', 'item');
+    } else {
+      state.player.hp = state.player.maxHp;
+      state.player.mana = state.player.maxMana;
+    }
+  }
+
+  // Place purchased village buildings on map
+  for (const [key, built] of Object.entries(state.townBuildings || {})) {
+    if (built && VILLAGE_BUILDINGS[key]) {
+      const { tile, mapPos: { x: bx, y: by } } = VILLAGE_BUILDINGS[key];
+      if (by < state.mapH && bx < state.mapW) {
+        state.map[by][bx] = tile;
+      }
+    }
   }
 
   // If returning from dungeon via portal, place a return portal near player
@@ -568,6 +790,19 @@ export function enterDungeon(floor = 1) {
     }
   }
 
+  // Apply difficulty (hardship) scaling
+  const diffInfo = getDifficultyInfo();
+  if (state.difficulty !== 'normal') {
+    for (const e of state.enemies) {
+      e.maxHp = Math.floor(e.maxHp * diffInfo.hpMult);
+      e.hp = e.maxHp;
+      e.power = Math.max(1, Math.floor(e.power * diffInfo.powMult));
+      // Scale XP/gold rewards too
+      if (e.xpReward)   e.xpReward   = Math.floor(e.xpReward   * diffInfo.xpMult);
+      if (e.goldDrop)   e.goldDrop   = Math.floor(e.goldDrop    * diffInfo.goldMult);
+    }
+  }
+
   // Spawn ground items (tier-appropriate)
   state.items = [];
   const numItems = randInt(ITEMS_PER_FLOOR_MIN, ITEMS_PER_FLOOR_MAX);
@@ -757,7 +992,41 @@ export function enterDungeon(floor = 1) {
     log(t('log.cartographer'), 'info');
   }
 
+  // Place Mini Dungeon portal on floors 5 and 10
+  if ((floor === 5 || floor === 10) && floorRooms.length > 2) {
+    const miniRoom = floorRooms[Math.floor(floorRooms.length / 2)];
+    const mx2 = miniRoom.cx - 1;
+    const my2 = miniRoom.cy;
+    if (canWalk(mx2, my2) && !isSpecialTile(mx2, my2) && !isOccupied(mx2, my2)) {
+      state.map[my2][mx2] = TILE.MINI_DUNGEON;
+      log(`⚡ A mini dungeon gate has opened nearby!`, 'level');
+    }
+  }
+
+  // Shrine blessing on first entry to this floor
+  if (state.townBuildings.shrine && floor === 1) {
+    applyShrineBlessingNow();
+  }
+
+  // Library: show XP boost hint
+  if (state.townBuildings.library) {
+    log(`📚 Library bonus active: +15% XP this floor.`, 'info');
+  }
+
   log(t('log.enter_floor', { theme: theme.name, floor: floor }), 'info');
+}
+
+function applyShrineBlessingNow() {
+  const blessings = [
+    { name: 'Protection',  effect: () => { state.player.armor = (state.player.armor || 0) + 2; },         desc: '+2 armor' },
+    { name: 'Fortitude',   effect: () => { state.player.maxHp += 10; state.player.hp = Math.min(state.player.hp + 10, state.player.maxHp); }, desc: '+10 max HP' },
+    { name: 'Arcane Rush', effect: () => { state.player.mana = Math.min(state.player.mana + 5, state.player.maxMana || 5); }, desc: '+5 mana' },
+    { name: 'Swiftness',   effect: () => { state.player.attrs = state.player.attrs || {}; state.player.attrs.agi = (state.player.attrs.agi || 1) + 1; recalcDerivedStats(); }, desc: '+1 Agility' },
+    { name: 'Avarice',     effect: () => { state.player.gold = (state.player.gold || 0) + randInt(15, 30); }, desc: '+15-30 gold' },
+  ];
+  const b = blessings[randInt(0, blessings.length - 1)];
+  b.effect();
+  log(`🏛️ The Shrine bestows the blessing of ${b.name}: ${b.desc}!`, 'level');
 }
 
 // ── FOV ──────────────────────────────────────
@@ -1977,6 +2246,9 @@ export function checkAchievements() {
   const p = state.player;
   if (!p) return;
 
+  // Check for class unlocks
+  checkClassUnlocks();
+
   const totalKills = state.stats.totalKills;
   const bestiary = state.bestiary;
 
@@ -3011,9 +3283,10 @@ function rangedAttack(defender, damage, attackName) {
 function grantXP(amount) {
   if (state.mode === 'arena') return; // No XP from arena kills
   const p = state.player;
-  // XP boost from item features + prestige
+  // XP boost from item features + prestige + library building
   let xpBoost = getXpBoostPercent(p);
   if (state.prestigeLevel > 0) xpBoost += PRESTIGE.PER_LEVEL.xpBoostPercent * state.prestigeLevel;
+  if (state.townBuildings.library) xpBoost += 15;
   if (xpBoost > 0) {
     amount = amount + Math.floor(amount * xpBoost / 100);
   }
@@ -3860,11 +4133,35 @@ export function playerMove(dx, dy) {
   state.player.x = nx;
   state.player.y = ny;
 
-  // Cave entrance
+  // Cave entrance → village cave (not main dungeon)
   if (state.mode === 'village' && state.map[ny][nx] === TILE.CAVE_ENTRANCE) {
-    log(t('log.enter_cave'), 'info');
-    enterDungeon(1);
+    enterCave();
     return;
+  }
+
+  // Village cave exit
+  if (state.mode === 'dungeon' && state.mode_cave && state.map[ny][nx] === TILE.VILLAGE_CAVE_EXIT) {
+    exitCave();
+    return;
+  }
+
+  // Mini dungeon portal (enter if not already in one, exit if inside)
+  if (state.mode === 'dungeon' && state.map[ny][nx] === TILE.MINI_DUNGEON) {
+    if (state.inMiniDungeon) {
+      exitMiniDungeon();
+    } else {
+      enterMiniDungeon();
+    }
+    return;
+  }
+
+  // Village expansion buildings
+  if (state.mode === 'village') {
+    const tileHere = state.map[ny][nx];
+    if (tileHere === TILE.LIBRARY)          { log('📚 Library: +15% XP while built.', 'info'); }
+    if (tileHere === TILE.TAVERN)           { log('🍺 Tavern: Full heal on every village return.', 'info'); }
+    if (tileHere === TILE.TRAINING_GROUNDS) { log('⚔️ Training Grounds: +2 primary stat at game start.', 'info'); }
+    if (tileHere === TILE.SHRINE)           { log('🏛️ Shrine: Grants a blessing on each dungeon entry.', 'info'); }
   }
 
   // Stairs down
@@ -4372,6 +4669,8 @@ export function restartGame() {
   const savedPrestige = state.prestigeLevel;
   const savedArenaBest = state.arenaBestWave;
   const savedTownUpgrades = { ...state.townUpgrades };
+  const savedTownBuildings = { ...state.townBuildings };
+  const savedUnlockedClasses = [...state.unlockedClasses];
   const savedRunHistory = [...state.runHistory];
   state.player = null;
   state.pendingLevelUp = false;
@@ -4383,6 +4682,8 @@ export function restartGame() {
   state.prestigeLevel = savedPrestige;
   state.arenaBestWave = savedArenaBest;
   state.townUpgrades = savedTownUpgrades;
+  state.townBuildings = savedTownBuildings;
+  state.unlockedClasses = savedUnlockedClasses;
   state.runHistory = savedRunHistory;
   // Reset fishing/arena
   closeFishing();
@@ -4394,6 +4695,9 @@ export function restartGame() {
   state.savedDungeon = null;
   state.floorCache = {};  // New character = fresh floors
   state.unlockedFloorWarps = [];
+  state.inMiniDungeon = false;
+  state.mode_cave = false;
+  state.caveFloor = 0;
   deleteSave();
 }
 

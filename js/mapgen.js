@@ -3,7 +3,8 @@ import {
   DUNGEON_W, DUNGEON_H,
   MIN_ROOM_SIZE, MAX_ROOM_SIZE, MAX_ROOMS,
   FLOOR_THEMES, ROOM_TYPE,
-} from './constants.js?v=28';
+  ENTITY,
+} from './constants.js?v=37';
 
 // ── Village (fixed layout) ───────────────────────
 
@@ -852,6 +853,130 @@ function decorateCorridors(map, floorTile) {
       }
     }
   }
+}
+
+// ── Village Cave Map ──────────────────────────────
+
+export function generateCave(depth = 1) {
+  const W = 20, H = 16;
+  const map = Array.from({ length: H }, () => new Uint8Array(W).fill(TILE.CAVE_WALL));
+
+  // Carve rooms + corridors using simple BSP
+  const rooms = [];
+  function carveRoom(x, y, w, h) {
+    for (let ry = y; ry < y + h; ry++)
+      for (let rx = x; rx < x + w; rx++)
+        map[ry][rx] = TILE.CAVE_FLOOR;
+    rooms.push({ x, y, w, h, cx: Math.floor(x + w / 2), cy: Math.floor(y + h / 2) });
+  }
+  function carveCorridor(x1, y1, x2, y2) {
+    let cx = x1, cy = y1;
+    while (cx !== x2) { map[cy][cx] = TILE.CAVE_FLOOR; cx += cx < x2 ? 1 : -1; }
+    while (cy !== y2) { map[cy][cx] = TILE.CAVE_FLOOR; cy += cy < y2 ? 1 : -1; }
+  }
+
+  // Place 4-6 rooms
+  const roomDefs = [
+    [2, 2, 4, 4], [8, 2, 5, 4], [14, 2, 4, 4],
+    [2, 9, 4, 5], [8, 8, 5, 5], [14, 9, 4, 5],
+  ];
+  const numRooms = 4 + (depth > 1 ? 2 : 0);
+  for (let i = 0; i < numRooms && i < roomDefs.length; i++) {
+    const [rx, ry, rw, rh] = roomDefs[i];
+    carveRoom(rx, ry, rw, rh);
+  }
+  for (let i = 1; i < rooms.length; i++) {
+    carveCorridor(rooms[i - 1].cx, rooms[i - 1].cy, rooms[i].cx, rooms[i].cy);
+  }
+
+  // Player starts in first room
+  const playerStart = { x: rooms[0].cx, y: rooms[0].cy };
+
+  // Exit tile in last room
+  const lastRoom = rooms[rooms.length - 1];
+  map[lastRoom.cy][lastRoom.cx] = TILE.VILLAGE_CAVE_EXIT;
+  const stairsPos = { x: lastRoom.cx, y: lastRoom.cy };
+
+  // Spawn enemies: cave crawlers and spiders
+  const caveEnemies = [ENTITY.CAVE_CRAWLER, ENTITY.SPIDER, ENTITY.BAT, ENTITY.GOBLIN];
+  const enemies = [];
+  for (let i = 1; i < rooms.length - 1; i++) {
+    const room = rooms[i];
+    const numE = 2 + depth;
+    for (let j = 0; j < numE; j++) {
+      const ex = room.cx + (Math.random() < 0.5 ? -1 : 1);
+      const ey = room.cy + (Math.random() < 0.5 ? -1 : 1);
+      if (ex > 0 && ex < W - 1 && ey > 0 && ey < H - 1 && map[ey][ex] === TILE.CAVE_FLOOR) {
+        enemies.push({ type: caveEnemies[Math.floor(Math.random() * caveEnemies.length)], x: ex, y: ey });
+      }
+    }
+  }
+
+  // Chest in second-to-last room
+  const chests = [];
+  if (rooms.length >= 2) {
+    const cr = rooms[rooms.length - 2];
+    chests.push({
+      x: cr.cx + 1, y: cr.cy,
+      items: [], gold: 20 + depth * 15, opened: false,
+    });
+  }
+
+  return { map, playerStart, stairsPos, enemies, chests };
+}
+
+// ── Mini Dungeon Map ──────────────────────────────
+
+export function generateMiniDungeon(floor = 1) {
+  const W = 16, H = 12;
+  const map = Array.from({ length: H }, () => new Uint8Array(W).fill(TILE.CAVE_WALL));
+
+  // One large central room + 2 small side rooms
+  function carveRoom(x, y, w, h) {
+    for (let ry = y; ry < y + h; ry++)
+      for (let rx = x; rx < x + w; rx++)
+        map[ry][rx] = TILE.CAVE_FLOOR;
+    return { x, y, w, h, cx: Math.floor(x + w / 2), cy: Math.floor(y + h / 2) };
+  }
+  function carveCorridor(x1, y1, x2, y2) {
+    let cx = x1, cy = y1;
+    while (cx !== x2) { map[cy][cx] = TILE.CAVE_FLOOR; cx += cx < x2 ? 1 : -1; }
+    while (cy !== y2) { map[cy][cx] = TILE.CAVE_FLOOR; cy += cy < y2 ? 1 : -1; }
+  }
+
+  const entry  = carveRoom(1, 4, 4, 4);
+  const main   = carveRoom(6, 2, 6, 8);
+  const reward = carveRoom(13, 4, 2, 4);
+  carveCorridor(entry.cx, entry.cy, main.cx, main.cy);
+  carveCorridor(main.cx, main.cy, reward.cx, reward.cy);
+
+  // Player enters at entry room
+  const playerStart = { x: entry.cx, y: entry.cy };
+
+  // Place exit portal in reward room (leads back)
+  map[reward.cy][reward.cx] = TILE.MINI_DUNGEON;
+  const stairsPos = { x: reward.cx, y: reward.cy };
+
+  // Enemies: spawn in main room - floor-appropriate types
+  const enemies = [];
+  const enemyTypes = [ENTITY.ORC, ENTITY.SKELETON, ENTITY.TROLL, ENTITY.DARK_MAGE, ENTITY.WRAITH, ENTITY.DEATH_KNIGHT];
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  for (let i = 0; i < 3 + Math.floor(floor / 2); i++) {
+    const ex = main.x + 1 + Math.floor(Math.random() * (main.w - 2));
+    const ey = main.y + 1 + Math.floor(Math.random() * (main.h - 2));
+    if (map[ey] && map[ey][ex] === TILE.CAVE_FLOOR) {
+      enemies.push({ type: pick(enemyTypes), x: ex, y: ey });
+    }
+  }
+
+  // Reward chest in reward room (guaranteed high-value loot)
+  const chests = [{
+    x: reward.cx - 1, y: reward.cy,
+    items: [], gold: 30 + floor * 10, opened: false,
+    isGuaranteed: true,  // signal to engine for better loot
+  }];
+
+  return { map, playerStart, stairsPos, enemies, chests };
 }
 
 // ── Arena Map (simple room) ─────────────────────

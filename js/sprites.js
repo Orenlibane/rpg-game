@@ -1,5 +1,5 @@
-import { TILE, TILE_SIZE, ENTITY } from './constants.js?v=28';
-import { gameSettings } from './engine.js?v=28';
+import { TILE, TILE_SIZE, ENTITY } from './constants.js?v=37';
+import { gameSettings } from './engine.js?v=37';
 
 const cache = {};
 const tileSeedCache = {};
@@ -1004,6 +1004,150 @@ function buildTileSprite(tileType, variant) {
       g.moveTo(16, 3); g.lineTo(21, 8); g.lineTo(11, 8);
       g.closePath();
       g.fill();
+      break;
+    }
+
+    // ── Village buildings ─────────────────────────
+    case TILE.LIBRARY: {
+      fillRect(g, 0, 0, 32, 32, '#2d5a1e');
+      // Stone base
+      fillRect(g, 4, 20, 24, 10, '#5a5040');
+      // Book-shaped building
+      fillRect(g, 6, 10, 20, 12, '#7a6040');
+      fillRect(g, 7, 11, 18, 10, '#8a7050');
+      // Door
+      fillRect(g, 14, 16, 4, 6, '#3a2a10');
+      // Windows
+      fillRect(g, 8, 12, 4, 4, '#a0c0e0');
+      fillRect(g, 20, 12, 4, 4, '#a0c0e0');
+      // Roof
+      fillRect(g, 5, 6, 22, 4, '#6a5030');
+      // Book icon on roof
+      fillRect(g, 12, 3, 8, 5, '#c0a060');
+      fillRect(g, 13, 4, 6, 3, '#e8d080');
+      break;
+    }
+    case TILE.TAVERN: {
+      fillRect(g, 0, 0, 32, 32, '#2d5a1e');
+      // Stone base
+      fillRect(g, 4, 18, 24, 12, '#604030');
+      // Main building
+      fillRect(g, 5, 10, 22, 10, '#804a2a');
+      fillRect(g, 6, 11, 20, 8, '#9a5a30');
+      // Door
+      fillRect(g, 14, 16, 4, 6, '#3a1a10');
+      // Windows - warm glow
+      fillRect(g, 7, 12, 5, 4, '#e0b040');
+      fillRect(g, 20, 12, 5, 4, '#e0b040');
+      // Sign
+      fillRect(g, 10, 6, 12, 5, '#7a5020');
+      fillRect(g, 11, 7, 10, 3, '#c08030');
+      // Roof
+      g.fillStyle = '#5a3a20';
+      g.beginPath();
+      g.moveTo(3 * SC, 10 * SC); g.lineTo(16 * SC, 2 * SC); g.lineTo(29 * SC, 10 * SC);
+      g.closePath(); g.fill();
+      break;
+    }
+    case TILE.TRAINING_GROUNDS: {
+      fillRect(g, 0, 0, 32, 32, '#3a5a28');
+      // Sand floor
+      fillRect(g, 4, 18, 24, 12, '#c0a060');
+      // Weapon rack
+      fillRect(g, 6, 10, 4, 12, '#5a4020');
+      fillRect(g, 7, 8, 2, 14, '#8a7040');
+      // Sword 1
+      fillRect(g, 8, 10, 1, 8, '#a0b0c0');
+      fillRect(g, 7, 10, 3, 1, '#c0d0e0');
+      // Dummy target
+      fillRect(g, 20, 10, 6, 12, '#7a5030');
+      fillRect(g, 21, 9, 4, 3, '#a07050');
+      // Training circle on ground
+      g.strokeStyle = '#a08040';
+      g.lineWidth = 1;
+      g.beginPath();
+      g.arc(16 * SC, 22 * SC, 7 * SC, 0, Math.PI * 2);
+      g.stroke();
+      // Crossed swords icon above
+      g.strokeStyle = '#c0d0e0';
+      g.lineWidth = 2;
+      g.beginPath();
+      g.moveTo(11 * SC, 4 * SC); g.lineTo(21 * SC, 14 * SC);
+      g.stroke();
+      g.beginPath();
+      g.moveTo(21 * SC, 4 * SC); g.lineTo(11 * SC, 14 * SC);
+      g.stroke();
+      break;
+    }
+    case TILE.SHRINE: {
+      fillRect(g, 0, 0, 32, 32, '#2d5a1e');
+      // Stone platform
+      fillRect(g, 6, 24, 20, 6, '#6a6a7a');
+      fillRect(g, 8, 22, 16, 2, '#5a5a6a');
+      // Pillars
+      fillRect(g, 8, 10, 3, 14, '#8a8a9a');
+      fillRect(g, 21, 10, 3, 14, '#8a8a9a');
+      // Roof
+      fillRect(g, 5, 8, 22, 3, '#5a5a6a');
+      g.fillStyle = '#4a4a5a';
+      g.beginPath();
+      g.moveTo(4 * SC, 8 * SC); g.lineTo(16 * SC, 2 * SC); g.lineTo(28 * SC, 8 * SC);
+      g.closePath(); g.fill();
+      // Sacred flame (center)
+      fillRect(g, 14, 16, 4, 6, '#c08020');
+      g.fillStyle = '#e0c040';
+      g.beginPath();
+      g.arc(16 * SC, 16 * SC, 3 * SC, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = '#ffe080';
+      g.beginPath();
+      g.arc(16 * SC, 16 * SC, 1.5 * SC, 0, Math.PI * 2);
+      g.fill();
+      break;
+    }
+    case TILE.MINI_DUNGEON: {
+      fillRect(g, 0, 0, 32, 32, '#1a1a2a');
+      // Portal frame
+      fillRect(g, 8, 4, 16, 24, '#3a2a50');
+      fillRect(g, 9, 5, 14, 22, '#2a1a3a');
+      // Portal inner glow
+      g.fillStyle = '#8040c0';
+      g.beginPath();
+      g.ellipse(16 * SC, 16 * SC, 6 * SC, 10 * SC, 0, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = '#c060e0';
+      g.beginPath();
+      g.ellipse(16 * SC, 16 * SC, 3 * SC, 6 * SC, 0, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = '#f0c0ff';
+      g.beginPath();
+      g.arc(16 * SC, 16 * SC, 1.5 * SC, 0, Math.PI * 2);
+      g.fill();
+      // Gold frame top
+      fillRect(g, 12, 2, 8, 3, '#c0a020');
+      // ⚡ lightning bolts
+      g.fillStyle = '#ffe040';
+      g.font = `${10 * SC}px serif`;
+      g.textAlign = 'center';
+      g.fillText('⚡', 16 * SC, 30 * SC);
+      break;
+    }
+    case TILE.VILLAGE_CAVE_EXIT: {
+      fillRect(g, 0, 0, 32, 32, '#1a1410');
+      // Cave floor
+      fillRect(g, 4, 20, 24, 10, '#3a3028');
+      // Arrow up (exit indicator)
+      g.fillStyle = '#80e0c0';
+      g.beginPath();
+      g.moveTo(16 * SC, 4 * SC); g.lineTo(24 * SC, 16 * SC); g.lineTo(19 * SC, 16 * SC);
+      g.lineTo(19 * SC, 26 * SC); g.lineTo(13 * SC, 26 * SC); g.lineTo(13 * SC, 16 * SC);
+      g.lineTo(8 * SC, 16 * SC);
+      g.closePath(); g.fill();
+      // Text
+      g.fillStyle = '#60c0a0';
+      g.font = `${8 * SC}px monospace`;
+      g.textAlign = 'center';
+      g.fillText('EXIT', 16 * SC, 31 * SC);
       break;
     }
 

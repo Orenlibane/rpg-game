@@ -4131,3 +4131,351 @@ body.rtl .side-minimap-legend {
   .mobile-action-btn { width: 46px; height: 40px; font-size: 13px; }
   .mobile-action-btn span { font-size: 7px; }
 }
+
+/* ── Level-Up Notification Banner ──────────────────── */
+
+.levelup-notif {
+  background: linear-gradient(135deg, #2a2010, #1e1a08);
+  border: 1px solid #6a5020;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin: 4px 0;
+  animation: lun-pulse 2s ease-in-out infinite;
+}
+
+.levelup-notif.hidden { display: none; }
+
+@keyframes lun-pulse {
+  0%, 100% { border-color: #6a5020; box-shadow: 0 0 4px rgba(200, 160, 0, 0.2); }
+  50%       { border-color: #c0a040; box-shadow: 0 0 8px rgba(200, 160, 0, 0.5); }
+}
+
+.lun-inner {
+  font-size: 11px;
+  color: #c0a040;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.lun-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.lun-stat   { background: #2a1a4a; border: 1px solid #6a40a0; color: #c080e0; }
+.lun-skill  { background: #1a2a4a; border: 1px solid #4060a0; color: #80a0e0; }
+.lun-subclass { background: #2a1a1a; border: 1px solid #a04020; color: #e08040; cursor: default; }
+
+.lun-stat:hover   { background: #3a2a5a; }
+.lun-skill:hover  { background: #2a3a5a; }
+
+.lun-hint {
+  font-size: 10px;
+  color: #806040;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* ── Settings Responsiveness Fix ─────────────────── */
+
+.settings-panel {
+  max-width: min(460px, 95vw) !important;
+  max-height: min(90vh, 800px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-body {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #3a3a5a #0e0e1a;
+}
+
+/* ── Difficulty Selector ────────────────────────── */
+
+.difficulty-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.difficulty-label {
+  font-size: 12px;
+  color: #888;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.difficulty-btn {
+  background: #1a1a2e;
+  border: 2px solid #2a2a4a;
+  color: #aaa;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin: 0;
+}
+
+.difficulty-btn:hover {
+  border-color: #6a6a9a;
+  color: #ddd;
+}
+
+.difficulty-btn.active {
+  background: #252540;
+  border-color: #6060a0;
+  color: #e0e0ff;
+  font-weight: bold;
+}
+
+/* ── Class Section Labels ───────────────────────── */
+
+.class-section-label {
+  font-size: 11px;
+  color: #666;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  margin-top: 12px;
+}
+
+/* ── Class Select Scroll ────────────────────────── */
+
+.class-select-content {
+  max-width: min(900px, 98vw) !important;
+  max-height: 95vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #3a3a5a #0e0e1a;
+}
+
+/* ── Locked Class Cards ─────────────────────────── */
+
+.class-card-locked {
+  opacity: 0.6;
+  filter: grayscale(40%);
+  border-color: #3a3040 !important;
+  cursor: not-allowed !important;
+  position: relative;
+}
+
+.class-card-locked.unlocked-class {
+  opacity: 1;
+  filter: none;
+  cursor: pointer !important;
+  border-color: #6a4a9a !important;
+}
+
+.class-card-locked.unlocked-class:hover {
+  border-color: #9a70e0 !important;
+  background: #1a1030 !important;
+}
+
+.class-lock-badge {
+  margin-top: 8px;
+  font-size: 10px;
+  color: #a060c0;
+  background: rgba(100, 40, 150, 0.2);
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid #5a3060;
+}
+
+.class-lock-badge.unlocked {
+  color: #60c060;
+  background: rgba(40, 150, 40, 0.2);
+  border-color: #305030;
+}
+
+.class-icon.bard-icon,
+.class-icon.holy-knight-icon,
+.class-icon.plague-doctor-icon {
+  font-size: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1a1a3a;
+  border: 1px solid #3a3a5a;
+}
+
+/* ── Class Unlock Info ──────────────────────────── */
+
+.class-unlock-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 10px;
+  margin-bottom: 6px;
+}
+
+.unlock-hint {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.unlock-hint.locked {
+  color: #a060c0;
+  background: rgba(100, 40, 150, 0.15);
+  border: 1px solid #5a3060;
+}
+
+.unlock-hint.unlocked {
+  color: #60c060;
+  background: rgba(40, 150, 40, 0.15);
+  border: 1px solid #305030;
+}
+
+.class-cards-unlockable .class-card {
+  width: 200px;
+  border-color: #3a3a5a;
+}
+
+/* ── Village Expansion Overlay ──────────────────── */
+
+.vexp-panel {
+  max-width: min(500px, 95vw) !important;
+  max-height: min(90vh, 600px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  text-align: left !important;
+}
+
+.vexp-panel h2 {
+  font-size: 18px;
+  color: #c0a060 !important;
+  margin-bottom: 6px;
+}
+
+.vexp-gold-display {
+  font-size: 13px;
+  color: #e0c040 !important;
+  margin-bottom: 10px !important;
+}
+
+.vexp-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: #3a3a5a #0e0e1a;
+}
+
+.vexp-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #12121e;
+  border: 1px solid #2a2a4a;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.vexp-row.vexp-built {
+  border-color: #2a4a2a;
+  background: #101a10;
+}
+
+.vexp-icon {
+  font-size: 24px;
+  min-width: 32px;
+  text-align: center;
+}
+
+.vexp-info {
+  flex: 1;
+}
+
+.vexp-name {
+  font-size: 13px;
+  color: #e0c060;
+  font-weight: bold;
+  margin-bottom: 3px;
+}
+
+.vexp-desc {
+  font-size: 11px;
+  color: #888;
+  line-height: 1.4;
+}
+
+.vexp-cost {
+  font-size: 12px;
+  color: #e0c040;
+  min-width: 50px;
+  text-align: right;
+}
+
+.vexp-build-btn {
+  background: #2a4a2a;
+  border: 1px solid #4a8a4a;
+  color: #80e080;
+  padding: 6px 12px;
+  border-radius: 5px;
+  font-size: 11px;
+  cursor: pointer;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.vexp-build-btn:hover { background: #3a6a3a; }
+
+.vexp-cant-afford {
+  background: #2a2a2a !important;
+  border-color: #3a3a3a !important;
+  color: #555 !important;
+  cursor: not-allowed !important;
+}
+
+.vexp-hint {
+  font-size: 10px;
+  color: #556 !important;
+  margin-top: 10px !important;
+}
+
+.village-expansion-open-btn {
+  background: #2a2a3a;
+  border: 1px solid #5a5a8a;
+  color: #8080c0;
+  padding: 7px 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  margin: 0;
+}
+.village-expansion-open-btn:hover { background: #3a3a5a; color: #a0a0e0; }
+
+.close-overlay-btn {
+  margin-top: 10px;
+  background: #2a1a1a;
+  border: 1px solid #5a3030;
+  color: #c06060;
+  padding: 6px 14px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+}
+.close-overlay-btn:hover { background: #3a2020; }

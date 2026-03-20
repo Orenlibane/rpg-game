@@ -44,7 +44,7 @@
     <div id="ui-panel">
       <!-- Player Stats -->
       <div id="stats-panel" class="panel">
-        <h2>Dungeon Diver <span id="game-version" style="font-size:10px;color:#555;font-weight:normal;">v36</span></h2>
+        <h2>Dungeon Diver <span id="game-version" style="font-size:10px;color:#555;font-weight:normal;">v37</span></h2>
         <div id="class-display" class="class-badge">Warrior</div>
         <div id="prestige-badge" style="display: none;"></div>
         <div id="floor-display" class="stat-row">Village</div>
@@ -142,7 +142,7 @@
         <div class="login-logo-icon">&#9876;</div>
         <h1 class="title-login-v2">Dungeon Diver</h1>
         <p class="login-tagline">Descend. Fight. Survive.</p>
-        <span class="login-version-badge">v36</span>
+        <span class="login-version-badge">v37</span>
       </div>
 
       <!-- Login Form -->
@@ -169,6 +169,10 @@
         <h3 class="changelog-title">&#128220; Changelog</h3>
         <div class="changelog-scroll" id="changelog-scroll">
           <div class="changelog-entry changelog-new">
+            <span class="changelog-version">v37</span>
+            <span class="changelog-text">Hardship difficulty (4 funny modes), 3 unlockable classes (Bard/Holy Knight/Plague Doctor), Village Expansion (build structures), Village Cave, Mini Dungeons on floors 5/10</span>
+          </div>
+          <div class="changelog-entry">
             <span class="changelog-version">v36</span>
             <span class="changelog-text">Fix: magic/bow now targets dens; chests &amp; dens no longer bleed into town</span>
           </div>
@@ -245,6 +249,18 @@
   <div id="class-select" class="overlay">
     <div class="overlay-content class-select-content">
       <h1 class="title-select" data-i18n="select.title">Choose Your Class</h1>
+
+      <!-- Difficulty selector -->
+      <div class="difficulty-selector">
+        <span class="difficulty-label">Hardship:</span>
+        <button class="difficulty-btn" data-difficulty="stroll">🌸 Sunday Stroll</button>
+        <button class="difficulty-btn active" data-difficulty="normal">💦 Getting Sweaty</button>
+        <button class="difficulty-btn" data-difficulty="send_help">😰 Send Help</button>
+        <button class="difficulty-btn" data-difficulty="why_god">☠️ Why God Why</button>
+      </div>
+
+      <!-- Base classes -->
+      <div class="class-section-label">Base Classes</div>
       <div class="class-cards">
         <div class="class-card" id="pick-warrior">
           <div class="class-icon warrior-icon"></div>
@@ -265,8 +281,49 @@
           <p data-i18n="select.archer_desc">Shoots arrows at enemies from a distance. Press R to fire. Fast and precise.</p>
         </div>
       </div>
+
+      <!-- Unlockable classes -->
+      <div class="class-section-label">Unlockable Classes</div>
+      <div class="class-cards class-cards-unlockable">
+        <div class="class-card class-card-locked" id="pick-bard">
+          <div class="class-icon bard-icon">🎵</div>
+          <h2>Bard</h2>
+          <p class="class-stats-preview">CHA 6 | INT 3 | AGI 2</p>
+          <p>Charming performer with high charisma. Shop discounts, XP bonuses, and unique mana tricks.</p>
+          <div class="class-lock-badge" id="bard-lock">🔒 Complete 3 quests</div>
+        </div>
+        <div class="class-card class-card-locked" id="pick-holy-knight">
+          <div class="class-icon holy-knight-icon">⚔️</div>
+          <h2>Holy Knight</h2>
+          <p class="class-stats-preview">VIT 5 | STR 4 | INT 2</p>
+          <p>Divine tank with built-in armor. Starts with +2 armor and healing mana. Near-unkillable early on.</p>
+          <div class="class-lock-badge" id="holy-knight-lock">🔒 Reach floor 5</div>
+        </div>
+        <div class="class-card class-card-locked" id="pick-plague-doctor">
+          <div class="class-icon plague-doctor-icon">🧪</div>
+          <h2>Plague Doctor</h2>
+          <p class="class-stats-preview">INT 5 | AGI 3 | CHA 3</p>
+          <p>Masked physician who weaponizes disease. High mana pool, poison specialists, starts with 3 potions.</p>
+          <div class="class-lock-badge" id="plague-doctor-lock">🔒 Kill 50 enemies</div>
+        </div>
+      </div>
+
+      <!-- Unlock hints -->
+      <div id="class-unlock-info" class="class-unlock-info"></div>
+
       <div id="class-select-prestige" class="class-select-prestige" style="display: none;"></div>
       <button id="continue-save" class="class-btn continue-btn" style="display:none" data-i18n="select.continue">Continue</button>
+    </div>
+  </div>
+
+  <!-- Village Expansion Overlay -->
+  <div id="village-expansion-overlay" class="overlay hidden">
+    <div class="overlay-content vexp-panel">
+      <h2>🏗️ Village Expansion</h2>
+      <p id="vexp-gold" class="vexp-gold-display">Your gold: 0g</p>
+      <div id="village-expansion-list" class="vexp-list"></div>
+      <p class="vexp-hint">Buildings persist across all runs and provide permanent benefits.</p>
+      <button id="close-village-expansion" class="close-overlay-btn">✕ Close</button>
     </div>
   </div>
 
@@ -483,6 +540,11 @@
           <div id="save-slots-list">
             <!-- Rendered dynamically by renderer.js -->
           </div>
+        </div>
+        <div class="settings-section">
+          <h3>🏗️ Village Expansion</h3>
+          <p class="settings-danger-desc" style="color:#aaa">Build permanent structures in the village with gold. Benefits persist across all runs.</p>
+          <button id="village-expansion-btn" class="village-expansion-open-btn">Open Village Builder</button>
         </div>
         <div class="settings-section settings-danger-zone">
           <h3>Danger Zone</h3>

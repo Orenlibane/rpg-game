@@ -1,11 +1,11 @@
-import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE, CRAFTING_RECIPES, MONSTER_CATEGORIES, BESTIARY_INFO, SUBCLASS, SUBCLASS_INFO, TOWN_UPGRADES, PHASE_BOSSES } from './constants.js?v=28';
+import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE, CRAFTING_RECIPES, MONSTER_CATEGORIES, BESTIARY_INFO, SUBCLASS, SUBCLASS_INFO, TOWN_UPGRADES, PHASE_BOSSES, DIFFICULTY, CLASS_UNLOCK_CONDITIONS, CLASS_STATS, VILLAGE_BUILDINGS } from './constants.js?v=37';
 import { t } from './i18n.js';
 
 // Lookups for bestiary
 const BASE_STATS_LOOKUP = BASE_STATS;
 const GOLD_LOOKUP = GOLD_REWARDS;
-import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js?v=28';
-import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, getSellPrice, isTrashItem, sellAllTrash, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith, selectSubclass, isSubclassBranchUnlocked, getTownUpgradeLevel, upgradeTownBuilding, getAvailableCraftingRecipes, getRunHistory, closeRunHistory, SAVE_SLOTS, saveToSlot, loadFromSlot, deleteSlot, getSlotInfo } from './engine.js?v=28';
+import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite } from './sprites.js?v=37';
+import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, getSellPrice, isTrashItem, sellAllTrash, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, toggleSkillTree, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith, selectSubclass, isSubclassBranchUnlocked, getTownUpgradeLevel, upgradeTownBuilding, getAvailableCraftingRecipes, getRunHistory, closeRunHistory, SAVE_SLOTS, saveToSlot, loadFromSlot, deleteSlot, getSlotInfo, setDifficulty, purchaseBuilding, closeVillageExpansion } from './engine.js?v=37';
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
@@ -369,7 +369,8 @@ function updateUI() {
       classEl.textContent = SUBCLASS_INFO[state.player.subclass].name;
     } else {
       const classKey = { warrior: 'class.warrior', mage: 'class.mage', archer: 'class.archer' };
-      classEl.textContent = t(classKey[state.playerClass] || 'class.adventurer');
+      const classNameFallback = CLASS_STATS[state.playerClass]?.name || 'Adventurer';
+      classEl.textContent = t(classKey[state.playerClass]) || classNameFallback;
     }
   }
 
@@ -422,6 +423,9 @@ function updateUI() {
   document.getElementById('power-text').textContent = getPlayerPower();
   document.getElementById('armor-text').textContent = getPlayerArmor();
   document.getElementById('gold-text').textContent = p.gold;
+
+  // Level-up / stat/skill notification in sidebar
+  updateLevelUpNotification(p);
 
   // Equipment slots (all 6)
   const equipGrid = document.getElementById('equip-grid');
@@ -595,6 +599,12 @@ function updateUI() {
 
   // Spell Book overlay
   updateSpellBookOverlay();
+
+  // Village Expansion overlay
+  updateVillageExpansionOverlay();
+
+  // Class select unlock info
+  updateClassSelectUnlockInfo();
 
   // Healer overlay
   updateHealerOverlay();
@@ -2156,7 +2166,7 @@ function updateFloorWarpOverlay() {
     btn.className = 'warp-floor-btn';
     btn.innerHTML = `<span class="warp-floor-num">Floor ${floor}</span><span class="warp-floor-icon">⬆</span>`;
     btn.addEventListener('click', () => {
-      import('./engine.js?v=28').then(({ warpToFloor }) => { warpToFloor(floor); });
+      import('./engine.js?v=37').then(({ warpToFloor }) => { warpToFloor(floor); });
       overlay.classList.add('hidden');
     });
     list.appendChild(btn);
@@ -3307,4 +3317,131 @@ function renderCanvas() {
     ctx.fillText(dn.text, dx, dy);
     ctx.globalAlpha = 1;
   }
+}
+
+// ── Level-Up Notification Banner ─────────────────
+
+function updateLevelUpNotification(p) {
+  let el = document.getElementById('levelup-notification');
+  if (!el) {
+    // Create if missing
+    el = document.createElement('div');
+    el.id = 'levelup-notification';
+    el.className = 'levelup-notif hidden';
+    const statPanel = document.getElementById('stats-panel');
+    if (statPanel) statPanel.after(el);
+  }
+
+  const hasStatPoints = p && p.statPoints > 0;
+  const hasSkillPoints = p && (p.skillPoints || 0) > 0;
+  const hasSubclassAvail = state.showSubclassSelect;
+
+  if (!hasStatPoints && !hasSkillPoints && !hasSubclassAvail) {
+    el.classList.add('hidden');
+    return;
+  }
+
+  el.classList.remove('hidden');
+  const parts = [];
+  if (hasStatPoints) parts.push(`<span class="lun-badge lun-stat" id="lun-open-char">📊 ${p.statPoints} Attr pt${p.statPoints !== 1 ? 's' : ''}</span>`);
+  if (hasSkillPoints) parts.push(`<span class="lun-badge lun-skill" id="lun-open-skill">⭐ ${p.skillPoints} Skill pt${p.skillPoints !== 1 ? 's' : ''}</span>`);
+  if (hasSubclassAvail) parts.push(`<span class="lun-badge lun-subclass">🎯 Specialization ready!</span>`);
+
+  el.innerHTML = `<div class="lun-inner">✨ Level up! ${parts.join(' ')} <span class="lun-hint">→ Press C / V</span></div>`;
+
+  // Click to open character sheet
+  el.querySelector('#lun-open-char')?.addEventListener('click', () => {
+    toggleCharSheet(); render();
+  });
+  el.querySelector('#lun-open-skill')?.addEventListener('click', () => {
+    toggleSkillTree(); render();
+  });
+}
+
+// ── Village Expansion Overlay ─────────────────────
+
+function updateVillageExpansionOverlay() {
+  const el = document.getElementById('village-expansion-overlay');
+  if (!el) return;
+  if (!state.showVillageExpansion) {
+    el.classList.add('hidden');
+    return;
+  }
+  el.classList.remove('hidden');
+
+  const listEl = document.getElementById('village-expansion-list');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+
+  const gold = state.player?.gold || 0;
+
+  for (const [key, bld] of Object.entries(VILLAGE_BUILDINGS)) {
+    const built = state.townBuildings[key];
+    const canAfford = gold >= bld.cost;
+    const row = document.createElement('div');
+    row.className = 'vexp-row' + (built ? ' vexp-built' : '');
+    row.innerHTML = `
+      <div class="vexp-icon">${bld.emoji}</div>
+      <div class="vexp-info">
+        <div class="vexp-name">${bld.name} ${built ? '✅' : ''}</div>
+        <div class="vexp-desc">${bld.desc}</div>
+      </div>
+      <div class="vexp-cost">${built ? 'Built' : `${bld.cost}g`}</div>
+      ${!built ? `<button class="vexp-build-btn${canAfford ? '' : ' vexp-cant-afford'}" data-building="${key}" ${canAfford ? '' : 'disabled'}>Build</button>` : ''}
+    `;
+    if (!built) {
+      const buildBtn = row.querySelector('.vexp-build-btn');
+      buildBtn?.addEventListener('click', () => {
+        purchaseBuilding(key);
+        render();
+      });
+    }
+    listEl.appendChild(row);
+  }
+
+  // Show current gold
+  const goldEl = document.getElementById('vexp-gold');
+  if (goldEl) goldEl.textContent = `Your gold: ${gold}g`;
+}
+
+// ── Class Select Unlock Info ─────────────────────────
+
+function updateClassSelectUnlockInfo() {
+  if (state.phase !== 'class_select') return;
+
+  // Update lock badges and card clickability for unlockable classes
+  const classMap = {
+    'bard':          { cardId: 'pick-bard',          lockId: 'bard-lock' },
+    'holy_knight':   { cardId: 'pick-holy-knight',   lockId: 'holy-knight-lock' },
+    'plague_doctor': { cardId: 'pick-plague-doctor', lockId: 'plague-doctor-lock' },
+  };
+
+  for (const [cls, ids] of Object.entries(classMap)) {
+    const card = document.getElementById(ids.cardId);
+    const lockBadge = document.getElementById(ids.lockId);
+    if (!card) continue;
+    const unlocked = state.unlockedClasses.includes(cls);
+    const cond = CLASS_UNLOCK_CONDITIONS[cls];
+    if (unlocked) {
+      card.classList.remove('class-card-locked');
+      card.classList.add('unlocked-class');
+      if (lockBadge) { lockBadge.textContent = '✅ Unlocked!'; lockBadge.classList.add('unlocked'); }
+    } else {
+      card.classList.add('class-card-locked');
+      card.classList.remove('unlocked-class');
+      if (lockBadge && cond) { lockBadge.textContent = `🔒 ${cond.desc}`; lockBadge.classList.remove('unlocked'); }
+    }
+  }
+
+  // Update unlock hints summary
+  const el = document.getElementById('class-unlock-info');
+  if (!el) return;
+  el.style.display = '';
+  const rows = [];
+  for (const [cls, cond] of Object.entries(CLASS_UNLOCK_CONDITIONS)) {
+    const unlocked = state.unlockedClasses.includes(cls);
+    const name = CLASS_STATS[cls]?.name || cls;
+    rows.push(`<span class="unlock-hint ${unlocked ? 'unlocked' : 'locked'}">${unlocked ? '✅' : '🔒'} ${name}: ${cond.desc}</span>`);
+  }
+  el.innerHTML = rows.join('');
 }

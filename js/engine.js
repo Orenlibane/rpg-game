@@ -4593,6 +4593,7 @@ export function playerMove(dx, dy) {
   // Stairs up
   if (state.mode === 'dungeon' && state.map[ny][nx] === TILE.UP_STAIRS) {
     if (state.floor <= 1) {
+      saveCurrentFloorToCache();   // preserve floor 1 so it restores when re-entering
       log('You ascend back to the village.', 'info');
       state.lastDungeonFloor = 0;
       initVillage();
@@ -4608,6 +4609,7 @@ export function playerMove(dx, dy) {
     unlockAchievement('portal_user');
     if (state.mode === 'dungeon') {
       log(t('log.portal_return_village'), 'level');
+      saveCurrentFloorToCache();   // keep floor in cache for floor warp / re-entry
       saveDungeonSnapshot();
       state.lastDungeonFloor = state.floor;
       initVillage();

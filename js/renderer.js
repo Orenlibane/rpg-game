@@ -1,11 +1,11 @@
-import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE, CRAFTING_RECIPES, MONSTER_CATEGORIES, BESTIARY_INFO, SUBCLASS, SUBCLASS_INFO, TOWN_UPGRADES, PHASE_BOSSES, BOSS_CAVE_BOSSES, DIFFICULTY, CLASS_UNLOCK_CONDITIONS, CLASS_STATS, VILLAGE_BUILDINGS, ALCHEMY_RECIPES, HERO_COLORS, BESTIARY_BONUSES } from './constants.js?v=47';
+import { TILE_SIZE, VIEW_W, VIEW_H, BACKPACK_SIZE, ENTITY, PLAYER_CLASS, EQUIP_SLOT, ITEM_TYPE, SPELLS, TILE, TILE_PROPS, BASE_STATS, GOLD_REWARDS, FLOOR_THEMES, BOSS_FOR_THEME, ATTR_LABELS, ATTR_DESCRIPTIONS, ATTR_BONUSES, ELEMENT_COLORS, ITEMS, FEATURE_INFO, SKILL_TREES, ACHIEVEMENTS, BOSS_SKILLS, ITEM_SETS, PRESTIGE, CRAFTING_RECIPES, MONSTER_CATEGORIES, BESTIARY_INFO, SUBCLASS, SUBCLASS_INFO, TOWN_UPGRADES, PHASE_BOSSES, BOSS_CAVE_BOSSES, DIFFICULTY, CLASS_UNLOCK_CONDITIONS, CLASS_STATS, VILLAGE_BUILDINGS, ALCHEMY_RECIPES, HERO_COLORS, BESTIARY_BONUSES } from './constants.js?v=48';
 import { t } from './i18n.js';
 
 // Lookups for bestiary
 const BASE_STATS_LOOKUP = BASE_STATS;
 const GOLD_LOOKUP = GOLD_REWARDS;
-import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite, clearPlayerSpriteCache } from './sprites.js?v=47';
-import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, getSellPrice, isTrashItem, sellAllTrash, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, toggleSkillTree, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith, selectSubclass, isSubclassBranchUnlocked, getTownUpgradeLevel, upgradeTownBuilding, getAvailableCraftingRecipes, getRunHistory, closeRunHistory, SAVE_SLOTS, saveToSlot, loadFromSlot, deleteSlot, getSlotInfo, setDifficulty, purchaseBuilding, closeVillageExpansion, setHeroName, setHeroColor, enterBeach, enterTown, exitBeach, exitTown, alchemyCraft, getBestiaryDamageBonus, cleanSpeechBubbles, getFloorMapNotes } from './engine.js?v=47';
+import { getTileSprite, getPlayerSprite, getEnemySprite, getItemSprite, getFireballSprite, getArrowSprite, getIceShardSprite, getLightningSprite, getTorchSprite, getTorchFrame, getChestClosedSprite, getChestOpenSprite, clearPlayerSpriteCache } from './sprites.js?v=48';
+import { state, getPlayerPower, getPlayerArmor, getBestiaryEntries, getArmoryEntries, getFloorThemeName, allocateStat, getEnemyName, getShopInventory, buyItem, sellItem, getSellPrice, isTrashItem, sellAllTrash, healPlayer, closeHealer, closeShop, getActiveChest, takeChestItem, takeChestGold, dropItem, destroyItem, useItem, unequipItem, getPlayerDodgeChance, getPlayerShopDiscount, getDiscountedPrice, playerHasAllSeeingEye, getAvailableQuests, getActiveQuests, acceptQuest, abandonQuest, turnInQuest, closeQuestBoard, toggleCharSheet, closeCharSheet, toggleSkillTree, getSkillRank, canLearnSkill, learnSkill, getSkillTree, getAchievements, checkAchievements, getActiveSetBonuses, gameSettings, damageNumbers, craftItem, closeBlacksmith, selectSubclass, isSubclassBranchUnlocked, getTownUpgradeLevel, upgradeTownBuilding, getAvailableCraftingRecipes, getRunHistory, closeRunHistory, SAVE_SLOTS, saveToSlot, loadFromSlot, deleteSlot, getSlotInfo, setDifficulty, purchaseBuilding, closeVillageExpansion, setHeroName, setHeroColor, enterBeach, enterTown, exitBeach, exitTown, alchemyCraft, getBestiaryDamageBonus, cleanSpeechBubbles, getFloorMapNotes } from './engine.js?v=48';
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
@@ -530,7 +530,7 @@ function updateUI() {
     if (state.player && state.player.subclass && SUBCLASS_INFO[state.player.subclass]) {
       classEl.textContent = SUBCLASS_INFO[state.player.subclass].name;
     } else {
-      const classKey = { warrior: 'class.warrior', mage: 'class.mage', archer: 'class.archer' };
+      const classKey = { warrior: 'class.warrior', mage: 'class.mage', archer: 'class.archer', summoner: 'class.summoner' };
       const classNameFallback = CLASS_STATS[state.playerClass]?.name || 'Adventurer';
       classEl.textContent = t(classKey[state.playerClass]) || classNameFallback;
     }
@@ -803,7 +803,7 @@ function updateUI() {
         const info = getSlotInfo(slot);
         const row = document.createElement('div');
         row.className = 'save-slot-row';
-        const classIcon = { warrior: '⚔️', mage: '🔮', archer: '🏹' }[info?.playerClass] || '🎮';
+        const classIcon = { warrior: '⚔️', mage: '🔮', archer: '🏹', summoner: '🐾' }[info?.playerClass] || '🎮';
         const dateStr = info?.savedAt
           ? new Date(info.savedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
           : null;
@@ -934,7 +934,7 @@ function updateCharacterSheet() {
   portraitEl.appendChild(pc);
 
   // Info
-  const classKey = { warrior: 'class.warrior', mage: 'class.mage', archer: 'class.archer' };
+  const classKey = { warrior: 'class.warrior', mage: 'class.mage', archer: 'class.archer', summoner: 'class.summoner' };
   const infoEl = document.getElementById('charsheet-info');
   infoEl.innerHTML = `
     <div class="cs-name">${t(classKey[state.playerClass] || 'class.adventurer')}</div>
@@ -2346,7 +2346,7 @@ function updateFloorWarpOverlay() {
     btn.className = 'warp-floor-btn';
     btn.innerHTML = `<span class="warp-floor-num">Floor ${floor}</span><span class="warp-floor-icon">⬆</span>`;
     btn.addEventListener('click', () => {
-      import('./engine.js?v=47').then(({ warpToFloor }) => { warpToFloor(floor); });
+      import('./engine.js?v=48').then(({ warpToFloor }) => { warpToFloor(floor); });
       overlay.classList.add('hidden');
     });
     list.appendChild(btn);
@@ -2481,7 +2481,7 @@ function updateShopOverlay() {
     const filteredIndices = [];
     for (let i = 0; i < p.inventory.length; i++) {
       const item = p.inventory[i];
-      if (sellFilter === 'Gear' && (item.type === 'consumable' || item.type === 'material')) continue;
+      if (sellFilter === 'Gear' && !item.slot) continue;
       if (sellFilter === 'Potions' && item.type !== 'consumable') continue;
       if (sellFilter === 'Trash' && !isTrashItem(item)) continue;
       filteredIndices.push(i);
@@ -2840,7 +2840,7 @@ function showItemPopup(item, index, source) {
   hideItemTooltip();
 
   const tierNames = { 1: 'Common', 2: 'Uncommon', 3: 'Rare' };
-  const typeLabels = { weapon: 'Weapon', helmet: 'Helmet', chest: 'Chest Armor', gloves: 'Gloves', boots: 'Boots', cape: 'Cape', consumable: 'Consumable', material: 'Material' };
+  const typeLabels = { weapon: 'Weapon', helmet: 'Helmet', chest: 'Chest Armor', gloves: 'Gloves', boots: 'Boots', cape: 'Cape', creature: 'Creature', consumable: 'Consumable', material: 'Material', ingredient: 'Ingredient' };
 
   let html = '';
   if (item.tier) {
@@ -2891,7 +2891,7 @@ function showItemPopup(item, index, source) {
         render();
       });
       itemPopupButtons.appendChild(useBtn);
-    } else {
+    } else if (item.slot) {
       const equipBtn = document.createElement('button');
       equipBtn.className = 'popup-btn popup-btn-use';
       equipBtn.textContent = 'Equip';
@@ -2970,7 +2970,7 @@ function showItemTooltip(e, item) {
   html += `<div class="tooltip-name">${item.icon} ${item.name}</div>`;
 
   // Type
-  const typeLabels = { weapon: 'Weapon', helmet: 'Helmet', chest: 'Chest Armor', gloves: 'Gloves', boots: 'Boots', cape: 'Cape', consumable: 'Consumable', material: 'Material' };
+  const typeLabels = { weapon: 'Weapon', helmet: 'Helmet', chest: 'Chest Armor', gloves: 'Gloves', boots: 'Boots', cape: 'Cape', creature: 'Creature', consumable: 'Consumable', material: 'Material', ingredient: 'Ingredient' };
   html += `<div class="tooltip-type">${typeLabels[item.type] || item.type}</div>`;
 
   // Stats
@@ -3202,7 +3202,8 @@ function buildTileTooltip(tx, ty) {
     TILE.CAVE_STAIRS, TILE.UP_STAIRS, TILE.CAVE_ENTRANCE, TILE.PORTAL,
     TILE.HEALER, TILE.MERCHANT, TILE.QUEST_BOARD, TILE.DUNGEON_MERCHANT,
     TILE.FOUNTAIN, TILE.SARCOPHAGUS, TILE.WEAPON_RACK, TILE.BOOKSHELF,
-    TILE.BARREL, TILE.FISHING_SPOT, TILE.ARENA, TILE.BLACKSMITH,
+    TILE.BARREL, TILE.WOODEN_DOOR, TILE.HATCHERY_NEST, TILE.HATCHERY_BASKET,
+    TILE.FISHING_SPOT, TILE.ARENA, TILE.BLACKSMITH,
     TILE.FLOOR_WARP, TILE.WATER,
   ]);
   if (!INTERESTING_TILES.has(tile)) { hideTileTooltip(); return; }
@@ -3220,7 +3221,10 @@ function buildTileTooltip(tx, ty) {
     [TILE.SARCOPHAGUS]:      { icon: '⚰️', desc: 'A stone coffin. May contain treasure — or worse.' },
     [TILE.WEAPON_RACK]:      { icon: '🗡️', desc: 'A rack of weapons. Examine it carefully.' },
     [TILE.BOOKSHELF]:        { icon: '📚', desc: 'Ancient tomes line these shelves.' },
-    [TILE.BARREL]:           { icon: '🪣', desc: 'A wooden barrel. Might hold supplies.' },
+    [TILE.BARREL]:           { icon: '🪣', desc: 'A wooden barrel. Bump it to smash it open.' },
+    [TILE.WOODEN_DOOR]:      { icon: '🚪', desc: 'A wooden door. Bump it to break through.' },
+    [TILE.HATCHERY_NEST]:    { icon: '🥚', desc: 'Monster Nursery nest. Stand here and press E to place eggs or baby monsters.' },
+    [TILE.HATCHERY_BASKET]:  { icon: '🧺', desc: 'Nursery basket. Stand here and press E to collect nursery gold.' },
     [TILE.FISHING_SPOT]:     { icon: '🎣', desc: 'A calm pool. Press E to fish here.' },
     [TILE.ARENA]:            { icon: '⚔️', desc: 'Enter the arena to fight waves of enemies for rewards.' },
     [TILE.BLACKSMITH]:       { icon: '🔨', desc: 'Craft and upgrade gear using materials.' },

@@ -52,6 +52,7 @@ Object.assign(translations.en, {
   'class.warrior': 'Warrior',
   'class.mage': 'Mage',
   'class.archer': 'Archer',
+  'class.summoner': 'Summoner',
   'class.adventurer': 'Adventurer',
 
   // Class selection
@@ -62,6 +63,8 @@ Object.assign(translations.en, {
   'select.mage_desc': 'Wields fire magic to blast enemies from range. Press F to cast. Mana regenerates each turn.',
   'select.archer_stats': 'AGI 5 | VIT 3 | STR 2',
   'select.archer_desc': 'Shoots arrows at enemies from a distance. Press R to fire. Fast and precise.',
+  'select.summoner_stats': 'INT 4 | CHA 4 | VIT 3',
+  'select.summoner_desc': 'Calls beasts to fight and can raise eggs or baby monsters in the town nursery. Starts with a slime egg.',
   'select.continue': 'Continue',
 
   // Controls
@@ -82,7 +85,7 @@ Object.assign(translations.en, {
   'ctrl.map_note': 'Map Note',
   'ctrl.achievements': 'Achievements',
   'ctrl.town_portal': 'Town Portal',
-  'ctrl.pickup': 'Pick up item',
+  'ctrl.pickup': 'Pick up / interact',
   'ctrl.settings': 'Settings',
 
   // Equipment slots
@@ -542,6 +545,7 @@ Object.assign(translations.he, {
   'class.warrior': 'לוחם',
   'class.mage': 'קוסם',
   'class.archer': 'קשת',
+  'class.summoner': 'מזמן',
   'class.adventurer': 'הרפתקן',
 
   // Class selection
@@ -552,6 +556,8 @@ Object.assign(translations.he, {
   'select.mage_desc': 'מפעיל קסמי אש כדי לפגוע באויבים ממרחק. לחץ F כדי לכשף. מאנה מתחדשת בכל תור.',
   'select.archer_stats': 'זריזות 5 | חיוניות 3 | כוח 2',
   'select.archer_desc': 'יורה חצים לעבר אויבים ממרחק. לחץ R כדי לירות. מהיר ומדויק.',
+  'select.summoner_stats': 'תבונה 4 | כריזמה 4 | חיוניות 3',
+  'select.summoner_desc': 'מזמן חיות להילחם ויכול לגדל ביצים או גורי מפלצות במשתלת העיירה. מתחיל עם ביצת סליים.',
   'select.continue': 'המשך',
 
   // Controls
@@ -571,7 +577,7 @@ Object.assign(translations.he, {
   'ctrl.map': 'מפה',
   'ctrl.achievements': 'הישגים',
   'ctrl.town_portal': 'פורטל לכפר',
-  'ctrl.pickup': 'הרם פריט',
+  'ctrl.pickup': 'הרם / בצע פעולה',
   'ctrl.settings': 'הגדרות',
 
   // Equipment slots

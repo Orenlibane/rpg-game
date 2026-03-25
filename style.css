@@ -451,6 +451,7 @@ button:hover, .choice-btn:hover {
 
 .class-cards {
   display: flex;
+  flex-wrap: wrap;
   gap: 20px;
   justify-content: center;
 }
@@ -506,6 +507,7 @@ button:hover, .choice-btn:hover {
 .warrior-icon { background: linear-gradient(135deg, #3060c0, #4080e0); }
 .mage-icon { background: linear-gradient(135deg, #6030a0, #9040e0); }
 .archer-icon { background: linear-gradient(135deg, #2a7030, #40a050); }
+.summoner-icon { background: linear-gradient(135deg, #1e5e5a, #49a874); }
 
 /* Continue (Load Save) Button */
 .continue-btn {

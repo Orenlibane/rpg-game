@@ -118,7 +118,7 @@
         <div class="control-row"><kbd>Y</kbd> <span data-i18n="ctrl.achievements">Achievements</span></div>
         <div class="control-row"><kbd>L</kbd> <span>Run History</span></div>
         <div class="control-row"><kbd>Q</kbd> <span data-i18n="ctrl.town_portal">Town Portal</span></div>
-        <div class="control-row"><kbd>E</kbd> <span data-i18n="ctrl.pickup">Pick up item</span></div>
+        <div class="control-row"><kbd>E</kbd> <span data-i18n="ctrl.pickup">Pick up / interact</span></div>
         <div class="control-row"><kbd>Esc</kbd> <span data-i18n="ctrl.settings">Settings</span></div>
       </div>
 
@@ -332,6 +332,12 @@
           <h2 data-i18n="class.archer">Archer</h2>
           <p class="class-stats-preview" data-i18n="select.archer_stats">AGI 5 | VIT 3 | STR 2</p>
           <p data-i18n="select.archer_desc">Shoots arrows at enemies from a distance. Press R to fire. Fast and precise.</p>
+        </div>
+        <div class="class-card" id="pick-summoner">
+          <div class="class-icon summoner-icon"></div>
+          <h2 data-i18n="class.summoner">Summoner</h2>
+          <p class="class-stats-preview" data-i18n="select.summoner_stats">INT 4 | CHA 4 | VIT 3</p>
+          <p data-i18n="select.summoner_desc">Calls beasts to fight and can raise eggs or baby monsters in the town nursery. Starts with a slime egg.</p>
         </div>
       </div>
 
@@ -856,9 +862,9 @@
       document.body.appendChild(d);
     };
   </script>
-  <script type="module" src="js/main.js?v=47"></script>
+  <script type="module" src="js/main.js?v=48"></script>
   <script type="module">
-    import('./js/main.js?v=47').catch(function(e) {
+    import('./js/main.js?v=48').catch(function(e) {
       var d = document.createElement('div');
       d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:red;color:white;padding:10px;z-index:9999;font-size:14px';
       d.textContent = 'MODULE LOAD ERROR: ' + e.message;

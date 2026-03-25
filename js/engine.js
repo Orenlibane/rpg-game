@@ -19,10 +19,10 @@ import {
   DIFFICULTY, CLASS_UNLOCK_CONDITIONS, VILLAGE_BUILDINGS,
   ALCHEMY_RECIPES, HERO_COLORS, BESTIARY_BONUSES,
   TALENT_TREES, ENEMY_REACTIONS,
-} from './constants.js?v=47';
+} from './constants.js?v=48';
 import { t } from './i18n.js';
-import { generateVillage, generateDungeon, generateArenaMap, generateCave, generateMiniDungeon, generateBeach, generateTown, generateBossCave } from './mapgen.js?v=47';
-import { computeFOV } from './fov.js?v=47';
+import { generateVillage, generateDungeon, generateArenaMap, generateCave, generateMiniDungeon, generateBeach, generateTown, generateBossCave } from './mapgen.js?v=48';
+import { computeFOV } from './fov.js?v=48';
 
 function randInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -42,6 +42,42 @@ function createDefaultStats() {
     arenaBestWave: 0,
   };
 }
+
+function createEmptyHatchery() {
+  return {
+    residents: [],
+    pendingGold: 0,
+  };
+}
+
+const HATCHERY_CREATURES = {
+  slime_egg:   { label: 'Slime Egg',   species: 'slime',  stage: 'egg',  hatchTurns: 18, cycleTurns: 12, rewardGold: 8,  nextStage: 'Baby Slime' },
+  spider_egg:  { label: 'Spider Egg',  species: 'spider', stage: 'egg',  hatchTurns: 22, cycleTurns: 14, rewardGold: 10, nextStage: 'Baby Spider' },
+  drake_egg:   { label: 'Drake Egg',   species: 'drake',  stage: 'egg',  hatchTurns: 28, cycleTurns: 18, rewardGold: 16, nextStage: 'Baby Drake' },
+  baby_slime:  { label: 'Baby Slime',  species: 'slime',  stage: 'baby', hatchTurns: 0,  cycleTurns: 12, rewardGold: 10 },
+  baby_spider: { label: 'Baby Spider', species: 'spider', stage: 'baby', hatchTurns: 0,  cycleTurns: 14, rewardGold: 12 },
+  baby_drake:  { label: 'Baby Drake',  species: 'drake',  stage: 'baby', hatchTurns: 0,  cycleTurns: 18, rewardGold: 20 },
+};
+
+const CRITTER_DROP_TABLES = {
+  [ENTITY.SLIME]:          [{ itemId: 'slime_egg', chance: 0.07 }, { itemId: 'baby_slime', chance: 0.03 }],
+  [ENTITY.SPIDER]:         [{ itemId: 'spider_egg', chance: 0.08 }, { itemId: 'baby_spider', chance: 0.03 }],
+  [ENTITY.CAVE_CRAWLER]:   [{ itemId: 'spider_egg', chance: 0.10 }, { itemId: 'baby_spider', chance: 0.04 }],
+  [ENTITY.VENOM_SPITTER]:  [{ itemId: 'spider_egg', chance: 0.09 }],
+  [ENTITY.COCOON_HORROR]:  [{ itemId: 'spider_egg', chance: 0.14 }, { itemId: 'baby_spider', chance: 0.06 }],
+  [ENTITY.ICE_SPIDER]:     [{ itemId: 'spider_egg', chance: 0.10 }],
+  [ENTITY.DRAGON_WHELP]:   [{ itemId: 'drake_egg', chance: 0.12 }, { itemId: 'baby_drake', chance: 0.05 }],
+  [ENTITY.OBSIDIAN_DRAKE]: [{ itemId: 'drake_egg', chance: 0.10 }, { itemId: 'baby_drake', chance: 0.04 }],
+  [ENTITY.ANCIENT_WYRM]:   [{ itemId: 'drake_egg', chance: 0.18 }, { itemId: 'baby_drake', chance: 0.08 }],
+};
+
+const BARREL_BREAK_DROPS = [
+  { itemId: 'minor_health_pot', chance: 0.22 },
+  { itemId: 'mana_potion', chance: 0.16 },
+  { itemId: 'slime_egg', chance: 0.05 },
+  { itemId: 'spider_egg', chance: 0.05 },
+  { itemId: 'baby_slime', chance: 0.03 },
+];
 
 // ── Game State ─────────────────────────────────
 
@@ -149,6 +185,8 @@ export const state = {
   talentPoints: 0,       // earned from prestige, spent on talent tree
   talents: {},           // { [nodeId]: true }
   showTalentTree: false, // talent tree overlay visibility
+  hatchery: createEmptyHatchery(),
+  summons: [],
   // Mini dungeon
   inMiniDungeon: false,
   miniDungeonReturnFloor: 0,
@@ -755,6 +793,15 @@ function giveStartingGear(cls) {
       registerArmoryItem('minor_health_pot');
       registerArmoryItem('mana_potion');
       break;
+    case PLAYER_CLASS.SUMMONER:
+      equip('worn_staff');
+      equip('worn_cloak');
+      equip('sandals');
+      p.inventory.push({ ...ITEMS.mana_potion, count: 2 });
+      p.inventory.push({ ...ITEMS.slime_egg });
+      registerArmoryItem('mana_potion');
+      registerArmoryItem('slime_egg');
+      break;
     case PLAYER_CLASS.HOLY_KNIGHT:
       equip('rusty_sword');
       equip('leather_tunic');
@@ -834,7 +881,7 @@ export function initVillage() {
       state.player.mana = state.player.maxMana;
       // Training grounds: +2 to primary stat at game start
       if (state.townBuildings.training) {
-        const primaryStat = { warrior: 'str', mage: 'int', archer: 'agi', bard: 'cha', holy_knight: 'str', plague_doctor: 'int' }[state.playerClass] || 'str';
+        const primaryStat = { warrior: 'str', mage: 'int', archer: 'agi', summoner: 'int', bard: 'cha', holy_knight: 'str', plague_doctor: 'int' }[state.playerClass] || 'str';
         state.player.attrs[primaryStat] = (state.player.attrs[primaryStat] || 1) + 2;
         recalcDerivedStats();
         log(`⚔️ Training grounds granted +2 ${primaryStat.toUpperCase()}!`, 'level');
@@ -1474,6 +1521,222 @@ function canWalk(x, y) {
   if (x < 0 || x >= state.mapW || y < 0 || y >= state.mapH) return false;
   const tile = state.map[y][x];
   return TILE_PROPS[tile] ? TILE_PROPS[tile].walkable : false;
+}
+
+function getSummonDamageBonus() {
+  const rank = getSkillRank('pack_bond');
+  return rank > 0 ? rank : 0;
+}
+
+function getSummonDurationBonus() {
+  const rank = getSkillRank('bestial_focus');
+  return rank > 0 ? rank : 0;
+}
+
+function getCritterDropBonus() {
+  const rank = getSkillRank('egg_finder');
+  return rank > 0 ? [0.05, 0.10, 0.15][rank - 1] : 0;
+}
+
+function getHatcherySpeedBonus() {
+  const rank = getSkillRank('quick_incubation');
+  return rank > 0 ? [0.20, 0.35, 0.50][rank - 1] : 0;
+}
+
+function getReplacementFloorTile(x, y) {
+  const ignoreTiles = new Set([
+    TILE.BARREL, TILE.WOODEN_DOOR, TILE.HATCHERY_NEST, TILE.HATCHERY_BASKET,
+    TILE.HEALER, TILE.MERCHANT, TILE.QUEST_BOARD, TILE.ARENA, TILE.BLACKSMITH,
+    TILE.DUNGEON_MERCHANT,
+  ]);
+  const offsets = [[1,0], [-1,0], [0,1], [0,-1]];
+  for (const [ox, oy] of offsets) {
+    const nx = x + ox, ny = y + oy;
+    if (nx < 0 || nx >= state.mapW || ny < 0 || ny >= state.mapH) continue;
+    const tile = state.map[ny][nx];
+    if (TILE_PROPS[tile]?.walkable && !ignoreTiles.has(tile)) return tile;
+  }
+  if (state.inBossCave) return TILE.BOSS_FLOOR;
+  if (state.mode_town) return TILE.DIRT;
+  if (state.mode_beach) return TILE.BEACH_SAND;
+  if (state.floorTheme && FLOOR_THEMES[state.floorTheme]) return FLOOR_THEMES[state.floorTheme].floorTile;
+  if (state.mode === 'village') return TILE.GRASS;
+  return TILE.CAVE_FLOOR;
+}
+
+function dropLooseItem(itemId, x, y, sourceLabel = null, autoLoot = false) {
+  const itemDef = ITEMS[itemId];
+  if (!itemDef) return false;
+  const item = { ...itemDef };
+  if (autoLoot && state.player.inventory.length < BACKPACK_SIZE) {
+    if (!(item.stackable && tryStackItem(item))) {
+      if (item.stackable) item.count = 1;
+      state.player.inventory.push(item);
+    }
+    registerArmoryItem(item.id);
+    log(sourceLabel ? `${sourceLabel} yields ${item.name}.` : `Collected ${item.name}.`, 'item');
+    return true;
+  }
+  state.items.push({ x, y, item });
+  registerArmoryItem(item.id);
+  log(sourceLabel ? `${sourceLabel} drops ${item.name}.` : `${item.name} drops to the floor.`, 'item');
+  return true;
+}
+
+function maybeDropCritterLoot(enemy, x, y) {
+  const table = CRITTER_DROP_TABLES[enemy.type];
+  if (!table) return;
+  const bonus = getCritterDropBonus();
+  for (const drop of table) {
+    if (Math.random() < Math.min(drop.chance + bonus, 0.5)) {
+      dropLooseItem(drop.itemId, x, y, `${getEnemyName(enemy)} leaves behind something unusual`, !!state.bossSkills.gold_magnet);
+      break;
+    }
+  }
+}
+
+function isDestructibleTile(tile) {
+  return tile === TILE.BARREL || tile === TILE.WOODEN_DOOR;
+}
+
+function breakDestructible(x, y) {
+  const tile = state.map[y]?.[x];
+  if (!isDestructibleTile(tile)) return false;
+  state.map[y][x] = getReplacementFloorTile(x, y);
+  if (tile === TILE.BARREL) {
+    log('You smash the barrel apart.', 'combat');
+    if (Math.random() < 0.6) {
+      const gold = randInt(2, 8);
+      state.player.gold += gold;
+      state.stats.totalGoldEarned += gold;
+      log(`You find ${gold} gold in the splinters.`, 'item');
+    }
+    for (const drop of BARREL_BREAK_DROPS) {
+      if (Math.random() < drop.chance) {
+        dropLooseItem(drop.itemId, x, y, 'The shattered barrel');
+        break;
+      }
+    }
+  } else if (tile === TILE.WOODEN_DOOR) {
+    log('You hack the wooden door to pieces.', 'combat');
+  }
+  return true;
+}
+
+function placeHatcheryCreature() {
+  if (!state.hatchery) state.hatchery = createEmptyHatchery();
+  if (state.hatchery.residents.length >= 6) {
+    log('The Monster Nursery is already full.', 'info');
+    return true;
+  }
+  const idx = state.player.inventory.findIndex(item => HATCHERY_CREATURES[item.id]);
+  if (idx === -1) {
+    log('Bring an egg or baby monster here to place it in the Monster Nursery.', 'info');
+    return true;
+  }
+  const item = state.player.inventory[idx];
+  const config = HATCHERY_CREATURES[item.id];
+  state.player.inventory.splice(idx, 1);
+  state.hatchery.residents.push({
+    itemId: item.id,
+    label: config.label,
+    species: config.species,
+    stage: config.stage,
+    turnsRemaining: config.stage === 'egg' ? config.hatchTurns : config.cycleTurns,
+    cycleTurns: config.cycleTurns,
+    rewardGold: config.rewardGold,
+  });
+  log(`You settle the ${config.label.toLowerCase()} into the Monster Nursery.`, 'item');
+  return true;
+}
+
+function collectHatcheryRewards() {
+  if (!state.hatchery) state.hatchery = createEmptyHatchery();
+  if (!state.hatchery.pendingGold) {
+    log('No nursery gifts are ready yet.', 'info');
+    return true;
+  }
+  const gold = state.hatchery.pendingGold;
+  state.player.gold += gold;
+  state.stats.totalGoldEarned += gold;
+  state.hatchery.pendingGold = 0;
+  log(`You collect ${gold} gold from the nursery basket.`, 'item');
+  return true;
+}
+
+function tickHatchery() {
+  if (!state.hatchery?.residents?.length) return;
+  const speed = 1 + getHatcherySpeedBonus();
+  for (const resident of state.hatchery.residents) {
+    resident.turnsRemaining -= speed;
+    if (resident.turnsRemaining > 0) continue;
+    if (resident.stage === 'egg') {
+      resident.stage = 'baby';
+      resident.label = HATCHERY_CREATURES[resident.itemId]?.nextStage || resident.label;
+      resident.turnsRemaining = resident.cycleTurns;
+      log(`A nursery egg hatches into a ${resident.label.toLowerCase()}!`, 'level');
+    } else {
+      state.hatchery.pendingGold += resident.rewardGold;
+      resident.turnsRemaining = resident.cycleTurns;
+    }
+  }
+}
+
+function addOrRefreshSummon(id, name, damage, turns, options = {}) {
+  const totalDamage = damage + getSummonDamageBonus();
+  const totalTurns = turns + getSummonDurationBonus();
+  const existing = state.summons.find(s => s.id === id);
+  if (existing) {
+    existing.name = name;
+    existing.damage = Math.max(existing.damage, totalDamage);
+    existing.turns = Math.max(existing.turns, totalTurns);
+    existing.range = options.range || existing.range || 6;
+    existing.projectile = options.projectile || existing.projectile || null;
+  } else {
+    state.summons.push({
+      id,
+      name,
+      damage: totalDamage,
+      turns: totalTurns,
+      range: options.range || 6,
+      projectile: options.projectile || null,
+    });
+  }
+  if (options.shield) {
+    state.player.arcaneBarrier = (state.player.arcaneBarrier || 0) + options.shield;
+  }
+}
+
+function tickSummons() {
+  if (!state.summons?.length) return;
+  const expired = [];
+  for (const summon of state.summons) {
+    const target = findNearestVisibleEnemy(summon.range || 6);
+    if (target) {
+      const dmg = Math.max(1, summon.damage - getEffectiveArmor(target));
+      target.hp -= dmg;
+      if (summon.projectile) {
+        state.projectiles.push({ x: target.x, y: target.y, type: summon.projectile, ttl: 2 });
+      }
+      log(`${summon.name} hits ${getEnemyName(target)} for ${dmg}!`, 'combat');
+      if (target.hp <= 0) {
+        target.hp = 0;
+        recordKill(target.type, target);
+        grantXP(target.xpReward || 8);
+        grantGold(target);
+        dropLoot(target);
+        onKillEffects();
+      }
+    }
+    summon.turns--;
+    if (summon.turns <= 0) expired.push(summon);
+  }
+  if (expired.length > 0) {
+    state.summons = state.summons.filter(s => s.turns > 0);
+    for (const summon of expired) {
+      log(`${summon.name} slips away.`, 'info');
+    }
+  }
 }
 
 function enemyAt(x, y) {
@@ -2565,8 +2828,57 @@ export function useActiveSkill(skillId) {
     }
     case 'beast_companion': {
       const wolfDmg = [3, 4, 5][rank - 1];
-      p.beastCompanion = { damage: wolfDmg, active: true };
-      log(`Wolf companion summoned (${wolfDmg} dmg/turn)!`, 'combat');
+      const wolfTurns = [6, 8, 10][rank - 1];
+      addOrRefreshSummon('ranger_wolf', 'Wolf Companion', wolfDmg, wolfTurns);
+      log(`Wolf companion summoned for ${wolfTurns} turns!`, 'combat');
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    // ── Summoner skills ──
+    case 'summon_wolf': {
+      const wolfDmg = [3, 4, 5][rank - 1];
+      const wolfTurns = [6, 8, 10][rank - 1];
+      addOrRefreshSummon('summoner_wolf', 'Bound Wolf', wolfDmg, wolfTurns);
+      log(`Bound Wolf answers your call for ${wolfTurns} turns!`, 'combat');
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'hatchling_swarm': {
+      const target = findNearestVisibleEnemy(6);
+      if (!target) { log('No enemies in range!', 'info'); return false; }
+      const dmg = [3, 5, 7][rank - 1];
+      const swarmTargets = state.enemies.filter(e => e.hp > 0 && Math.abs(e.x - target.x) <= 1 && Math.abs(e.y - target.y) <= 1);
+      for (const tgt of swarmTargets) {
+        const finalDmg = Math.max(1, dmg - getEffectiveArmor(tgt));
+        tgt.hp -= finalDmg;
+        log(`Hatchlings swarm ${getEnemyName(tgt)} for ${finalDmg}!`, 'combat');
+        if (tgt.hp <= 0) {
+          tgt.hp = 0;
+          recordKill(tgt.type, tgt);
+          grantXP(tgt.xpReward || 8);
+          grantGold(tgt);
+          dropLoot(tgt);
+          onKillEffects();
+        }
+      }
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'slime_guard': {
+      const slimeDmg = [2, 3, 4][rank - 1];
+      const shield = [6, 10, 14][rank - 1];
+      addOrRefreshSummon('slime_guard', 'Slime Guard', slimeDmg, 6, { shield });
+      log(`Slime Guard oozes into battle and grants ${shield} barrier!`, 'combat');
+      cd[skillId] = def.cooldown;
+      endTurn();
+      return true;
+    }
+    case 'drake_call': {
+      addOrRefreshSummon('drake_hatchling', 'Drake Hatchling', 6, 6, { range: 7, projectile: 'fire' });
+      log('A drake hatchling swoops in to scorch your foes!', 'combat');
       cd[skillId] = def.cooldown;
       endTurn();
       return true;
@@ -3208,9 +3520,7 @@ export function getSellPrice(item) {
 export function isTrashItem(item) {
   // Trash = tier 1 gear only. Materials and ingredients are NOT trash.
   if (!item) return false;
-  if (item.type === 'material') return false;   // crafting materials — keep
-  if (item.type === 'ingredient') return false; // alchemy ingredients — keep
-  if (item.type === 'consumable') return false; // potions are not trash
+  if (!item.slot) return false;
   return (item.tier || 1) <= 1;
 }
 
@@ -3300,6 +3610,10 @@ function recalcDerivedStats() {
   if (mfRank > 0) p.maxMana += [5, 10, 15][mfRank - 1];
   const aopRank = (p.skills && p.skills.aura_of_protection) || 0;
   if (aopRank > 0) p.armor += aopRank; // +1/+2/+3 armor from paladin aura
+  const nmRank = getSkillRank('nursery_magic');
+  if (nmRank > 0) p.maxMana += [3, 6, 10][nmRank - 1];
+  const shRank = getSkillRank('shared_heart');
+  if (shRank > 0) p.maxHp += [4, 8, 12][shRank - 1];
 
   // Set bonuses (HP/mana)
   for (const sb of getActiveSetBonuses(p)) {
@@ -3585,6 +3899,19 @@ function attack(attacker, defender) {
     isCrit = true;
   }
 
+  if (defender.type === ENTITY.PLAYER && defender.divineShield > 0) {
+    defender.divineShield--;
+    log('Divine Shield blocks the hit!', 'combat');
+    return;
+  }
+  if (defender.type === ENTITY.PLAYER && defender.arcaneBarrier > 0) {
+    const absorbed = Math.min(defender.arcaneBarrier, baseDmg);
+    defender.arcaneBarrier -= absorbed;
+    baseDmg -= absorbed;
+    log(`Arcane Barrier absorbs ${absorbed} damage!`, 'combat');
+    if (baseDmg <= 0) return;
+  }
+
   defender.hp -= baseDmg;
   // Spawn floating damage number
   if (defender.type !== ENTITY.PLAYER) {
@@ -3821,7 +4148,8 @@ function grantXP(amount) {
     p.skillPoints = (p.skillPoints || 0) + 1;
     log(t('log.level_up', { level: p.level }), 'level');
     // Trigger subclass selection at level 5
-    if (p.level === 5 && !p.subclass) {
+    const hasSubclassOptions = Object.values(SUBCLASS_INFO).some(info => info.baseClass === state.playerClass);
+    if (p.level === 5 && !p.subclass && hasSubclassOptions) {
       state.showSubclassSelect = true;
       log('Choose your specialization!', 'level');
     }
@@ -3907,6 +4235,8 @@ function dropLoot(enemy) {
       }
     }
   }
+
+  maybeDropCritterLoot(enemy, dropX, dropY);
 }
 
 // ── Ranged Attacks ───────────────────────────
@@ -4159,7 +4489,7 @@ export function pickupItem() {
   const px = state.player.x;
   const py = state.player.y;
   const idx = state.items.findIndex(i => i.x === px && i.y === py);
-  if (idx === -1) return;
+  if (idx === -1) return false;
 
   const { item } = state.items[idx];
 
@@ -4168,12 +4498,12 @@ export function pickupItem() {
     state.items.splice(idx, 1);
     registerArmoryItem(item.id);
     log(t('log.picked_up', { name: item.name }), 'item');
-    return;
+    return true;
   }
 
   if (state.player.inventory.length >= BACKPACK_SIZE) {
     log(t('log.backpack_full'), 'info');
-    return;
+    return false;
   }
 
   const newItem = { ...item };
@@ -4182,6 +4512,14 @@ export function pickupItem() {
   state.items.splice(idx, 1);
   registerArmoryItem(item.id);
   log(t('log.picked_up', { name: item.name }), 'item');
+  return true;
+}
+
+export function interactAtPlayerTile() {
+  const tile = state.map?.[state.player.y]?.[state.player.x];
+  if (state.mode_town && tile === TILE.HATCHERY_NEST) return placeHatcheryCreature();
+  if (state.mode_town && tile === TILE.HATCHERY_BASKET) return collectHatcheryRewards();
+  return pickupItem();
 }
 
 export function useItem(slotIndex) {
@@ -4290,8 +4628,8 @@ export function throwTrash() {
   // Iterate backwards to safely splice
   for (let i = inv.length - 1; i >= 0; i--) {
     const item = inv[i];
-    // Skip consumables — only target equippable items
-    if (item.type === ITEM_TYPE.CONSUMABLE) continue;
+    // Skip non-equipment such as potions, materials, and nursery creatures.
+    if (!item.slot) continue;
     // Skip items with magical features
     if (item.features && item.features.length > 0) continue;
     // Skip set items
@@ -4811,6 +5149,12 @@ export function playerMove(dx, dy) {
     return;
   }
 
+  if (isDestructibleTile(state.map[ny][nx])) {
+    breakDestructible(nx, ny);
+    endTurn();
+    return;
+  }
+
   if (!canWalk(nx, ny)) return;
 
   state.player.x = nx;
@@ -5150,6 +5494,9 @@ function endTurn() {
     }
   }
 
+  tickHatchery();
+  tickSummons();
+
   if (state.mode === 'dungeon' || state.mode === 'arena') {
     moveEnemies();
   }
@@ -5432,6 +5779,8 @@ export function restartGame() {
   state.caveFloor = 0;
   state.autoExplore = false;
   state.speechBubbles = [];
+  state.hatchery = createEmptyHatchery();
+  state.summons = [];
   deleteSave();
 }
 
@@ -5474,6 +5823,8 @@ export function activatePrestige() {
   state.lastDungeonFloor = 0;
   state.floorCache = {};  // Prestige = new run, fresh floors
   state.unlockedFloorWarps = [];
+  state.hatchery = createEmptyHatchery();
+  state.summons = [];
 
   // Restore persistent data
   state.achievements = savedAchievements;
@@ -5702,6 +6053,8 @@ function deserializeState(snap) {
     }
   }
   // Recompute transient fields
+  if (!state.hatchery) state.hatchery = createEmptyHatchery();
+  if (!Array.isArray(state.summons)) state.summons = [];
   state.visibility = Array.from({ length: state.mapH }, () => new Uint8Array(state.mapW));
   state.achievementToast = null;
   state.fishingTimer = null;
@@ -5928,6 +6281,8 @@ export async function fullResetGame() {
     talentPoints: 0,
     talents: {},
     showTalentTree: false,
+    hatchery: createEmptyHatchery(),
+    summons: [],
     inMiniDungeon: false,
     miniDungeonReturnFloor: 0,
     miniDungeonReturnPos: null,

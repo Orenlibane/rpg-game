@@ -4,7 +4,7 @@ import {
   MIN_ROOM_SIZE, MAX_ROOM_SIZE, MAX_ROOMS,
   FLOOR_THEMES, ROOM_TYPE,
   ENTITY, BASE_STATS, BOSS_CAVE_BOSSES,
-} from './constants.js?v=47';
+} from './constants.js?v=48';
 
 // ── Village (fixed layout) ───────────────────────
 
@@ -198,6 +198,7 @@ function generateStandardDungeon(floor, wallTile, floorTile) {
 
   assignRoomTypes(rooms);
   decorateRooms(map, rooms, floorTile, wallTile);
+  addWoodenDoors(map, rooms, floorTile);
   decorateCorridors(map, floorTile);
 
   return finalizeDungeon(map, rooms, floor, floorTile);
@@ -664,6 +665,17 @@ function decorateRooms(map, rooms, floorTile, wallTile) {
   }
 }
 
+function addWoodenDoors(map, rooms, floorTile) {
+  for (let i = 1; i < rooms.length; i++) {
+    const room = rooms[i];
+    const doorways = findDoorways(map, room, floorTile)
+      .filter(d => map[d.y][d.x] === floorTile);
+    if (doorways.length === 0 || Math.random() < 0.4) continue;
+    const pick = doorways[randInt(0, doorways.length - 1)];
+    map[pick.y][pick.x] = TILE.WOODEN_DOOR;
+  }
+}
+
 // Try to place a non-walkable tile; returns true if placed successfully
 function tryPlaceBlocking(map, x, y, tile, floorTile, doorways) {
   if (map[y][x] !== floorTile) return false;
@@ -1099,6 +1111,24 @@ export function generateTown() {
   // Bookshelf decorations (town has a library feel)
   map[3][7] = TILE.BOOKSHELF;
   map[3][14] = TILE.BOOKSHELF;
+
+  // Monster nursery pen
+  for (let x = 1; x <= 5; x++) {
+    map[6][x] = TILE.VILLAGE_WALL;
+    map[10][x] = TILE.VILLAGE_WALL;
+  }
+  for (let y = 6; y <= 10; y++) {
+    map[y][1] = TILE.VILLAGE_WALL;
+    map[y][5] = TILE.VILLAGE_WALL;
+  }
+  for (let y = 7; y <= 9; y++) {
+    for (let x = 2; x <= 4; x++) {
+      map[y][x] = TILE.VILLAGE_FLOOR;
+    }
+  }
+  map[8][5] = TILE.DIRT;
+  map[7][2] = TILE.HATCHERY_NEST;
+  map[9][4] = TILE.HATCHERY_BASKET;
 
   const playerStart = { x: W - 3, y: 8 };
 

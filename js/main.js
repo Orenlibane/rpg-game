@@ -22,13 +22,23 @@ import {
   setDifficulty, toggleVillageExpansion, closeVillageExpansion, purchaseBuilding,
   setHeroName, setHeroColor, enterBeach, enterTown, exitBeach, exitTown,
   toggleAutoExplore, addMapNote, getMapNote, toggleTalentTree, closeTalentTree,
-  unlockTalent, getTalentPoints, getUnlockedTalents,
-} from './engine.js?v=47';
-import { render, resizeCanvas } from './renderer.js?v=47';
-import { PLAYER_CLASS, PRESTIGE, DIFFICULTY, TALENT_TREES } from './constants.js?v=47';
+  unlockTalent, getTalentPoints, getUnlockedTalents, interactAtPlayerTile,
+} from './engine.js?v=48';
+import { render, resizeCanvas } from './renderer.js?v=48';
+import { PLAYER_CLASS, PRESTIGE, DIFFICULTY, TALENT_TREES } from './constants.js?v=48';
 import { initI18n, setLanguage, applyStaticTranslations, t } from './i18n.js';
 
-const APP_VERSION = 'v47';
+const APP_VERSION = 'v48';
+
+function classUsesMana(cls) {
+  return [
+    PLAYER_CLASS.MAGE,
+    PLAYER_CLASS.SUMMONER,
+    PLAYER_CLASS.BARD,
+    PLAYER_CLASS.HOLY_KNIGHT,
+    PLAYER_CLASS.PLAGUE_DOCTOR,
+  ].includes(cls);
+}
 
 // ── Initialize i18n ─────────────────────────
 initI18n(gameSettings.language);
@@ -99,7 +109,7 @@ function hideContinueOrNew() {
 btnContinueGame?.addEventListener('click', () => {
   if (loadGame()) {
     hideContinueOrNew();
-    if (state.playerClass === PLAYER_CLASS.MAGE) addManaLevelUpBtn();
+    if (classUsesMana(state.playerClass)) addManaLevelUpBtn();
     render();
   }
 });
@@ -138,7 +148,7 @@ async function handleLogin() {
     const cloudLoaded = await loadGameFromCloud();
     if (cloudLoaded) {
       classSelectEl.classList.add('hidden');
-      if (state.playerClass === PLAYER_CLASS.MAGE) addManaLevelUpBtn();
+      if (classUsesMana(state.playerClass)) addManaLevelUpBtn();
       render();
     } else {
       afterLogin();
@@ -202,7 +212,7 @@ loginUsernameInput?.addEventListener('keydown', (e) => {
     if (cloudLoaded) {
       // Cloud save loaded directly — go straight to game
       classSelectEl.classList.add('hidden');
-      if (state.playerClass === PLAYER_CLASS.MAGE) addManaLevelUpBtn();
+      if (classUsesMana(state.playerClass)) addManaLevelUpBtn();
       updateUserBadge();
       render();
       return;
@@ -250,6 +260,13 @@ document.getElementById('pick-mage')?.addEventListener('click', () => {
 document.getElementById('pick-archer')?.addEventListener('click', () => {
   selectClass(PLAYER_CLASS.ARCHER);
   classSelectEl.classList.add('hidden');
+  render();
+});
+
+document.getElementById('pick-summoner')?.addEventListener('click', () => {
+  selectClass(PLAYER_CLASS.SUMMONER);
+  classSelectEl.classList.add('hidden');
+  addManaLevelUpBtn();
   render();
 });
 
@@ -325,7 +342,7 @@ const continueSaveBtn = document.getElementById('continue-save');
 continueSaveBtn?.addEventListener('click', () => {
   if (loadGame()) {
     classSelectEl.classList.add('hidden');
-    if (state.playerClass === PLAYER_CLASS.MAGE) addManaLevelUpBtn();
+    if (classUsesMana(state.playerClass)) addManaLevelUpBtn();
     render();
   }
 });
@@ -572,6 +589,8 @@ document.addEventListener('keydown', (e) => {
       e.preventDefault();
       if (state.playerClass === PLAYER_CLASS.MAGE) {
         castSpell('fire_spell');
+      } else if (state.playerClass === PLAYER_CLASS.SUMMONER && getSkillRank('summon_wolf') > 0) {
+        useActiveSkill('summon_wolf');
       } else if (state.playerClass === PLAYER_CLASS.WARRIOR && getSkillRank('cleave') > 0) {
         useActiveSkill('cleave');
       } else if (state.playerClass === PLAYER_CLASS.ARCHER && getSkillRank('multishot') > 0) {
@@ -582,6 +601,8 @@ document.addEventListener('keydown', (e) => {
       e.preventDefault();
       if (state.playerClass === PLAYER_CLASS.MAGE) {
         castSpell('ice_shard');
+      } else if (state.playerClass === PLAYER_CLASS.SUMMONER && getSkillRank('hatchling_swarm') > 0) {
+        useActiveSkill('hatchling_swarm');
       } else if (state.playerClass === PLAYER_CLASS.WARRIOR && getSkillRank('execute') > 0) {
         useActiveSkill('execute');
       } else if (state.playerClass === PLAYER_CLASS.ARCHER && getSkillRank('poison_arrow') > 0) {
@@ -592,6 +613,8 @@ document.addEventListener('keydown', (e) => {
       e.preventDefault();
       if (state.playerClass === PLAYER_CLASS.MAGE) {
         castSpell('chain_lightning');
+      } else if (state.playerClass === PLAYER_CLASS.SUMMONER && getSkillRank('slime_guard') > 0) {
+        useActiveSkill('slime_guard');
       } else if (state.playerClass === PLAYER_CLASS.WARRIOR && getSkillRank('battle_cry') > 0) {
         useActiveSkill('battle_cry');
       } else if (state.playerClass === PLAYER_CLASS.ARCHER && getSkillRank('smoke_bomb') > 0) {
@@ -600,11 +623,15 @@ document.addEventListener('keydown', (e) => {
       break;
     case 'j': case 'J':
       e.preventDefault();
-      castSpell('heal');
+      if (state.playerClass === PLAYER_CLASS.MAGE) {
+        castSpell('heal');
+      } else if (state.playerClass === PLAYER_CLASS.SUMMONER && getSkillRank('drake_call') > 0) {
+        useActiveSkill('drake_call');
+      }
       break;
     case 'e': case 'E':
       e.preventDefault();
-      pickupItem();
+      interactAtPlayerTile();
       break;
     case 'r': case 'R':
       e.preventDefault();
@@ -646,7 +673,7 @@ const closeBestiaryBtn = document.getElementById('close-bestiary');
 
 function checkOverlays() {
   if (state.gameOver) {
-    const classKey = { warrior: 'class.warrior', mage: 'class.mage', archer: 'class.archer' };
+    const classKey = { warrior: 'class.warrior', mage: 'class.mage', archer: 'class.archer', summoner: 'class.summoner' };
     deathStatsEl.textContent = t('gameover.stats', { class: t(classKey[state.playerClass] || 'class.adventurer'), floor: state.floor, level: state.player.level, turns: state.turnCount });
     gameOverEl.classList.remove('hidden');
   }

@@ -1,5 +1,5 @@
-import { TILE, TILE_SIZE, ENTITY } from './constants.js?v=47';
-import { gameSettings } from './engine.js?v=47';
+import { TILE, TILE_SIZE, ENTITY } from './constants.js?v=48';
+import { gameSettings } from './engine.js?v=48';
 
 const cache = {};
 const tileSeedCache = {};
@@ -849,6 +849,16 @@ function buildTileSprite(tileType, variant) {
       fillRect(g, 13, 9, 6, 2, '#8a6a2a');
       break;
 
+    case TILE.WOODEN_DOOR:
+      fillRect(g, 0, 0, 32, 32, '#2a1e16');
+      fillRect(g, 6, 4, 20, 26, '#6a4624');
+      fillRect(g, 8, 6, 16, 22, '#7c5630');
+      fillRect(g, 14, 6, 2, 22, '#5a381a');
+      fillRect(g, 8, 13, 16, 2, '#5a381a');
+      fillRect(g, 8, 21, 16, 2, '#5a381a');
+      fillRect(g, 21, 17, 2, 2, '#d8c070');
+      break;
+
     case TILE.BOOKSHELF:
       fillRect(g, 0, 0, 32, 32, '#3a2008');
       fillRect(g, 2, 2, 28, 28, '#5a3a1a');
@@ -1345,6 +1355,26 @@ function buildTileSprite(tileType, variant) {
       break;
     }
 
+    case TILE.HATCHERY_NEST: {
+      fillRect(g, 0, 0, 32, 32, '#5b4728');
+      fillRect(g, 3, 3, 26, 26, '#7b6236');
+      fillRect(g, 6, 6, 20, 20, '#9b7b45');
+      fillRect(g, 10, 10, 12, 12, '#d8d1b0');
+      fillRect(g, 12, 12, 3, 3, '#8fd060');
+      fillRect(g, 18, 15, 2, 2, '#6ac0ff');
+      break;
+    }
+
+    case TILE.HATCHERY_BASKET: {
+      fillRect(g, 0, 0, 32, 32, '#5b4728');
+      fillRect(g, 5, 9, 22, 16, '#8a6030');
+      fillRect(g, 7, 11, 18, 12, '#a87540');
+      fillRect(g, 5, 8, 22, 3, '#d0b060');
+      fillRect(g, 9, 14, 4, 4, '#f0d060');
+      fillRect(g, 17, 13, 4, 5, '#a0e060');
+      break;
+    }
+
     default:
       fillRect(g, 0, 0, 32, 32, '#1a1a2a');
       break;
@@ -1446,6 +1476,30 @@ function buildPlayerSprite(playerClass) {
       g.moveTo(26, 8);
       g.lineTo(26, 24);
       g.stroke();
+      break;
+
+    case 'summoner':
+      drawPixels(g, [
+        '......0000......',
+        '.....0cccc0.....',
+        '.....0ceec0.....',
+        '.....0cccc0.....',
+        '......0PP0......',
+        '.....0PPPP0.....',
+        '....0P0PP0P0....',
+        '....0PPPPPP0....',
+        '....0PP00PP0....',
+        '....0PPPPPP0....',
+        '.....0PPPP0.....',
+        '.....0P00P0.....',
+        '......00........',
+        '.....0..0.......',
+        '....00..00......',
+        '................',
+      ], { '0': '#1a1a1a', 'P': '#3b7a58', 'c': '#e8c8a0', 'e': '#1f3f2f' });
+      fillRect(g, 23, 6, 2, 18, '#8a6a2a');
+      fillRect(g, 20, 4, 8, 5, '#7ad67a');
+      fillRect(g, 21, 5, 2, 2, '#dff8d0');
       break;
 
     default:

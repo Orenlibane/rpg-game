@@ -67,6 +67,9 @@ export const TILE = {
   BOSS_DOOR:          56,
   BOSS_DOOR_OPEN:     57,
   BOSS_CAVE_EXIT:     58,
+  HATCHERY_NEST:      59,
+  HATCHERY_BASKET:    60,
+  WOODEN_DOOR:        61,
 };
 
 
@@ -131,6 +134,9 @@ export const TILE_PROPS = {
   [TILE.BOSS_DOOR]:           { name: 'Sealed Gate',       walkable: false, transparent: false },
   [TILE.BOSS_DOOR_OPEN]:      { name: 'Open Gate',         walkable: true,  transparent: true  },
   [TILE.BOSS_CAVE_EXIT]:      { name: 'Cave Exit',         walkable: true,  transparent: true  },
+  [TILE.HATCHERY_NEST]:       { name: 'Monster Nursery',   walkable: true,  transparent: true  },
+  [TILE.HATCHERY_BASKET]:     { name: 'Nursery Basket',    walkable: true,  transparent: true  },
+  [TILE.WOODEN_DOOR]:         { name: 'Wooden Door',       walkable: false, transparent: false },
 };
 
 // ── Item Features ────────────────────────────────
@@ -265,6 +271,7 @@ export const PLAYER_CLASS = {
   WARRIOR:       'warrior',
   MAGE:          'mage',
   ARCHER:        'archer',
+  SUMMONER:      'summoner',
   // Unlockable classes
   BARD:          'bard',
   HOLY_KNIGHT:   'holy_knight',
@@ -300,6 +307,12 @@ export const CLASS_STATS = {
     xp: 0, level: 1, xpToLevel: 20,
     attrs: { str: 2, agi: 5, int: 1, vit: 3, cha: 2 },
     // Derived: HP=8+4+9=21, Pow=0+1=1, Arm=1, RangedBonus=2
+  },
+  [PLAYER_CLASS.SUMMONER]: {
+    name: 'Summoner', desc: 'A bond-mage who calls beasts to fight and raises found eggs in the town nursery.',
+    maxHp: 8, hp: 8, power: 0, armor: 0, maxMana: 6, mana: 6,
+    xp: 0, level: 1, xpToLevel: 20,
+    attrs: { str: 1, agi: 2, int: 4, vit: 3, cha: 4 },
   },
   [PLAYER_CLASS.BARD]: {
     name: 'Bard', desc: 'Charming performer who turns wit and gold into power. High charisma grants shop discounts and XP bonuses.',
@@ -553,6 +566,7 @@ export const ITEM_TYPE = {
   GLOVES:     'gloves',
   BOOTS:      'boots',
   CAPE:       'cape',
+  CREATURE:   'creature',
   CONSUMABLE: 'consumable',
 };
 
@@ -660,6 +674,12 @@ export const ITEMS = {
   haste_potion:     { id: 'haste_potion',     name: 'Haste Potion',   type: ITEM_TYPE.CONSUMABLE, effect: { name: 'Haste',    stat: 'haste',  amount: 1, turns: 10 }, icon: 'PF', desc: 'Double attack for 10 turns', stackable: true, maxStack: 30 },
   regen_potion:     { id: 'regen_potion',     name: 'Regen Potion',   type: ITEM_TYPE.CONSUMABLE, effect: { name: 'Regen',    stat: 'regen',  amount: 2, turns: 20 }, icon: 'PR', desc: 'Regen 2 HP/turn for 20 turns', stackable: true, maxStack: 30 },
   town_portal_scroll: { id: 'town_portal_scroll', name: 'Portal Scroll', type: ITEM_TYPE.CONSUMABLE, isPortalScroll: true, icon: 'PT', desc: 'Open a portal to the village. Use again to return.', stackable: true, maxStack: 30 },
+  slime_egg:        { id: 'slime_egg',        name: 'Slime Egg',       type: ITEM_TYPE.CREATURE, icon: 'SE', desc: 'A wobbling slime egg. Place it in the Monster Nursery in town.' },
+  spider_egg:       { id: 'spider_egg',       name: 'Spider Egg',      type: ITEM_TYPE.CREATURE, icon: 'OE', desc: 'A silk-wrapped egg clutch. The Monster Nursery can keep it safe.' },
+  drake_egg:        { id: 'drake_egg',        name: 'Drake Egg',       type: ITEM_TYPE.CREATURE, icon: 'DE', desc: 'Warm to the touch. The Monster Nursery in town can hatch it.' },
+  baby_slime:       { id: 'baby_slime',       name: 'Baby Slime',      type: ITEM_TYPE.CREATURE, icon: 'BS', desc: 'A tiny slime companion. Set it loose in the Monster Nursery.' },
+  baby_spider:      { id: 'baby_spider',      name: 'Baby Spider',     type: ITEM_TYPE.CREATURE, icon: 'BP', desc: 'A curious hatchling spider. It needs a safe nursery pen.' },
+  baby_drake:       { id: 'baby_drake',       name: 'Baby Drake',      type: ITEM_TYPE.CREATURE, icon: 'BD', desc: 'A sharp-eyed drake hatchling. The town nursery can raise it.' },
 
   // ── Crafting Materials ────────────────────────
   bone_fragment:    { id: 'bone_fragment',    name: 'Bone Fragment',    type: 'material', icon: 'MB', desc: 'A shard of bone. Used in crafting.', stackable: true, maxStack: 50 },
@@ -2633,6 +2653,48 @@ export const SKILL_TREES = {
         { id: 'death_lotus', name: 'Death Lotus', maxRank: 1, type: 'active', key: 'U', cooldown: 12,
           desc: ['5 attacks on random visible enemies for full damage'],
           icon: '🌸', requires: 'shadow_step' },
+      ]
+    },
+  },
+  summoner: {
+    bonds: {
+      name: 'Bonds',
+      skills: [
+        { id: 'pack_bond', name: 'Pack Bond', maxRank: 3, type: 'passive',
+          desc: ['Summons deal +1 damage', 'Summons deal +2 damage', 'Summons deal +3 damage'],
+          icon: '🐾' },
+        { id: 'summon_wolf', name: 'Summon Wolf', maxRank: 3, type: 'active', key: 'F', cooldown: 6,
+          desc: ['Summon a wolf for 6 turns (3 dmg/turn)', 'Summon a wolf for 8 turns (4 dmg/turn)', 'Summon a wolf for 10 turns (5 dmg/turn)'],
+          icon: '🐺', requires: 'pack_bond' },
+        { id: 'egg_finder', name: 'Egg Finder', maxRank: 3, type: 'passive',
+          desc: ['Egg and baby drops +5%', 'Egg and baby drops +10%', 'Egg and baby drops +15%'],
+          icon: '🥚', requires: 'summon_wolf' },
+        { id: 'hatchling_swarm', name: 'Hatchling Swarm', maxRank: 3, type: 'active', key: 'G', cooldown: 8,
+          desc: ['Nearest cluster takes 3 damage', 'Nearest cluster takes 5 damage', 'Nearest cluster takes 7 damage'],
+          icon: '🐣', requires: 'egg_finder' },
+        { id: 'shared_heart', name: 'Shared Heart', maxRank: 3, type: 'passive',
+          desc: ['+4 Max HP', '+8 Max HP', '+12 Max HP'],
+          icon: '💞', requires: 'hatchling_swarm' },
+      ]
+    },
+    nursery: {
+      name: 'Nursery',
+      skills: [
+        { id: 'nursery_magic', name: 'Nursery Magic', maxRank: 3, type: 'passive',
+          desc: ['+3 max mana', '+6 max mana', '+10 max mana'],
+          icon: '✨' },
+        { id: 'slime_guard', name: 'Slime Guard', maxRank: 3, type: 'active', key: 'H', cooldown: 8,
+          desc: ['Summon slime guard (2 dmg, 6 shield)', 'Summon slime guard (3 dmg, 10 shield)', 'Summon slime guard (4 dmg, 14 shield)'],
+          icon: '🫧', requires: 'nursery_magic' },
+        { id: 'quick_incubation', name: 'Quick Incubation', maxRank: 3, type: 'passive',
+          desc: ['Hatchery progress +20%', 'Hatchery progress +35%', 'Hatchery progress +50%'],
+          icon: '⏩', requires: 'slime_guard' },
+        { id: 'bestial_focus', name: 'Bestial Focus', maxRank: 3, type: 'passive',
+          desc: ['Summons last +1 turn', 'Summons last +2 turns', 'Summons last +3 turns'],
+          icon: '🔗', requires: 'quick_incubation' },
+        { id: 'drake_call', name: 'Drake Call', maxRank: 1, type: 'active', key: 'J', cooldown: 12,
+          desc: ['Summon a drake hatchling for 6 turns (6 fire dmg/turn)'],
+          icon: '🐉', requires: 'bestial_focus' },
       ]
     },
   },

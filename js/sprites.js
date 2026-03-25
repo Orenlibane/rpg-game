@@ -1,5 +1,5 @@
-import { TILE, TILE_SIZE, ENTITY } from './constants.js?v=45';
-import { gameSettings } from './engine.js?v=45';
+import { TILE, TILE_SIZE, ENTITY } from './constants.js?v=47';
+import { gameSettings } from './engine.js?v=47';
 
 const cache = {};
 const tileSeedCache = {};

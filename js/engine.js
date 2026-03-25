@@ -19,16 +19,29 @@ import {
   DIFFICULTY, CLASS_UNLOCK_CONDITIONS, VILLAGE_BUILDINGS,
   ALCHEMY_RECIPES, HERO_COLORS, BESTIARY_BONUSES,
   TALENT_TREES, ENEMY_REACTIONS,
-} from './constants.js?v=45';
+} from './constants.js?v=47';
 import { t } from './i18n.js';
-import { generateVillage, generateDungeon, generateArenaMap, generateCave, generateMiniDungeon, generateBeach, generateTown, generateBossCave } from './mapgen.js?v=45';
-import { computeFOV } from './fov.js?v=45';
+import { generateVillage, generateDungeon, generateArenaMap, generateCave, generateMiniDungeon, generateBeach, generateTown, generateBossCave } from './mapgen.js?v=47';
+import { computeFOV } from './fov.js?v=47';
 
 function randInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
 }
 
 const ELITE_PREFIXES = ['Savage', 'Frenzied', 'Ancient', 'Corrupted', 'Enraged', 'Cursed', 'Venomous', 'Spectral', 'Blazing', 'Frozen'];
+
+function createDefaultStats() {
+  return {
+    totalKills: 0,
+    totalGoldEarned: 0,
+    chestsOpened: 0,
+    highestFloor: 0,
+    itemsBought: 0,
+    deaths: 0,
+    fishCaught: 0,
+    arenaBestWave: 0,
+  };
+}
 
 // ── Game State ─────────────────────────────────
 
@@ -95,16 +108,7 @@ export const state = {
   // Achievement system
   achievements: {},       // { [achievementId]: timestamp }
   achievementToast: null, // { id, name, icon, timer } for popup display
-  stats: {                // cumulative stats for achievement tracking
-    totalKills: 0,
-    totalGoldEarned: 0,
-    chestsOpened: 0,
-    highestFloor: 0,
-    itemsBought: 0,
-    deaths: 0,
-    fishCaught: 0,
-    arenaBestWave: 0,
-  },
+  stats: createDefaultStats(), // cumulative stats for achievement tracking
   // Town upgrades (persist across runs)
   townUpgrades: { healer: 1, shop: 1, blacksmith: 1, arena: 1 },
   // Run history (persist across runs)
@@ -158,7 +162,7 @@ export const state = {
 
 // ── Game Settings (persisted separately) ────
 
-export const gameSettings = {
+const DEFAULT_GAME_SETTINGS = {
   tileSize: 48,
   showDamageNumbers: true,
   torchFlicker: true,
@@ -166,6 +170,8 @@ export const gameSettings = {
   autoPickup: true,
   language: 'en',
 };
+
+export const gameSettings = { ...DEFAULT_GAME_SETTINGS };
 
 export const damageNumbers = [];
 
@@ -1425,7 +1431,43 @@ function checkPlayerDeath(deathMsg) {
 
 function isOccupied(x, y) {
   if (state.player && state.player.x === x && state.player.y === y) return true;
-  return state.enemies.some(e => e.x === x && e.y === y && e.hp > 0);
+  return state.enemies.some(e => e.hp > 0 && entityOccupiesTile(e, x, y));
+}
+
+function getEntitySize(entity) {
+  return Math.max(1, entity?.bossSize || 1);
+}
+
+function entityOccupiesTile(entity, x, y) {
+  const size = getEntitySize(entity);
+  return x >= entity.x && x < entity.x + size && y >= entity.y && y < entity.y + size;
+}
+
+function getDistanceToEntity(entity, targetX, targetY) {
+  const size = getEntitySize(entity);
+  const nearestX = Math.max(entity.x, Math.min(targetX, entity.x + size - 1));
+  const nearestY = Math.max(entity.y, Math.min(targetY, entity.y + size - 1));
+  const dx = targetX - nearestX;
+  const dy = targetY - nearestY;
+  return {
+    dx,
+    dy,
+    dist: Math.abs(dx) + Math.abs(dy),
+  };
+}
+
+function canEntityOccupy(entity, nextX, nextY) {
+  const size = getEntitySize(entity);
+  for (let y = nextY; y < nextY + size; y++) {
+    for (let x = nextX; x < nextX + size; x++) {
+      if (!canWalk(x, y)) return false;
+      if (state.player && state.player.x === x && state.player.y === y) return false;
+      if (state.enemies.some(other => other !== entity && other.hp > 0 && entityOccupiesTile(other, x, y))) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 function canWalk(x, y) {
@@ -1437,11 +1479,7 @@ function canWalk(x, y) {
 function enemyAt(x, y) {
   return state.enemies.find(e => {
     if (e.hp <= 0) return false;
-    if (e.bossSize && e.bossSize > 1) {
-      // Large boss: occupies a bossSize x bossSize area from its (x,y) origin
-      return x >= e.x && x < e.x + e.bossSize && y >= e.y && y < e.y + e.bossSize;
-    }
-    return e.x === x && e.y === y;
+    return entityOccupiesTile(e, x, y);
   });
 }
 
@@ -4457,9 +4495,7 @@ function moveEnemies() {
       }
     }
 
-    const dx = state.player.x - enemy.x;
-    const dy = state.player.y - enemy.y;
-    const dist = Math.abs(dx) + Math.abs(dy);
+    const { dx, dy, dist } = getDistanceToEntity(enemy, state.player.x, state.player.y);
     const sightRange = getEnemySightRange(enemy);
 
     // ── Faction Infighting ────────────────────────
@@ -4481,7 +4517,7 @@ function moveEnemies() {
           }
         }
         // Priority: player adjacent always wins; otherwise prefer closer target
-        if (closestRival && !(dist === 1)) {
+        if (closestRival && dist > 1) {
           if (rivalDist < dist || dist > sightRange) {
             // Fight the rival instead of chasing player
             if (rivalDist === 1) {
@@ -4513,7 +4549,7 @@ function moveEnemies() {
     }
 
     // Adjacent? Attack
-    if (dist === 1) {
+    if (dist <= 1) {
       attack(enemy, state.player);
       // Goblin Berserker frenzy: 30% chance for double attack
       if (enemy.type === ENTITY.GOBLIN_BERSERKER && Math.random() < 0.3 && state.player.hp > 0) {
@@ -4724,7 +4760,7 @@ function moveEnemies() {
     const nx = enemy.x + mx;
     const ny = enemy.y + my;
 
-    if (canWalk(nx, ny) && !isOccupied(nx, ny)) {
+    if (canEntityOccupy(enemy, nx, ny)) {
       enemy.x = nx;
       enemy.y = ny;
     } else {
@@ -4736,7 +4772,7 @@ function moveEnemies() {
       }
       const anx = enemy.x + ax;
       const any_ = enemy.y + ay;
-      if (canWalk(anx, any_) && !isOccupied(anx, any_)) {
+      if (canEntityOccupy(enemy, anx, any_)) {
         enemy.x = anx;
         enemy.y = any_;
       }
@@ -5414,7 +5450,7 @@ export function activatePrestige() {
 
   state.talentPoints += 3;
   saveTalents();
-  log('🌟 Gained 3 Talent Points! Visit the Talent Tree (T) to spend them.', 'level');
+  log('🌟 Gained 3 Talent Points! Visit the Talent Tree (U) to spend them.', 'level');
 
   unlockAchievement('prestige_1');
   if (level === 5) unlockAchievement('prestige_5');
@@ -5462,7 +5498,18 @@ export function declinePrestige() {
 let authToken = sessionStorage.getItem('rpg_auth_token') || null;
 let authUsername = sessionStorage.getItem('rpg_auth_user') || null;
 let cloudSaveTimer = null;
+let lastCloudSyncMessage = null;
 const CLOUD_SAVE_INTERVAL = 30000; // 30 seconds
+
+function setCloudSyncMessage(message, type = 'info') {
+  if (lastCloudSyncMessage === message) return;
+  lastCloudSyncMessage = message;
+  log(message, type);
+}
+
+function clearCloudSyncMessage() {
+  lastCloudSyncMessage = null;
+}
 
 export function getAuthToken() { return authToken; }
 export function getAuthUsername() { return authUsername; }
@@ -5472,9 +5519,12 @@ export function setAuth(token, username) {
   authToken = token;
   authUsername = username;
   if (token) {
+    clearCloudSyncMessage();
     sessionStorage.setItem('rpg_auth_token', token);
     sessionStorage.setItem('rpg_auth_user', username);
   } else {
+    if (cloudSaveTimer) clearInterval(cloudSaveTimer);
+    cloudSaveTimer = null;
     sessionStorage.removeItem('rpg_auth_token');
     sessionStorage.removeItem('rpg_auth_user');
   }
@@ -5499,10 +5549,10 @@ export async function apiLogin(username, password) {
 }
 
 async function cloudSave() {
-  if (!authToken) return;
+  if (!authToken) return false;
   try {
     const snap = serializeState();
-    await fetch('/api/save', {
+    const res = await fetch('/api/save', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -5510,7 +5560,45 @@ async function cloudSave() {
       },
       body: JSON.stringify({ save: snap })
     });
-  } catch (_) { /* silent fail — localStorage is the backup */ }
+    if (res.ok) {
+      clearCloudSyncMessage();
+      return true;
+    }
+    if (res.status === 401) {
+      setAuth(null, null);
+      setCloudSyncMessage('Cloud session expired. Log in again to resume sync.', 'info');
+      return false;
+    }
+    setCloudSyncMessage('Cloud save failed; local save kept.', 'combat');
+    return false;
+  } catch (_) {
+    setCloudSyncMessage('Cloud save failed; local save kept.', 'combat');
+    return false;
+  }
+}
+
+async function clearCloudSave() {
+  if (!authToken) return true;
+  try {
+    const res = await fetch('/api/clear-save', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + authToken },
+    });
+    if (res.ok) {
+      clearCloudSyncMessage();
+      return true;
+    }
+    if (res.status === 401) {
+      setAuth(null, null);
+      setCloudSyncMessage('Cloud session expired. Log in again to manage cloud saves.', 'info');
+      return false;
+    }
+    setCloudSyncMessage('Cloud reset failed; local progress was still cleared.', 'combat');
+    return false;
+  } catch (_) {
+    setCloudSyncMessage('Cloud reset failed; local progress was still cleared.', 'combat');
+    return false;
+  }
 }
 
 export async function cloudLoad() {
@@ -5520,12 +5608,19 @@ export async function cloudLoad() {
       headers: { 'Authorization': 'Bearer ' + authToken }
     });
     if (!res.ok) {
-      if (res.status === 401) setAuth(null, null);
+      if (res.status === 401) {
+        setAuth(null, null);
+        setCloudSyncMessage('Cloud session expired. Log in again to resume sync.', 'info');
+      } else {
+        setCloudSyncMessage('Cloud load failed; local save kept.', 'combat');
+      }
       return null;
     }
     const data = await res.json();
+    clearCloudSyncMessage();
     return data.save || null;
   } catch (_) {
+    setCloudSyncMessage('Cloud load failed; local save kept.', 'combat');
     return null;
   }
 }
@@ -5732,28 +5827,114 @@ export function getSlotInfo(slot) {
   } catch (_) { return null; }
 }
 
-export function fullResetGame() {
+export async function fullResetGame() {
+  await clearCloudSave();
   // Wipe everything — persistent data included
   localStorage.removeItem('rpg_save');
   localStorage.removeItem(SETTINGS_KEY);
-  state.player = null;
-  state.pendingLevelUp = false;
-  state.bestiary = {};
-  state.achievements = {};
-  state.stats = { kills: 0, deaths: 0, floorsCleared: 0, bossKills: 0, itemsCrafted: 0, questsCompleted: 0, totalGold: 0, totalXp: 0, fishCaught: 0, chestsOpened: 0, potionsUsed: 0, spellsCast: 0, arrowsFired: 0, stepsWalked: 0, criticalHits: 0, dodges: 0, timePlayedMs: 0 };
-  state.bossSkills = {};
-  state.prestigeLevel = 0;
-  state.arenaBestWave = 0;
-  state.townUpgrades = { healer: 1, shop: 1, blacksmith: 1, arena: 1 };
-  state.runHistory = [];
-  state.armory = {};
-  state.phase = 'class_select';
-  state.gameOver = false;
-  state.showSettings = false;
+  localStorage.removeItem('rpg_unlocked_classes');
+  localStorage.removeItem('rpg_town_buildings');
+  localStorage.removeItem('rpg_talents');
+  localStorage.removeItem('rpg_map_notes');
+  for (let slot = 1; slot <= SAVE_SLOTS; slot++) {
+    localStorage.removeItem(`rpg_save_slot_${slot}`);
+  }
+
+  Object.assign(gameSettings, DEFAULT_GAME_SETTINGS);
+  Object.assign(state, {
+    phase: 'class_select',
+    mode: 'village',
+    floor: 0,
+    playerClass: null,
+    map: null,
+    mapW: 0,
+    mapH: 0,
+    player: null,
+    enemies: [],
+    items: [],
+    visibility: null,
+    revealed: null,
+    turnCount: 0,
+    messages: [],
+    gameOver: false,
+    pendingLevelUp: false,
+    villageData: null,
+    stairsPos: null,
+    bestiary: {},
+    armory: {},
+    quests: [],
+    completedQuestIds: [],
+    projectiles: [],
+    showBestiary: false,
+    showArmory: false,
+    showQuestBoard: false,
+    showMinimap: false,
+    showHealer: false,
+    showShop: false,
+    showBlacksmith: false,
+    isDungeonShop: false,
+    floorTheme: null,
+    throwMode: false,
+    portalPos: null,
+    lastDungeonFloor: 0,
+    chests: [],
+    showChest: false,
+    activeChest: null,
+    showSettings: false,
+    showCharSheet: false,
+    showSkillTree: false,
+    showSubclassSelect: false,
+    showAchievements: false,
+    godMode: false,
+    bossSkills: {},
+    prestigeLevel: 0,
+    showPrestige: false,
+    showFishing: false,
+    fishingPhase: 'idle',
+    fishingTimer: null,
+    fishingCatch: null,
+    showArena: false,
+    arenaWave: 0,
+    arenaBestWave: 0,
+    arenaEnemiesRemaining: 0,
+    arenaRewards: { gold: 0, items: [] },
+    arenaWaveCleared: false,
+    achievements: {},
+    achievementToast: null,
+    stats: createDefaultStats(),
+    townUpgrades: { healer: 1, shop: 1, blacksmith: 1, arena: 1 },
+    runHistory: [],
+    showRunHistory: false,
+    savedDungeon: null,
+    dens: [],
+    unlockedFloorWarps: [],
+    showFloorWarp: false,
+    showSpellBook: false,
+    floorCache: {},
+    difficulty: 'normal',
+    heroName: 'Hero',
+    heroColor: 'default',
+    unlockedClasses: [],
+    townBuildings: { library: false, tavern: false, training: false, shrine: false },
+    showVillageExpansion: false,
+    mode_cave: false,
+    caveFloor: 0,
+    caveReturnPos: null,
+    mode_beach: false,
+    mode_town: false,
+    mapNotes: {},
+    speechBubbles: [],
+    autoExplore: false,
+    talentPoints: 0,
+    talents: {},
+    showTalentTree: false,
+    inMiniDungeon: false,
+    miniDungeonReturnFloor: 0,
+    miniDungeonReturnPos: null,
+    inBossCave: false,
+    bossCaveDefeated: [false, false, false, false, false],
+    bossCaveMap: null,
+    bossCaveReturnPos: null,
+  });
   closeFishing();
-  state.showArena = false;
-  state.arenaWave = 0;
-  state.arenaEnemiesRemaining = 0;
-  state.arenaRewards = { gold: 0, items: [] };
-  state.arenaWaveCleared = false;
 }

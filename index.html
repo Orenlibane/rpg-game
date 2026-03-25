@@ -44,7 +44,7 @@
     <div id="ui-panel">
       <!-- Player Stats -->
       <div id="stats-panel" class="panel">
-        <h2>Dungeon Diver <span id="game-version" style="font-size:10px;color:#555;font-weight:normal;">v46</span></h2>
+        <h2>Dungeon Diver <span id="game-version" style="font-size:10px;color:#555;font-weight:normal;">v47</span></h2>
         <div id="class-display" class="class-badge">Warrior</div>
         <div id="prestige-badge" style="display: none;"></div>
         <div id="floor-display" class="stat-row">Village</div>
@@ -114,7 +114,8 @@
         <div class="control-row"><kbd>B</kbd> <span data-i18n="ctrl.bestiary">Bestiary</span></div>
         <div class="control-row"><kbd>I</kbd> <span data-i18n="ctrl.armory">Armory</span></div>
         <div class="control-row"><kbd>M</kbd> <span data-i18n="ctrl.map">Map</span></div>
-        <div class="control-row"><kbd>N</kbd> <span data-i18n="ctrl.achievements">Achievements</span></div>
+        <div class="control-row"><kbd>N</kbd> <span data-i18n="ctrl.map_note">Map Note</span></div>
+        <div class="control-row"><kbd>Y</kbd> <span data-i18n="ctrl.achievements">Achievements</span></div>
         <div class="control-row"><kbd>L</kbd> <span>Run History</span></div>
         <div class="control-row"><kbd>Q</kbd> <span data-i18n="ctrl.town_portal">Town Portal</span></div>
         <div class="control-row"><kbd>E</kbd> <span data-i18n="ctrl.pickup">Pick up item</span></div>
@@ -142,7 +143,7 @@
         <div class="login-logo-icon">&#9876;</div>
         <h1 class="title-login-v2">Dungeon Diver</h1>
         <p class="login-tagline">Descend. Fight. Survive.</p>
-        <span class="login-version-badge">v46</span>
+        <span class="login-version-badge">v47</span>
       </div>
 
       <!-- Login Form -->
@@ -169,6 +170,10 @@
         <h3 class="changelog-title">&#128220; Changelog</h3>
         <div class="changelog-scroll" id="changelog-scroll">
           <div class="changelog-entry changelog-new">
+            <span class="changelog-version">v47</span>
+            <span class="changelog-text">Unified browser module versions to a single build, fixed map-note hotkeys leaking into gameplay, repaired full reset to wipe persisted progress, improved large-boss collision and AI, and made cloud sessions durable across restarts.</span>
+          </div>
+          <div class="changelog-entry">
             <span class="changelog-version">v46</span>
             <span class="changelog-text">Fix: Boss Cave multi-phase bosses now properly survive non-final phase deaths and transition correctly. Fix: opening a boss cave door immediately updates field of view so the next corridor is revealed.</span>
           </div>
@@ -851,9 +856,9 @@
       document.body.appendChild(d);
     };
   </script>
-  <script type="module" src="js/main.js?v=46"></script>
+  <script type="module" src="js/main.js?v=47"></script>
   <script type="module">
-    import('./js/main.js?v=46').catch(function(e) {
+    import('./js/main.js?v=47').catch(function(e) {
       var d = document.createElement('div');
       d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:red;color:white;padding:10px;z-index:9999;font-size:14px';
       d.textContent = 'MODULE LOAD ERROR: ' + e.message;

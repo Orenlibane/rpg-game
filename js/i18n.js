@@ -79,6 +79,7 @@ Object.assign(translations.en, {
   'ctrl.bestiary': 'Bestiary',
   'ctrl.armory': 'Armory',
   'ctrl.map': 'Map',
+  'ctrl.map_note': 'Map Note',
   'ctrl.achievements': 'Achievements',
   'ctrl.town_portal': 'Town Portal',
   'ctrl.pickup': 'Pick up item',
@@ -669,6 +670,9 @@ Object.assign(translations.he, {
   'settings.submit': 'שלח',
   'settings.godmode_on': 'מצב אל: פעיל',
   'settings.godmode_off': 'מצב אל: כבוי',
+
+  // Controls
+  'ctrl.map_note': 'הערת מפה',
 
   // Character Sheet
   'charsheet.title': 'דמות',

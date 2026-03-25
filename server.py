@@ -20,7 +20,7 @@ if DATABASE_URL:
     except ImportError:
         print("WARNING: psycopg2 not installed. Cloud saves disabled.")
 
-# In-memory session store: token -> user_id
+# In-memory fallback session store: token -> user_id
 sessions = {}
 
 
@@ -56,6 +56,14 @@ def init_db():
                 UNIQUE(user_id)
             )
         """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS sessions (
+                token TEXT PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                created_at TIMESTAMP DEFAULT NOW(),
+                last_used_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
         cur.close()
         conn.close()
         print("Database initialized successfully.")
@@ -73,7 +81,42 @@ def hash_password(password, salt=None):
 
 def get_user_from_token(token):
     """Return user_id for a session token, or None."""
+    if not token:
+        return None
+    if db_available:
+        try:
+            conn = get_db()
+            cur = conn.cursor()
+            cur.execute("""
+                UPDATE sessions
+                SET last_used_at = NOW()
+                WHERE token = %s
+                RETURNING user_id
+            """, (token,))
+            row = cur.fetchone()
+            cur.close()
+            conn.close()
+            return row[0] if row else None
+        except Exception:
+            return None
     return sessions.get(token)
+
+
+def create_session(user_id):
+    """Create and persist a session token."""
+    token = secrets.token_hex(32)
+    if db_available:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO sessions (token, user_id, created_at, last_used_at)
+            VALUES (%s, %s, NOW(), NOW())
+        """, (token, user_id))
+        cur.close()
+        conn.close()
+    else:
+        sessions[token] = user_id
+    return token
 
 
 # ── HTTP Handler ────────────────────────────────────
@@ -121,6 +164,8 @@ class GameHandler(http.server.SimpleHTTPRequestHandler):
             self.handle_login()
         elif parsed.path == '/api/save':
             self.handle_save()
+        elif parsed.path == '/api/clear-save':
+            self.handle_clear_save()
         else:
             self.send_json({'error': 'Not found'}, 404)
 
@@ -164,8 +209,7 @@ class GameHandler(http.server.SimpleHTTPRequestHandler):
             cur.close()
             conn.close()
 
-            token = secrets.token_hex(32)
-            sessions[token] = user_id
+            token = create_session(user_id)
 
             self.send_json({'ok': True, 'token': token, 'username': username})
         except Exception as e:
@@ -196,8 +240,7 @@ class GameHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_json({'error': 'Invalid username or password'}, 401)
                 return
 
-            token = secrets.token_hex(32)
-            sessions[token] = row['id']
+            token = create_session(row['id'])
 
             self.send_json({'ok': True, 'token': token, 'username': username})
         except Exception as e:
@@ -256,6 +299,27 @@ class GameHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_json({'save': None})
             else:
                 self.send_json({'save': row['save_data']})
+        except Exception as e:
+            self.send_json({'error': str(e)}, 500)
+
+    def handle_clear_save(self):
+        if not db_available:
+            self.send_json({'error': 'Cloud saves not available'}, 503)
+            return
+        try:
+            token = self.headers.get('Authorization', '').replace('Bearer ', '')
+            user_id = get_user_from_token(token)
+            if not user_id:
+                self.send_json({'error': 'Not authenticated'}, 401)
+                return
+
+            conn = get_db()
+            cur = conn.cursor()
+            cur.execute("DELETE FROM saves WHERE user_id = %s", (user_id,))
+            cur.close()
+            conn.close()
+
+            self.send_json({'ok': True})
         except Exception as e:
             self.send_json({'error': str(e)}, 500)
 

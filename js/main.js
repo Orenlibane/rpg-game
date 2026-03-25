@@ -23,10 +23,12 @@ import {
   setHeroName, setHeroColor, enterBeach, enterTown, exitBeach, exitTown,
   toggleAutoExplore, addMapNote, getMapNote, toggleTalentTree, closeTalentTree,
   unlockTalent, getTalentPoints, getUnlockedTalents,
-} from './engine.js?v=46';
-import { render, resizeCanvas } from './renderer.js?v=46';
-import { PLAYER_CLASS, PRESTIGE, DIFFICULTY, TALENT_TREES } from './constants.js?v=46';
+} from './engine.js?v=47';
+import { render, resizeCanvas } from './renderer.js?v=47';
+import { PLAYER_CLASS, PRESTIGE, DIFFICULTY, TALENT_TREES } from './constants.js?v=47';
 import { initI18n, setLanguage, applyStaticTranslations, t } from './i18n.js';
+
+const APP_VERSION = 'v47';
 
 // ── Initialize i18n ─────────────────────────
 initI18n(gameSettings.language);
@@ -61,7 +63,7 @@ function hideLoginOverlay() {
 function updateUserBadge() {
   const el = document.getElementById('game-version');
   if (el) {
-    el.textContent = isLoggedIn() ? `v43 | ${getAuthUsername()}` : 'v43';
+    el.textContent = isLoggedIn() ? `${APP_VERSION} | ${getAuthUsername()}` : APP_VERSION;
   }
 }
 
@@ -347,6 +349,15 @@ function addManaLevelUpBtn() {
 // ── Input Handling ───────────────────────────
 
 document.addEventListener('keydown', (e) => {
+  const target = e.target;
+  const isEditableTarget = target instanceof HTMLElement && (
+    target.isContentEditable ||
+    target.tagName === 'INPUT' ||
+    target.tagName === 'TEXTAREA' ||
+    target.tagName === 'SELECT'
+  );
+  if (isEditableTarget && e.key !== 'Escape') return;
+
   // Spell book toggle
   if (e.key === 'z' || e.key === 'Z') {
     if (state.phase !== 'class_select') {
@@ -437,7 +448,7 @@ document.addEventListener('keydown', (e) => {
     }
   }
 
-  // Achievements toggle (moved to A key since N is now map notes)
+  // Achievements toggle (moved to Y since N is now map notes)
   if (e.key === 'y' || e.key === 'Y') {
     if (state.phase !== 'class_select') {
       e.preventDefault();
@@ -719,8 +730,8 @@ document.getElementById('start-over-no')?.addEventListener('click', () => {
   document.getElementById('start-over-confirm').classList.add('hidden');
   document.getElementById('start-over-btn').classList.remove('hidden');
 });
-document.getElementById('start-over-yes')?.addEventListener('click', () => {
-  fullResetGame();
+document.getElementById('start-over-yes')?.addEventListener('click', async () => {
+  await fullResetGame();
   document.getElementById('start-over-confirm').classList.add('hidden');
   document.getElementById('start-over-btn').classList.remove('hidden');
   document.getElementById('settings-overlay').classList.add('hidden');
@@ -728,6 +739,7 @@ document.getElementById('start-over-yes')?.addEventListener('click', () => {
   document.getElementById('continue-save').style.display = 'none';
   const manaBtn = document.getElementById('choose-mana');
   if (manaBtn) manaBtn.remove();
+  resizeCanvas();
   render();
 });
 
@@ -1008,6 +1020,7 @@ document.getElementById('map-note-cancel')?.addEventListener('click', () => {
 });
 
 document.getElementById('map-note-input')?.addEventListener('keydown', (e) => {
+  e.stopPropagation();
   if (e.key === 'Enter') {
     const text = e.target.value;
     addMapNote(text);
